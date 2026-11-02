@@ -135,6 +135,44 @@ function formatVietnamDateOnly(ts) {
   return `${pad(vnTime.getDate())}/${pad(vnTime.getMonth() + 1)}/${vnTime.getFullYear()}`;
 }
 
+function parseFlexibleDateInput(val, fallbackTs = null) {
+  if (val === undefined || val === null || val === '') return fallbackTs;
+  if (typeof val === 'number') {
+    return val > 0 ? val : null;
+  }
+  const str = String(val).trim();
+  if (!str) return fallbackTs;
+  const lower = str.toLowerCase();
+  if (lower === '0' || lower === 'null' || lower === 'lifetime' || lower.includes('vĩnh viễn') || lower.includes('vinh vien')) {
+    return null;
+  }
+  if (/^\d{10,15}$/.test(str)) {
+    const num = Number(str);
+    return num < 10000000000 ? num * 1000 : num;
+  }
+  // DD/MM/YYYY
+  const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const month = Number(dmy[2]) - 1;
+    const year = Number(dmy[3]);
+    const dt = new Date(year, month, day, 23, 59, 59);
+    if (!isNaN(dt.getTime())) return dt.getTime();
+  }
+  // YYYY-MM-DD
+  const ymd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (ymd) {
+    const year = Number(ymd[1]);
+    const month = Number(ymd[2]) - 1;
+    const day = Number(ymd[3]);
+    const dt = new Date(year, month, day, 23, 59, 59);
+    if (!isNaN(dt.getTime())) return dt.getTime();
+  }
+  const parsed = Date.parse(str);
+  if (!isNaN(parsed) && parsed > 0) return parsed;
+  return fallbackTs;
+}
+
 function isAdminAuthorized(data) {
   if (!data) return false;
   if (data.adminPassword && String(data.adminPassword).trim() === ADMIN_PASSWORD) return true;
@@ -477,6 +515,7 @@ app.post('/api', async (req, res) => {
         await db.upsertPlayer(auth.player);
         broadcastUpdate('presence_updated', { playerName: auth.canonicalName });
       }
+      const pObj = auth.player || {};
       return res.json({
         status: auth.valid ? 'success' : 'error',
         isAdmin: Boolean(auth.isAdmin),
@@ -484,19 +523,97 @@ app.post('/api', async (req, res) => {
         tier: auth.tier || 'BRONZE',
         tierNameVi: TIER_NAMES_VI[auth.tier || 'BRONZE'] || '🥉 Hạng Đồng',
         overlayConfig: auth.overlayConfig || db.DEFAULT_OVERLAY_CONFIG,
-        friends: auth.player ? (auth.player.friends || []) : [],
-        starsReceived: auth.player ? (auth.player.starsReceived || 0) : 0,
-        isActive: auth.player ? auth.player.isActive : false,
-        activatedAt: auth.player ? auth.player.activatedAt : null,
-        expiresAt: auth.player ? auth.player.expiresAt : null,
+        friends: pObj.friends || [],
+        starsReceived: pObj.starsReceived || 0,
+        starsBalance: pObj.starsBalance || 0,
+        starHistory: pObj.starHistory || [],
+        vipHistory: pObj.vipHistory || [],
+        note: pObj.note || '',
+        isActive: pObj.isActive !== undefined ? pObj.isActive : false,
+        createdAt: pObj.createdAt || null,
+        createdFormatted: pObj.createdAt ? formatVietnamDateOnly(pObj.createdAt) : '',
+        activatedAt: pObj.activatedAt || null,
+        expiresAt: pObj.expiresAt || null,
         daysLeft: auth.daysLeft !== undefined ? auth.daysLeft : null,
         activatedFormatted: auth.activatedFormatted || '',
         expiresFormatted: auth.expiresFormatted || '',
+        player: auth.valid ? {
+          ...pObj,
+          password: '******',
+          tierNameVi: TIER_NAMES_VI[auth.tier || 'BRONZE'] || '🥉 Hạng Đồng',
+          createdFormatted: pObj.createdAt ? formatVietnamDateOnly(pObj.createdAt) : '',
+          activatedFormatted: auth.activatedFormatted || '',
+          expiresFormatted: auth.expiresFormatted || '',
+          daysLeft: auth.daysLeft !== undefined ? auth.daysLeft : null
+        } : null,
         message: auth.valid
           ? (auth.isAdmin
             ? `Đăng nhập thành công với quyền QUẢN TRỊ ADMIN XO [${TIER_NAMES_VI[auth.tier] || auth.tier}]!`
             : `Đăng nhập thành công [${TIER_NAMES_VI[auth.tier] || auth.tier}]! (Hạn SD: ${auth.expiresFormatted})`)
           : (auth.reason || 'Đăng nhập thất bại!')
+      });
+    }
+
+    if (action === 'getPlayerProfile') {
+      const targetName = String(data.targetName || data.playerName || '').trim();
+      const adminOk = isAdminAuthorized(data);
+      let auth = { valid: false };
+      if (!adminOk) {
+        auth = await validatePlayerAccount(data.playerName || targetName, data.password);
+        if (!auth.valid) {
+          return res.json({ status: 'error', message: auth.reason || 'Vui lòng đăng nhập để xem thông tin tài khoản!' });
+        }
+      }
+      const lookupName = adminOk ? (targetName || data.playerName || 'XO') : auth.canonicalName;
+      const [rawPlayers, matches] = await Promise.all([db.getPlayers(), db.getMatches()]);
+      const enriched = enrichPlayersWithLiveStatus(rawPlayers, matches);
+      const found = enriched.find(p => p.name.toLowerCase() === String(lookupName).toLowerCase());
+      if (!found) {
+        return res.json({ status: 'error', message: `Không tìm thấy thông tin tài khoản "${lookupName}"!` });
+      }
+      const now = Date.now();
+      const daysLeft = found.expiresAt && Number(found.expiresAt) > 0
+        ? Math.max(0, Math.ceil((Number(found.expiresAt) - now) / (24 * 60 * 60 * 1000)))
+        : null;
+      return res.json({
+        status: 'success',
+        profile: {
+          ...found,
+          password: adminOk ? found.password : '******',
+          tierNameVi: TIER_NAMES_VI[found.tier || 'BRONZE'] || '🥉 Hạng Đồng',
+          createdFormatted: found.createdAt ? formatVietnamDateOnly(found.createdAt) : '---',
+          activatedFormatted: found.activatedAt ? formatVietnamDateOnly(found.activatedAt) : '---',
+          expiresFormatted: found.expiresAt ? formatVietnamDateOnly(found.expiresAt) : '♾️ Vĩnh viễn',
+          daysLeft
+        }
+      });
+    }
+
+    if (action === 'userChangePassword') {
+      const auth = await validatePlayerAccount(data.playerName, data.oldPassword || data.password);
+      if (!auth.valid || !auth.player) {
+        return res.json({ status: 'error', message: auth.reason || 'Mật khẩu hiện tại không đúng!' });
+      }
+      const newPass = String(data.newPassword || '').trim();
+      if (!newPass || newPass.length < 2) {
+        return res.json({ status: 'error', message: 'Mật khẩu mới phải có ít nhất 2 ký tự!' });
+      }
+      const now = Date.now();
+      auth.player.password = newPass;
+      auth.player.vipHistory = Array.isArray(auth.player.vipHistory) ? auth.player.vipHistory : [];
+      auth.player.vipHistory.push({
+        id: 'PASS_' + now,
+        action: 'USER_CHANGE_PASS',
+        tier: auth.player.tier,
+        note: 'Người dùng tự đổi mật khẩu cá nhân',
+        by: auth.player.name,
+        createdAt: now,
+        formattedTime: formatVietnamTime(now)
+      });
+      await db.upsertPlayer(auth.player);
+      return res.json({
+        status: 'success',
+        message: 'Đã đổi mật khẩu tài khoản thành công!'
       });
     }
 
@@ -745,15 +862,48 @@ app.post('/api', async (req, res) => {
       const streamerName = String((targetMatch && targetMatch.streamerName) || data.streamerName || 'XO').trim();
       const rawPlayers = await db.getPlayers();
       const streamerObj = rawPlayers.find(p => p.name.toLowerCase() === streamerName.toLowerCase());
+      const senderObj = rawPlayers.find(p => p.name.toLowerCase() === senderName.toLowerCase());
 
+      const now = Date.now();
       let totalStreamerStars = starCount;
       if (streamerObj) {
         streamerObj.starsReceived = (Number(streamerObj.starsReceived) || 0) + starCount;
         totalStreamerStars = streamerObj.starsReceived;
+        streamerObj.starHistory = Array.isArray(streamerObj.starHistory) ? streamerObj.starHistory : [];
+        streamerObj.starHistory.push({
+          id: 'STAR_RCV_' + now + '_' + Math.floor(Math.random() * 1000),
+          type: 'GIFT_RECEIVED',
+          amount: starCount,
+          balanceAfter: streamerObj.starsBalance || 0,
+          totalReceivedAfter: totalStreamerStars,
+          note: `Nhận +${starCount} ⭐ từ ${senderName}: "${cheerText}"`,
+          by: senderName,
+          createdAt: now,
+          formattedTime: formatVietnamTime(now)
+        });
         await db.upsertPlayer(streamerObj);
       }
 
-      const now = Date.now();
+      if (senderObj) {
+        const curBal = Number(senderObj.starsBalance) || 0;
+        if (curBal > 0) {
+          senderObj.starsBalance = Math.max(0, curBal - starCount);
+        }
+        senderObj.starHistory = Array.isArray(senderObj.starHistory) ? senderObj.starHistory : [];
+        senderObj.starHistory.push({
+          id: 'STAR_SENT_' + now + '_' + Math.floor(Math.random() * 1000),
+          type: 'GIFT_SENT',
+          amount: -starCount,
+          balanceAfter: senderObj.starsBalance || 0,
+          note: `Tặng ${starCount} ⭐ cho sảnh Live của ${streamerName}: "${cheerText}"`,
+          by: senderName,
+          createdAt: now,
+          formattedTime: formatVietnamTime(now)
+        });
+        if (!streamerObj || streamerObj.name.toLowerCase() !== senderObj.name.toLowerCase()) {
+          await db.upsertPlayer(senderObj);
+        }
+      }
       const displayLine = `đã tặng ${starCount} ⭐ cho ${streamerName} — "${cheerText}"`;
       const starChatObj = {
         id: 'STAR_' + now + '_' + Math.floor(Math.random() * 1000),
@@ -919,33 +1069,234 @@ app.post('/api', async (req, res) => {
         return res.json({ status: 'error', message: 'Vui lòng nhập Tên Player!' });
       }
       const now = Date.now();
-      let expiresAt = pData.expiresAt !== undefined && pData.expiresAt !== null && pData.expiresAt !== ''
-        ? Number(pData.expiresAt)
-        : null;
+      const existingPlayers = await db.getPlayers();
+      const originalName = String(pData.originalName || name).trim();
+      const existing =
+        existingPlayers.find(p => p.name.toLowerCase() === originalName.toLowerCase()) ||
+        existingPlayers.find(p => p.name.toLowerCase() === name.toLowerCase()) ||
+        null;
 
-      if (pData.durationDays !== undefined && pData.durationDays !== null && pData.durationDays !== '') {
+      // Nếu đổi sang tên mới thì xóa bản ghi tên cũ
+      if (existing && existing.name.toLowerCase() !== name.toLowerCase()) {
+        await db.deletePlayerByName(existing.name);
+      }
+
+      // Xử lý mật khẩu: nếu truyền '******' hoặc rỗng khi sửa User đã có thì giữ nguyên mật khẩu cũ
+      const rawPassInput = pData.password !== undefined && pData.password !== null ? String(pData.password).trim() : '';
+      const isMaskedPass = /^\*+$/.test(rawPassInput);
+      const finalPassword = (!rawPassInput || isMaskedPass)
+        ? (existing ? existing.password : '123')
+        : rawPassInput;
+
+      // Xử lý ngày tạo (createdAt) và ngày kích hoạt (activatedAt)
+      const createdAt = parseFlexibleDateInput(
+        pData.createdDate !== undefined ? pData.createdDate : pData.createdAt,
+        existing ? existing.createdAt : now
+      ) || now;
+
+      const activatedAt = parseFlexibleDateInput(
+        pData.activatedDate !== undefined ? pData.activatedDate : pData.activatedAt,
+        existing ? existing.activatedAt : createdAt
+      ) || now;
+
+      // Xử lý hạn sử dụng (expiresAt)
+      let expiresAt = existing ? existing.expiresAt : null;
+      if (pData.lifetime === true || String(pData.expiresDate || '').toLowerCase() === 'lifetime') {
+        expiresAt = null;
+      } else if (pData.durationDays !== undefined && pData.durationDays !== null && pData.durationDays !== '') {
         const days = Number(pData.durationDays);
         expiresAt = days > 0 ? now + days * 24 * 60 * 60 * 1000 : null;
+      } else if (pData.expiresDate !== undefined) {
+        expiresAt = parseFlexibleDateInput(pData.expiresDate, null);
+      } else if (pData.expiresAt !== undefined) {
+        expiresAt = parseFlexibleDateInput(pData.expiresAt, null);
+      }
+
+      const finalTier = String(pData.tier || (existing ? existing.tier : 'BRONZE')).toUpperCase();
+      const finalActive = pData.isActive !== undefined ? Boolean(pData.isActive) : (existing ? existing.isActive : true);
+      const finalNote = pData.note !== undefined ? String(pData.note || '').trim() : (existing ? existing.note : '');
+      const finalStarsBalance = pData.starsBalance !== undefined && pData.starsBalance !== ''
+        ? Number(pData.starsBalance)
+        : (existing ? (existing.starsBalance || 0) : 0);
+      const finalStarsReceived = pData.starsReceived !== undefined && pData.starsReceived !== ''
+        ? Number(pData.starsReceived)
+        : (existing ? (existing.starsReceived || 0) : 0);
+
+      const vipHistory = existing && Array.isArray(existing.vipHistory) ? [...existing.vipHistory] : [];
+      const starHistory = existing && Array.isArray(existing.starHistory) ? [...existing.starHistory] : [];
+
+      if (!existing) {
+        vipHistory.push({
+          id: 'VIP_CREATE_' + now,
+          action: 'CREATE_USER',
+          tier: finalTier,
+          previousExpiresAt: null,
+          newExpiresAt: expiresAt,
+          note: `Tạo tài khoản mới [${TIER_NAMES_VI[finalTier] || finalTier}] — Hạn: ${formatVietnamDateOnly(expiresAt)}`,
+          by: 'Admin XO',
+          createdAt: now,
+          formattedTime: formatVietnamTime(now)
+        });
+        if (finalStarsBalance > 0) {
+          starHistory.push({
+            id: 'STAR_INIT_' + now,
+            type: 'TOPUP',
+            amount: finalStarsBalance,
+            balanceAfter: finalStarsBalance,
+            note: `Khởi tạo số dư +${finalStarsBalance} ⭐ khi mở tài khoản`,
+            by: 'Admin XO',
+            createdAt: now,
+            formattedTime: formatVietnamTime(now)
+          });
+        }
+      } else {
+        const changes = [];
+        if (existing.tier !== finalTier) {
+          changes.push(`Đổi hạng VIP: ${TIER_NAMES_VI[existing.tier] || existing.tier} → ${TIER_NAMES_VI[finalTier] || finalTier}`);
+        }
+        if (formatVietnamDateOnly(existing.expiresAt) !== formatVietnamDateOnly(expiresAt)) {
+          changes.push(`Hạn SD: ${formatVietnamDateOnly(existing.expiresAt)} → ${formatVietnamDateOnly(expiresAt)}`);
+        }
+        if (formatVietnamDateOnly(existing.createdAt) !== formatVietnamDateOnly(createdAt)) {
+          changes.push(`Ngày tạo: ${formatVietnamDateOnly(existing.createdAt)} → ${formatVietnamDateOnly(createdAt)}`);
+        }
+        if (existing.password !== finalPassword) {
+          changes.push('Đặt lại mật khẩu');
+        }
+        if (existing.isActive !== finalActive) {
+          changes.push(finalActive ? 'Mở khóa tài khoản' : 'Tạm khóa tài khoản');
+        }
+        if (changes.length > 0) {
+          vipHistory.push({
+            id: 'VIP_EDIT_' + now + '_' + Math.floor(Math.random() * 1000),
+            action: 'ADMIN_EDIT',
+            tier: finalTier,
+            previousExpiresAt: existing.expiresAt,
+            newExpiresAt: expiresAt,
+            note: changes.join(' | '),
+            by: 'Admin XO',
+            createdAt: now,
+            formattedTime: formatVietnamTime(now)
+          });
+        }
+        const prevBalance = Number(existing.starsBalance || 0);
+        if (finalStarsBalance !== prevBalance) {
+          const diff = finalStarsBalance - prevBalance;
+          starHistory.push({
+            id: 'STAR_ADJ_' + now + '_' + Math.floor(Math.random() * 1000),
+            type: diff > 0 ? 'TOPUP' : 'ADMIN_ADJUST',
+            amount: diff,
+            balanceAfter: finalStarsBalance,
+            note: diff > 0 ? `Admin XO nạp thêm +${diff} ⭐` : `Admin XO điều chỉnh ${diff} ⭐`,
+            by: 'Admin XO',
+            createdAt: now,
+            formattedTime: formatVietnamTime(now)
+          });
+        }
       }
 
       const saved = await db.upsertPlayer({
         name,
-        password: String(pData.password || '123').trim(),
-        tier: String(pData.tier || 'BRONZE').toUpperCase(),
-        isActive: pData.isActive !== undefined ? Boolean(pData.isActive) : true,
-        activatedAt: pData.activatedAt ? Number(pData.activatedAt) : now,
+        password: finalPassword,
+        tier: finalTier,
+        isActive: finalActive,
+        activatedAt,
         expiresAt,
-        note: String(pData.note || '').trim(),
-        overlayConfig: pData.overlayConfig || db.DEFAULT_OVERLAY_CONFIG,
-        friends: pData.friends || [],
-        starsReceived: pData.starsReceived || 0,
-        lastSeenAt: pData.lastSeenAt || 0,
-        createdAt: pData.createdAt ? Number(pData.createdAt) : now
+        note: finalNote,
+        overlayConfig: pData.overlayConfig || (existing ? existing.overlayConfig : db.DEFAULT_OVERLAY_CONFIG),
+        friends: pData.friends || (existing ? existing.friends : []),
+        starsReceived: finalStarsReceived,
+        starsBalance: finalStarsBalance,
+        starHistory,
+        vipHistory,
+        lastSeenAt: existing ? existing.lastSeenAt : now,
+        createdAt
       });
       const [rawPlayers, matches] = await Promise.all([db.getPlayers(), db.getMatches()]);
       const players = enrichPlayersWithLiveStatus(rawPlayers, matches);
       broadcastUpdate('players_updated');
-      return res.json({ status: 'success', player: saved, players, message: `Đã lưu tài khoản "${saved.name}" [${TIER_NAMES_VI[saved.tier]}]!` });
+      return res.json({
+        status: 'success',
+        player: saved,
+        players,
+        message: `Đã lưu thông tin tài khoản "${saved.name}" [${TIER_NAMES_VI[saved.tier]}] (Hạn: ${formatVietnamDateOnly(saved.expiresAt)})!`
+      });
+    }
+
+    if (action === 'adminResetPassword') {
+      if (!isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền reset mật khẩu!' });
+      }
+      const targetName = String(data.name || '').trim();
+      const newPassword = String(data.newPassword || '123').trim() || '123';
+      const players = await db.getPlayers();
+      const existing = players.find(p => p.name.toLowerCase() === targetName.toLowerCase());
+      if (!existing) {
+        return res.json({ status: 'error', message: 'Không tìm thấy tài khoản cần reset mật khẩu!' });
+      }
+      const now = Date.now();
+      existing.password = newPassword;
+      existing.vipHistory = Array.isArray(existing.vipHistory) ? existing.vipHistory : [];
+      existing.vipHistory.push({
+        id: 'VIP_RESET_PW_' + now,
+        action: 'RESET_PASS',
+        tier: existing.tier,
+        previousExpiresAt: existing.expiresAt,
+        newExpiresAt: existing.expiresAt,
+        note: 'Admin XO đã reset mật khẩu tài khoản',
+        by: 'Admin XO',
+        createdAt: now,
+        formattedTime: formatVietnamTime(now)
+      });
+      await db.upsertPlayer(existing);
+      const [updatedRaw, matches] = await Promise.all([db.getPlayers(), db.getMatches()]);
+      const updatedPlayers = enrichPlayersWithLiveStatus(updatedRaw, matches);
+      broadcastUpdate('players_updated');
+      return res.json({
+        status: 'success',
+        player: existing,
+        players: updatedPlayers,
+        message: `🔑 Đã reset mật khẩu cho tài khoản "${existing.name}" thành công!`
+      });
+    }
+
+    if (action === 'adminTopupStars') {
+      if (!isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền nạp Sao cho User!' });
+      }
+      const targetName = String(data.name || '').trim();
+      const addStars = Number(data.amount || data.stars || 0);
+      if (!targetName || isNaN(addStars) || addStars === 0) {
+        return res.json({ status: 'error', message: 'Vui lòng nhập số Sao hợp lệ để nạp!' });
+      }
+      const players = await db.getPlayers();
+      const existing = players.find(p => p.name.toLowerCase() === targetName.toLowerCase());
+      if (!existing) {
+        return res.json({ status: 'error', message: 'Không tìm thấy tài khoản cần nạp Sao!' });
+      }
+      const now = Date.now();
+      existing.starsBalance = Math.max(0, (Number(existing.starsBalance) || 0) + addStars);
+      existing.starHistory = Array.isArray(existing.starHistory) ? existing.starHistory : [];
+      existing.starHistory.push({
+        id: 'TOPUP_' + now + '_' + Math.floor(Math.random() * 1000),
+        type: 'TOPUP',
+        amount: addStars,
+        balanceAfter: existing.starsBalance,
+        note: String(data.note || (addStars > 0 ? `Admin XO nạp +${addStars} ⭐` : `Admin XO trừ ${addStars} ⭐`)).trim(),
+        by: 'Admin XO',
+        createdAt: now,
+        formattedTime: formatVietnamTime(now)
+      });
+      await db.upsertPlayer(existing);
+      const [updatedRaw, matches] = await Promise.all([db.getPlayers(), db.getMatches()]);
+      const updatedPlayers = enrichPlayersWithLiveStatus(updatedRaw, matches);
+      broadcastUpdate('players_updated');
+      return res.json({
+        status: 'success',
+        player: existing,
+        players: updatedPlayers,
+        message: `🌟 Đã nạp ${addStars > 0 ? '+' + addStars : addStars} Sao cho "${existing.name}" (Số dư mới: ${existing.starsBalance} ⭐)!`
+      });
     }
 
     if (action === 'adminExtendPlayer') {
@@ -960,15 +1311,41 @@ app.post('/api', async (req, res) => {
       }
 
       const now = Date.now();
+      const prevExpires = existing.expiresAt;
+      if (data.tier && TIER_RANK[String(data.tier).toUpperCase()]) {
+        existing.tier = String(data.tier).toUpperCase();
+      }
       if (data.lifetime || Number(data.addDays) === 0) {
         existing.expiresAt = null;
+      } else if (data.exactExpiresDate !== undefined && data.exactExpiresDate !== '') {
+        existing.expiresAt = parseFlexibleDateInput(data.exactExpiresDate, existing.expiresAt);
       } else {
-        const addMs = Number(data.addDays || 30) * 24 * 60 * 60 * 1000;
+        const addDaysNum = Number(data.addDays || 30);
+        const addMs = addDaysNum * 24 * 60 * 60 * 1000;
         const baseTime = (existing.expiresAt && Number(existing.expiresAt) > now) ? Number(existing.expiresAt) : now;
         existing.expiresAt = baseTime + addMs;
       }
       existing.isActive = true;
       if (!existing.activatedAt) existing.activatedAt = now;
+
+      existing.vipHistory = Array.isArray(existing.vipHistory) ? existing.vipHistory : [];
+      existing.vipHistory.push({
+        id: 'VIP_EXT_' + now + '_' + Math.floor(Math.random() * 1000),
+        action: 'EXTEND_VIP',
+        tier: existing.tier,
+        addDays: (data.lifetime || Number(data.addDays) === 0) ? 0 : Number(data.addDays || 30),
+        previousExpiresAt: prevExpires,
+        newExpiresAt: existing.expiresAt,
+        note: String(
+          data.note ||
+          ((data.lifetime || Number(data.addDays) === 0)
+            ? `Cấp hạn Vĩnh viễn [${TIER_NAMES_VI[existing.tier] || existing.tier}]`
+            : `Gia hạn +${data.addDays || 30} ngày [${TIER_NAMES_VI[existing.tier] || existing.tier}] (Hạn mới: ${formatVietnamDateOnly(existing.expiresAt)})`)
+        ).trim(),
+        by: 'Admin XO',
+        createdAt: now,
+        formattedTime: formatVietnamTime(now)
+      });
 
       await db.upsertPlayer(existing);
       const [updatedRaw, matches] = await Promise.all([db.getPlayers(), db.getMatches()]);
@@ -976,6 +1353,7 @@ app.post('/api', async (req, res) => {
       broadcastUpdate('players_updated');
       return res.json({
         status: 'success',
+        player: existing,
         players: updatedPlayers,
         message: `Đã gia hạn tài khoản "${existing.name}" (Hạn mới: ${formatVietnamDateOnly(existing.expiresAt)})`
       });

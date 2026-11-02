@@ -1086,7 +1086,7 @@ class AOETrackerApp:
 
         self.tier_badge_lbl = tk.Label(
             right_hdr,
-            text="🥉 Hạng Đồng (Chưa kết nối)",
+            text="🥉 Hạng Đồng (Bấm xem thông tin)",
             font=("Segoe UI", 9, "bold"),
             fg="#fb923c",
             bg="#2a1205",
@@ -1094,8 +1094,10 @@ class AOETrackerApp:
             pady=2,
             highlightthickness=1,
             highlightbackground="#7c2d12",
+            cursor="hand2",
         )
         self.tier_badge_lbl.pack(anchor="e")
+        self.tier_badge_lbl.bind("<Button-1>", lambda _e: self.open_my_profile_window())
 
         # ======================================================================
         # PANEL 1: KẾT NỐI HỆ THỐNG (SERVER & TÀI KHOẢN PLAYER)
@@ -1261,6 +1263,23 @@ class AOETrackerApp:
         )
         self.admin_mgr_btn.pack(side="right", padx=(0, 8))
         self._bind_hover(self.admin_mgr_btn, "#451a03", "#78350f", "#fbbf24", "#ffffff")
+
+        self.my_profile_btn = tk.Button(
+            conn_btn_bar,
+            text="👤 Thông Tin Tài Khoản",
+            command=self.open_my_profile_window,
+            font=("Segoe UI", 9, "bold"),
+            bg="#0f2942",
+            fg="#38bdf8",
+            activebackground="#0369a1",
+            activeforeground="#ffffff",
+            relief="flat",
+            padx=12,
+            pady=5,
+            cursor="hand2",
+        )
+        self.my_profile_btn.pack(side="right", padx=(0, 8))
+        self._bind_hover(self.my_profile_btn, "#0f2942", "#0369a1", "#38bdf8", "#ffffff")
 
         self.login_btn = tk.Button(
             conn_btn_bar,
@@ -2313,9 +2332,248 @@ class AOETrackerApp:
 
         threading.Thread(target=_task, daemon=True).start()
 
+    def open_my_profile_window(self):
+        tk = self.tk
+        if not self.is_logged_in:
+            self.messagebox.showinfo(
+                "Thông tin tài khoản",
+                "Vui lòng bấm '⚡ Kết nối & Lưu cấu hình' để đăng nhập tài khoản trước khi xem thông tin cá nhân!",
+            )
+            return
+
+        win = tk.Toplevel(self.root)
+        win.title(f"👤 THÔNG TIN TÀI KHOẢN CỦA TÔI — {self.player_name_var.get().strip()}")
+        win.geometry("880x620")
+        win.configure(bg="#090e1a")
+
+        hdr_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=18, pady=12)
+        hdr_card.pack(fill="x", padx=14, pady=(12, 6))
+
+        title_lbl = tk.Label(
+            hdr_card,
+            text=f"👤 HỒ SƠ TÀI KHOẢN: {self.player_name_var.get().strip()}",
+            font=("Segoe UI", 13, "bold"),
+            fg="#38bdf8",
+            bg="#121b2f",
+        )
+        title_lbl.pack(anchor="w")
+
+        sub_lbl = tk.Label(
+            hdr_card,
+            text="Đang tải thông tin chi tiết từ máy chủ...",
+            font=("Segoe UI", 9, "bold"),
+            fg="#94a3b8",
+            bg="#121b2f",
+        )
+        sub_lbl.pack(anchor="w", pady=(2, 0))
+
+        # Lưới 4 thẻ thông tin chính
+        stats_grid = tk.Frame(win, bg="#090e1a")
+        stats_grid.pack(fill="x", padx=14, pady=4)
+        for c_i in range(4):
+            stats_grid.columnconfigure(c_i, weight=1)
+
+        def _make_stat_card(col_idx, title_txt, default_val, color_hex):
+            box = tk.Frame(stats_grid, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=12, pady=10)
+            box.grid(row=0, column=col_idx, sticky="nsew", padx=(0 if col_idx == 0 else 5, 0 if col_idx == 3 else 5))
+            tk.Label(box, text=title_txt, font=("Segoe UI", 8, "bold"), fg="#94a3b8", bg="#121b2f").pack(anchor="w")
+            val_l = tk.Label(box, text=default_val, font=("Segoe UI", 11, "bold"), fg=color_hex, bg="#121b2f")
+            val_l.pack(anchor="w", pady=(3, 0))
+            return val_l
+
+        lbl_tier_val = _make_stat_card(0, "HẠNG VIP & TRẠNG THÁI", "---", "#38bdf8")
+        lbl_created_val = _make_stat_card(1, "NGÀY TẠO / KÍCH HOẠT", "---", "#f8fafc")
+        lbl_expires_val = _make_stat_card(2, "NGÀY HẾT HẠN SỬ DỤNG", "---", "#34d399")
+        lbl_stars_val = _make_stat_card(3, "SỐ DƯ SAO & SAO LIVE", "---", "#fbbf24")
+
+        # Thanh đổi mật khẩu cá nhân
+        pwd_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=16, pady=10)
+        pwd_card.pack(fill="x", padx=14, pady=5)
+
+        note_info_lbl = tk.Label(
+            pwd_card,
+            text="Ghi chú tài khoản: ---",
+            font=("Segoe UI", 9, "bold"),
+            fg="#cbd5e1",
+            bg="#121b2f",
+        )
+        note_info_lbl.pack(side="left")
+
+        pwd_right = tk.Frame(pwd_card, bg="#121b2f")
+        pwd_right.pack(side="right")
+        tk.Label(pwd_right, text="Đổi mật khẩu mới:", font=("Segoe UI", 9, "bold"), fg="#94a3b8", bg="#121b2f").pack(side="left", padx=(0, 6))
+        new_pw_var = tk.StringVar()
+        tk.Entry(
+            pwd_right,
+            textvariable=new_pw_var,
+            show="*",
+            font=("Consolas", 9, "bold"),
+            bg="#0b1221",
+            fg="#f8fafc",
+            width=16,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#283756",
+        ).pack(side="left", padx=(0, 8), ipady=3)
+
+        def _change_my_pw():
+            npw = new_pw_var.get().strip()
+            if len(npw) < 2:
+                self.messagebox.showwarning("Mật khẩu ngắn", "Vui lòng nhập mật khẩu mới có ít nhất 2 ký tự!", parent=win)
+                return
+
+            def _t():
+                try:
+                    res = requests.post(
+                        self.get_api_endpoint(),
+                        json={
+                            "action": "userChangePassword",
+                            "playerName": self.player_name_var.get().strip(),
+                            "oldPassword": self._get_effective_player_password(),
+                            "newPassword": npw,
+                        },
+                        timeout=10,
+                    )
+                    d = res.json()
+                    if d.get("status") == "success":
+                        self.root.after(0, lambda: self.player_pass_var.set(npw))
+                        self.root.after(0, self.save_current_config)
+                        win.after(0, lambda: new_pw_var.set(""))
+                        win.after(0, lambda: self.messagebox.showinfo("Thành công", d.get("message", "Đã đổi mật khẩu!"), parent=win))
+                        _load_profile()
+                    else:
+                        win.after(0, lambda: self.messagebox.showerror("Lỗi", d.get("message", "Không thể đổi mật khẩu"), parent=win))
+                except Exception as e:
+                    win.after(0, lambda: self.messagebox.showerror("Lỗi kết nối", str(e), parent=win))
+
+            threading.Thread(target=_t, daemon=True).start()
+
+        tk.Button(
+            pwd_right,
+            text="🔑 Đổi mật khẩu",
+            command=_change_my_pw,
+            font=("Segoe UI", 9, "bold"),
+            bg="#0284c7",
+            fg="#ffffff",
+            relief="flat",
+            padx=12,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="left")
+
+        # 2 Khung lịch sử: Lịch sử Nạp Sao & Lịch sử Gia Hạn VIP
+        hist_split = tk.Frame(win, bg="#090e1a")
+        hist_split.pack(fill="both", expand=True, padx=14, pady=(4, 12))
+        hist_split.columnconfigure(0, weight=1)
+        hist_split.columnconfigure(1, weight=1)
+        hist_split.rowconfigure(0, weight=1)
+
+        star_card = tk.Frame(hist_split, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=12, pady=10)
+        star_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        tk.Label(
+            star_card,
+            text="🌟 LỊCH SỬ NẠP SAO & TẶNG/NHẬN SAO",
+            font=("Segoe UI", 9, "bold"),
+            fg="#fbbf24",
+            bg="#121b2f",
+        ).pack(anchor="w", pady=(0, 6))
+        star_txt = tk.Text(star_card, bg="#0a0f1d", fg="#e2e8f0", font=("Consolas", 9), relief="flat", padx=8, pady=6, state="disabled")
+        star_txt.pack(fill="both", expand=True)
+
+        vip_card_h = tk.Frame(hist_split, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=12, pady=10)
+        vip_card_h.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        tk.Label(
+            vip_card_h,
+            text="👑 LỊCH SỬ GIA HẠN VIP & BIẾN ĐỘNG TÀI KHOẢN",
+            font=("Segoe UI", 9, "bold"),
+            fg="#38bdf8",
+            bg="#121b2f",
+        ).pack(anchor="w", pady=(0, 6))
+        vip_txt = tk.Text(vip_card_h, bg="#0a0f1d", fg="#e2e8f0", font=("Consolas", 9), relief="flat", padx=8, pady=6, state="disabled")
+        vip_txt.pack(fill="both", expand=True)
+
+        def _load_profile():
+            def _t():
+                try:
+                    res = requests.post(
+                        self.get_api_endpoint(),
+                        json={
+                            "action": "getPlayerProfile",
+                            "playerName": self.player_name_var.get().strip(),
+                            "password": self._get_effective_player_password(),
+                            "isAdmin": self.is_admin,
+                            "adminPassword": self.admin_password,
+                        },
+                        timeout=10,
+                    )
+                    d = res.json()
+                    if d.get("status") != "success" or not d.get("profile"):
+                        win.after(0, lambda: sub_lbl.config(text=f"⚠️ {d.get('message', 'Không tải được hồ sơ')}", fg="#f87171"))
+                        return
+                    prof = d["profile"]
+
+                    def _render_prof():
+                        t_vi = prof.get("tierNameVi") or prof.get("tier") or "Hạng Đồng"
+                        act_str = "🟢 Active" if prof.get("isActive", True) else "🔴 Tạm khóa"
+                        c_fmt = prof.get("createdFormatted") or "---"
+                        a_fmt = prof.get("activatedFormatted") or "---"
+                        e_fmt = prof.get("expiresFormatted") or "♾️ Vĩnh viễn"
+                        d_left = prof.get("daysLeft")
+                        exp_full = f"{e_fmt} (Còn {d_left} ngày)" if d_left is not None else e_fmt
+                        bal_s = prof.get("starsBalance") or 0
+                        rcv_s = prof.get("starsReceived") or 0
+                        fr_cnt = len(prof.get("friends") or [])
+
+                        sub_lbl.config(
+                            text=f"Tài khoản: {prof.get('name')}  •  Bạn bè đã kết nối: {fr_cnt} người  •  Cập nhật lúc {time.strftime('%H:%M:%S')}",
+                            fg="#34d399",
+                        )
+                        lbl_tier_val.config(text=f"{t_vi}\n({act_str})")
+                        lbl_created_val.config(text=f"Tạo: {c_fmt}\nKích hoạt: {a_fmt}")
+                        lbl_expires_val.config(text=exp_full)
+                        lbl_stars_val.config(text=f"💰 Số dư: {bal_s} ⭐\n🎁 Nhận Live: {rcv_s} ⭐")
+                        note_info_lbl.config(text=f"Ghi chú: {prof.get('note') or 'Tài khoản thành viên chính thức'}")
+
+                        star_txt.configure(state="normal")
+                        star_txt.delete("1.0", "end")
+                        s_hist = list(reversed(prof.get("starHistory") or []))
+                        if not s_hist:
+                            star_txt.insert("end", "Chưa có lịch sử nạp Sao hoặc tặng/nhận Sao.\n")
+                        else:
+                            for item in s_hist:
+                                amt = item.get("amount", 0)
+                                sign = f"+{amt}" if amt > 0 else str(amt)
+                                star_txt.insert(
+                                    "end",
+                                    f"[{item.get('formattedTime', '')}] {sign} ⭐ | {item.get('note', '')}\n",
+                                )
+                        star_txt.configure(state="disabled")
+
+                        vip_txt.configure(state="normal")
+                        vip_txt.delete("1.0", "end")
+                        v_hist = list(reversed(prof.get("vipHistory") or []))
+                        if not v_hist:
+                            vip_txt.insert("end", "Chưa có lịch sử gia hạn VIP.\n")
+                        else:
+                            for item in v_hist:
+                                vip_txt.insert(
+                                    "end",
+                                    f"[{item.get('formattedTime', '')}] [{item.get('tier', '')}] {item.get('note', '')}\n",
+                                )
+                        vip_txt.configure(state="disabled")
+
+                    win.after(0, _render_prof)
+                except Exception as e:
+                    win.after(0, lambda: sub_lbl.config(text=f"❌ Lỗi tải thông tin: {e}", fg="#f87171"))
+
+            threading.Thread(target=_t, daemon=True).start()
+
+        _load_profile()
+
     def open_admin_manager_window(self):
         tk = self.tk
         ttk = self.ttk
+        from tkinter import simpledialog
 
         # Nếu đã nhập mật khẩu 00716441516 ở ô Mật khẩu chính thì tự động mở khóa Admin luôn
         if self.player_pass_var.get().strip() == "00716441516":
@@ -2323,7 +2581,6 @@ class AOETrackerApp:
             self.admin_password = "00716441516"
 
         if not self.is_admin:
-            from tkinter import simpledialog
             pwd = simpledialog.askstring(
                 "Xác thực Quản Trị Admin XO",
                 "Nhập mật khẩu Admin XO để mở Bảng Quản Lý User & Cấp VIP:",
@@ -2340,111 +2597,294 @@ class AOETrackerApp:
             self.log("✅ 🛡️ Đã xác thực quyền Quản Trị Admin XO!", "SUCCESS")
 
         win = tk.Toplevel(self.root)
-        win.title("🛡️ BẢNG QUẢN TRỊ ADMIN XO — CẤP TÀI KHOẢN, GIA HẠN & NÂNG HẠNG VIP")
-        win.geometry("960x620")
+        win.title("🛡️ BẢNG QUẢN TRỊ ADMIN XO — CHỈNH SỬA USER, TÌM KIẾM, NẠP SAO & LỊCH SỬ GIA HẠN VIP")
+        win.geometry("1140x760")
         win.configure(bg="#090e1a")
 
-        top_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=16, pady=12)
-        top_card.pack(fill="x", padx=14, pady=(12, 6))
+        selected_orig_name = {"val": ""}
 
-        tk.Label(
-            top_card,
-            text="🛡️ CẤP TÀI KHOẢN MỚI / CẬP NHẬT USER & PHÂN HẠNG VIP (ADMIN XO)",
-            font=("Segoe UI", 11, "bold"),
+        # ======================================================================
+        # 1. FORM TẠO MỚI / CHỈNH SỬA ĐẦY ĐỦ THÔNG TIN USER (NGÀY TẠO, NGÀY HẾT HẠN, MẬT KHẨU, SAO)
+        # ======================================================================
+        top_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=14, pady=10)
+        top_card.pack(fill="x", padx=14, pady=(10, 4))
+
+        hdr_row = tk.Frame(top_card, bg="#121b2f")
+        hdr_row.pack(fill="x", pady=(0, 6))
+        form_mode_lbl = tk.Label(
+            hdr_row,
+            text="🛡️ TẠO TÀI KHOẢN MỚI / CHỈNH SỬA THÔNG TIN USER (Chọn 1 User dưới bảng để sửa)",
+            font=("Segoe UI", 10, "bold"),
             fg="#fbbf24",
             bg="#121b2f",
-        ).pack(anchor="w", pady=(0, 8))
+        )
+        form_mode_lbl.pack(side="left")
 
-        form_row = tk.Frame(top_card, bg="#121b2f")
-        form_row.pack(fill="x")
+        # Hàng 1 của Form: Tên Player, Mật khẩu, Hạng VIP, Số dư Sao, Ghi chú
+        form_row1 = tk.Frame(top_card, bg="#121b2f")
+        form_row1.pack(fill="x", pady=2)
 
-        tk.Label(form_row, text="Tên Player:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        tk.Label(form_row1, text="Tên Player:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
         u_name_var = tk.StringVar()
-        tk.Entry(form_row, textvariable=u_name_var, font=("Segoe UI", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=14, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+        tk.Entry(form_row1, textvariable=u_name_var, font=("Segoe UI", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=13, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 10), ipady=3)
 
-        tk.Label(form_row, text="Mật khẩu:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        tk.Label(form_row1, text="Mật khẩu:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
         u_pass_var = tk.StringVar(value="123")
-        tk.Entry(form_row, textvariable=u_pass_var, show="*", font=("Consolas", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=10, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+        tk.Entry(form_row1, textvariable=u_pass_var, show="*", font=("Consolas", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=10, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 10), ipady=3)
 
-        tk.Label(form_row, text="Hạng VIP:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        tk.Label(form_row1, text="Hạng VIP:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
         u_tier_var = tk.StringVar(value="GOLD")
         tier_cb = ttk.Combobox(
-            form_row,
+            form_row1,
             textvariable=u_tier_var,
             values=["DIAMOND", "GOLD", "SILVER", "BRONZE"],
             state="readonly",
-            width=11,
+            width=10,
             style="Premium.TCombobox",
         )
-        tier_cb.pack(side="left", padx=(4, 12))
+        tier_cb.pack(side="left", padx=(4, 10))
 
-        tk.Label(form_row, text="Số ngày (0=Vĩnh viễn):", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
-        u_days_var = tk.StringVar(value="30")
-        tk.Entry(form_row, textvariable=u_days_var, font=("Consolas", 9, "bold"), bg="#0b1221", fg="#fbbf24", width=6, justify="center", relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+        tk.Label(form_row1, text="Số dư Sao:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_stars_var = tk.StringVar(value="0")
+        tk.Entry(form_row1, textvariable=u_stars_var, font=("Consolas", 9, "bold"), bg="#0b1221", fg="#fbbf24", width=8, justify="center", relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 10), ipady=3)
 
-        tk.Label(form_row, text="Ghi chú:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        tk.Label(form_row1, text="Ghi chú:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
         u_note_var = tk.StringVar()
-        tk.Entry(form_row, textvariable=u_note_var, font=("Segoe UI", 9), bg="#0b1221", fg="#f8fafc", width=16, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 10), ipady=3, fill="x", expand=True)
+        tk.Entry(form_row1, textvariable=u_note_var, font=("Segoe UI", 9), bg="#0b1221", fg="#f8fafc", width=18, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 0), ipady=3, fill="x", expand=True)
 
-        # Bảng danh sách User
-        list_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=16, pady=12)
-        list_card.pack(fill="both", expand=True, padx=14, pady=6)
+        # Hàng 2 của Form: Ngày tạo TK, Ngày hết hạn (DD/MM/YYYY), Hoặc +Số ngày hạn SD, Nút Lưu & Nút Làm mới form
+        form_row2 = tk.Frame(top_card, bg="#121b2f")
+        form_row2.pack(fill="x", pady=(6, 2))
 
-        cols = ("name", "password", "tier", "status", "activated", "expires", "note")
-        tree = ttk.Treeview(list_card, columns=cols, show="headings", height=12)
+        tk.Label(form_row2, text="Ngày tạo TK (DD/MM/YYYY):", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_created_var = tk.StringVar(value=time.strftime("%d/%m/%Y"))
+        tk.Entry(form_row2, textvariable=u_created_var, font=("Consolas", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=12, justify="center", relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+
+        tk.Label(form_row2, text="Ngày hết hạn (DD/MM/YYYY hoặc Vĩnh viễn):", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_expires_var = tk.StringVar(value="")
+        tk.Entry(form_row2, textvariable=u_expires_var, font=("Consolas", 9, "bold"), bg="#0b1221", fg="#34d399", width=13, justify="center", relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+
+        tk.Label(form_row2, text="Hoặc đặt số ngày (0=Vĩnh viễn):", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_days_var = tk.StringVar(value="30")
+        tk.Entry(form_row2, textvariable=u_days_var, font=("Consolas", 9, "bold"), bg="#0b1221", fg="#fbbf24", width=6, justify="center", relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 10), ipady=3)
+
+        def _clear_form():
+            selected_orig_name["val"] = ""
+            u_name_var.set("")
+            u_pass_var.set("123")
+            u_tier_var.set("GOLD")
+            u_stars_var.set("0")
+            u_created_var.set(time.strftime("%d/%m/%Y"))
+            u_expires_var.set("")
+            u_days_var.set("30")
+            u_note_var.set("")
+            form_mode_lbl.config(text="🛡️ CHẾ ĐỘ: TẠO TÀI KHOẢN USER MỚI", fg="#fbbf24")
+            for s in tree.selection():
+                tree.selection_remove(s)
+
+        tk.Button(
+            form_row2,
+            text="🧹 Tạo Mới (Xóa form)",
+            command=_clear_form,
+            font=("Segoe UI", 9, "bold"),
+            bg="#1e293b",
+            fg="#cbd5e1",
+            relief="flat",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right", padx=(6, 0))
+
+        # ======================================================================
+        # 2. THANH SEARCH TÌM KIẾM NHANH USER & BỘ LỌC HẠNG VIP
+        # ======================================================================
+        search_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=14, pady=8)
+        search_card.pack(fill="x", padx=14, pady=4)
+
+        tk.Label(search_card, text="🔍 Tìm kiếm nhanh User:", font=("Segoe UI", 9, "bold"), fg="#38bdf8", bg="#121b2f").pack(side="left")
+        search_var = tk.StringVar()
+        search_entry = tk.Entry(
+            search_card,
+            textvariable=search_var,
+            font=("Segoe UI", 9),
+            bg="#0b1221",
+            fg="#f8fafc",
+            insertbackground="#38bdf8",
+            width=32,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#283756",
+        )
+        search_entry.pack(side="left", padx=(6, 12), ipady=3)
+
+        tk.Label(search_card, text="Lọc Hạng VIP:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        filter_tier_var = tk.StringVar(value="ALL")
+        filter_tier_cb = ttk.Combobox(
+            search_card,
+            textvariable=filter_tier_var,
+            values=["ALL", "DIAMOND", "GOLD", "SILVER", "BRONZE"],
+            state="readonly",
+            width=10,
+            style="Premium.TCombobox",
+        )
+        filter_tier_cb.pack(side="left", padx=(6, 12))
+
+        count_badge_lbl = tk.Label(
+            search_card,
+            text="Tổng: 0 User",
+            font=("Segoe UI", 9, "bold"),
+            fg="#34d399",
+            bg="#121b2f",
+        )
+        count_badge_lbl.pack(side="right")
+
+        # ======================================================================
+        # 3. BẢNG DANH SÁCH USER (TREEVIEW)
+        # ======================================================================
+        list_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=14, pady=8)
+        list_card.pack(fill="both", expand=True, padx=14, pady=4)
+
+        cols = ("name", "password", "tier", "status", "created", "expires", "stars", "note")
+        tree = ttk.Treeview(list_card, columns=cols, show="headings", height=9)
         tree.heading("name", text="Tên Player")
         tree.heading("password", text="Mật khẩu")
         tree.heading("tier", text="Hạng VIP")
         tree.heading("status", text="Trạng thái")
-        tree.heading("activated", text="Ngày kích hoạt")
+        tree.heading("created", text="Ngày tạo TK")
         tree.heading("expires", text="Ngày hết hạn")
+        tree.heading("stars", text="Số dư Sao / Nhận Live")
         tree.heading("note", text="Ghi chú")
 
-        tree.column("name", width=130, anchor="w")
-        tree.column("password", width=90, anchor="center")
-        tree.column("tier", width=120, anchor="center")
-        tree.column("status", width=110, anchor="center")
-        tree.column("activated", width=110, anchor="center")
-        tree.column("expires", width=140, anchor="center")
-        tree.column("note", width=200, anchor="w")
+        tree.column("name", width=120, anchor="w")
+        tree.column("password", width=80, anchor="center")
+        tree.column("tier", width=115, anchor="center")
+        tree.column("status", width=95, anchor="center")
+        tree.column("created", width=95, anchor="center")
+        tree.column("expires", width=115, anchor="center")
+        tree.column("stars", width=140, anchor="center")
+        tree.column("note", width=210, anchor="w")
         tree.pack(fill="both", expand=True)
 
+        # ======================================================================
+        # 4. KHUNG XEM LỊCH SỬ NẠP SAO & LỊCH SỬ GIA HẠN VIP CỦA USER ĐANG CHỌN
+        # ======================================================================
+        hist_frame = tk.Frame(win, bg="#090e1a")
+        hist_frame.pack(fill="x", padx=14, pady=4)
+        hist_frame.columnconfigure(0, weight=1)
+        hist_frame.columnconfigure(1, weight=1)
+
+        star_hist_card = tk.Frame(hist_frame, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=10, pady=6)
+        star_hist_card.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        star_hist_title = tk.Label(star_hist_card, text="🌟 Lịch sử Nạp Sao & Giao dịch Sao (Chọn User để xem)", font=("Segoe UI", 9, "bold"), fg="#fbbf24", bg="#121b2f")
+        star_hist_title.pack(anchor="w", pady=(0, 4))
+        star_hist_box = tk.Text(star_hist_card, bg="#0a0f1d", fg="#e2e8f0", font=("Consolas", 8), height=5, relief="flat", padx=6, pady=4, state="disabled")
+        star_hist_box.pack(fill="x")
+
+        vip_hist_card = tk.Frame(hist_frame, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=10, pady=6)
+        vip_hist_card.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        vip_hist_title = tk.Label(vip_hist_card, text="👑 Lịch sử Gia hạn VIP & Thay đổi gói (Chọn User để xem)", font=("Segoe UI", 9, "bold"), fg="#38bdf8", bg="#121b2f")
+        vip_hist_title.pack(anchor="w", pady=(0, 4))
+        vip_hist_box = tk.Text(vip_hist_card, bg="#0a0f1d", fg="#e2e8f0", font=("Consolas", 8), height=5, relief="flat", padx=6, pady=4, state="disabled")
+        vip_hist_box.pack(fill="x")
+
         status_bar_lbl = tk.Label(win, text="Đang tải danh sách tài khoản...", font=("Segoe UI", 9, "bold"), fg="#38bdf8", bg="#090e1a")
-        status_bar_lbl.pack(anchor="w", padx=16, pady=(2, 4))
+        status_bar_lbl.pack(anchor="w", padx=16, pady=(2, 2))
 
         def _fmt_date(ts):
             if not ts or int(ts) <= 0:
                 return "♾️ Vĩnh viễn"
             return time.strftime("%d/%m/%Y", time.localtime(int(ts) / 1000))
 
-        def _populate_tree(players_list):
-            self.known_players = players_list or []
+        def _render_user_histories(p):
+            star_hist_box.configure(state="normal")
+            star_hist_box.delete("1.0", "end")
+            vip_hist_box.configure(state="normal")
+            vip_hist_box.delete("1.0", "end")
+
+            if not p:
+                star_hist_title.config(text="🌟 Lịch sử Nạp Sao & Giao dịch Sao (Chọn User để xem)")
+                vip_hist_title.config(text="👑 Lịch sử Gia hạn VIP & Thay đổi gói (Chọn User để xem)")
+                star_hist_box.insert("end", "Hãy click chọn 1 User trên bảng danh sách để xem lịch sử nạp Sao.\n")
+                vip_hist_box.insert("end", "Hãy click chọn 1 User trên bảng danh sách để xem lịch sử gia hạn VIP.\n")
+            else:
+                uname = p.get("name", "")
+                s_hist = list(reversed(p.get("starHistory") or []))
+                v_hist = list(reversed(p.get("vipHistory") or []))
+                star_hist_title.config(text=f"🌟 Lịch sử Nạp Sao & Giao dịch Sao của '{uname}' ({len(s_hist)} mục)")
+                vip_hist_title.config(text=f"👑 Lịch sử Gia hạn VIP & Thay đổi của '{uname}' ({len(v_hist)} mục)")
+
+                if not s_hist:
+                    star_hist_box.insert("end", f"User '{uname}' chưa có lịch sử nạp Sao.\n")
+                else:
+                    for item in s_hist:
+                        amt = item.get("amount", 0)
+                        sign = f"+{amt}" if amt > 0 else str(amt)
+                        star_hist_box.insert("end", f"[{item.get('formattedTime', '')}] {sign} ⭐ | {item.get('note', '')}\n")
+
+                if not v_hist:
+                    vip_hist_box.insert("end", f"User '{uname}' chưa có lịch sử gia hạn VIP.\n")
+                else:
+                    for item in v_hist:
+                        vip_hist_box.insert("end", f"[{item.get('formattedTime', '')}] [{item.get('tier', '')}] {item.get('note', '')}\n")
+
+            star_hist_box.configure(state="disabled")
+            vip_hist_box.configure(state="disabled")
+
+        def _filter_and_populate_tree():
+            q = search_var.get().strip().lower()
+            ft = filter_tier_var.get().strip().upper()
             for item in tree.get_children():
                 tree.delete(item)
+
+            shown = 0
             for p in self.known_players:
                 t_code = str(p.get("tier") or "BRONZE").upper()
+                if ft != "ALL" and t_code != ft:
+                    continue
+                pname = str(p.get("name", ""))
+                pnote = str(p.get("note", ""))
                 t_label = TIER_BADGES.get(t_code, (t_code,))[0]
+                if q and (q not in pname.lower()) and (q not in pnote.lower()) and (q not in t_code.lower()) and (q not in t_label.lower()):
+                    continue
+
+                shown += 1
                 is_act = p.get("isActive", True)
                 exp_ts = p.get("expiresAt")
                 is_exp = bool(exp_ts and int(exp_ts) > 0 and (time.time() * 1000 > int(exp_ts)))
                 st_txt = "🔴 Đã khóa" if not is_act else ("⚠️ Hết hạn" if is_exp else "🟢 Active")
                 raw_pwd_str = str(p.get("password", "") or "")
                 masked_pwd = "*" * max(6, len(raw_pwd_str))
+                bal_s = p.get("starsBalance") or 0
+                rcv_s = p.get("starsReceived") or 0
                 tree.insert(
                     "",
                     "end",
-                    iid=p.get("name"),
+                    iid=pname,
                     values=(
-                        p.get("name", ""),
+                        pname,
                         masked_pwd,
                         t_label,
                         st_txt,
-                        _fmt_date(p.get("activatedAt")),
+                        _fmt_date(p.get("createdAt") or p.get("activatedAt")),
                         _fmt_date(exp_ts),
-                        p.get("note", ""),
+                        f"💰 {bal_s} ⭐ | 🎁 {rcv_s} ⭐",
+                        pnote,
                     ),
                 )
+            count_badge_lbl.config(text=f"Hiển thị: {shown} / {len(self.known_players)} User")
             status_bar_lbl.config(text=f"✅ Đang quản lý {len(self.known_players)} tài khoản User trên hệ thống.", fg="#34d399")
+
+            if selected_orig_name["val"]:
+                cur_p = next((x for x in self.known_players if x.get("name", "").lower() == selected_orig_name["val"].lower()), None)
+                if cur_p:
+                    _render_user_histories(cur_p)
+
+        def _populate_tree(players_list):
+            self.known_players = players_list or []
+            _filter_and_populate_tree()
+
+        search_var.trace_add("write", lambda *_: _filter_and_populate_tree())
+        filter_tier_cb.bind("<<ComboboxSelected>>", lambda _e: _filter_and_populate_tree())
 
         def _on_select(_event):
             sel = tree.selection()
@@ -2453,10 +2893,21 @@ class AOETrackerApp:
             sel_name = sel[0]
             p = next((x for x in self.known_players if x.get("name") == sel_name), None)
             if p:
+                selected_orig_name["val"] = p.get("name", "")
                 u_name_var.set(p.get("name", ""))
-                u_pass_var.set(p.get("password", "123"))
+                u_pass_var.set("******")
                 u_tier_var.set(str(p.get("tier") or "BRONZE").upper())
+                u_stars_var.set(str(p.get("starsBalance") or 0))
+                u_created_var.set(_fmt_date(p.get("createdAt") or p.get("activatedAt")))
+                exp_ts = p.get("expiresAt")
+                u_expires_var.set("Vĩnh viễn" if (not exp_ts or int(exp_ts) <= 0) else _fmt_date(exp_ts))
+                u_days_var.set("")
                 u_note_var.set(p.get("note", ""))
+                form_mode_lbl.config(
+                    text=f"✏️ ĐANG CHỈNH SỬA USER: {p.get('name')} (Sửa Ngày tạo, Ngày hết hạn, Hạng VIP, Số Sao rồi bấm Lưu)",
+                    fg="#38bdf8",
+                )
+                _render_user_histories(p)
 
         tree.bind("<<TreeviewSelect>>", _on_select)
 
@@ -2475,10 +2926,39 @@ class AOETrackerApp:
             if not uname:
                 self.messagebox.showwarning("Thiếu tên", "Vui lòng nhập Tên Player!", parent=win)
                 return
+
+            days_raw = u_days_var.get().strip()
+            duration_days = None
+            if days_raw != "":
+                try:
+                    duration_days = int(days_raw)
+                except Exception:
+                    duration_days = None
+
             try:
-                days_val = int(u_days_var.get().strip() or "30")
+                stars_bal = int(u_stars_var.get().strip() or "0")
             except Exception:
-                days_val = 30
+                stars_bal = 0
+
+            exp_str = u_expires_var.get().strip()
+            is_lifetime = (duration_days == 0) or ("vĩnh viễn" in exp_str.lower()) or ("vinh vien" in exp_str.lower())
+
+            player_payload = {
+                "originalName": selected_orig_name["val"] or uname,
+                "name": uname,
+                "password": u_pass_var.get().strip(),
+                "tier": u_tier_var.get().strip() or "GOLD",
+                "createdDate": u_created_var.get().strip(),
+                "starsBalance": stars_bal,
+                "note": u_note_var.get().strip(),
+            }
+            if is_lifetime:
+                player_payload["lifetime"] = True
+                player_payload["expiresDate"] = "lifetime"
+            elif duration_days is not None and duration_days > 0:
+                player_payload["durationDays"] = duration_days
+            elif exp_str:
+                player_payload["expiresDate"] = exp_str
 
             def _t():
                 try:
@@ -2488,19 +2968,13 @@ class AOETrackerApp:
                             "action": "adminSavePlayer",
                             "isAdmin": True,
                             "adminPassword": self.admin_password,
-                            "player": {
-                                "name": uname,
-                                "password": u_pass_var.get().strip() or "123",
-                                "tier": u_tier_var.get().strip() or "GOLD",
-                                "durationDays": days_val,
-                                "isActive": True,
-                                "note": u_note_var.get().strip(),
-                            },
+                            "player": player_payload,
                         },
                         timeout=10,
                     )
                     d = res.json()
                     if d.get("status") == "success":
+                        selected_orig_name["val"] = uname
                         win.after(0, lambda: _populate_tree(d.get("players", [])))
                         win.after(0, lambda: status_bar_lbl.config(text=f"✅ {d.get('message', 'Đã lưu User!')}", fg="#34d399"))
                     else:
@@ -2510,27 +2984,35 @@ class AOETrackerApp:
             threading.Thread(target=_t, daemon=True).start()
 
         tk.Button(
-            form_row,
-            text="➕ Tạo / Lưu User",
+            form_row2,
+            text="💾 Lưu / Cập Nhật User",
             command=_save_user,
             font=("Segoe UI", 9, "bold"),
             bg="#059669",
             fg="#ffffff",
             relief="flat",
             padx=14,
-            pady=4,
+            pady=3,
             cursor="hand2",
         ).pack(side="right")
 
-        # Thanh nút thao tác nhanh cho User đang chọn
+        # ======================================================================
+        # 5. THANH NÚT THAO TÁC NHANH CHO USER ĐANG CHỌN (NẠP SAO, RESET MK, GIA HẠN, KHÓA, XÓA)
+        # ======================================================================
         action_bar = tk.Frame(win, bg="#090e1a")
-        action_bar.pack(fill="x", padx=14, pady=(2, 12))
+        action_bar.pack(fill="x", padx=14, pady=(2, 10))
 
-        def _quick_action(action_name, extra_payload):
+        def _get_target_user_name():
             sel = tree.selection()
-            target_name = sel[0] if sel else u_name_var.get().strip()
+            target_name = sel[0] if sel else (selected_orig_name["val"] or u_name_var.get().strip())
             if not target_name:
                 self.messagebox.showinfo("Chọn User", "Vui lòng click chọn 1 User trong bảng danh sách trước!", parent=win)
+                return None
+            return target_name
+
+        def _quick_action(action_name, extra_payload):
+            target_name = _get_target_user_name()
+            if not target_name:
                 return
 
             def _t():
@@ -2556,13 +3038,65 @@ class AOETrackerApp:
                     win.after(0, lambda: status_bar_lbl.config(text=f"❌ Lỗi: {e}", fg="#f87171"))
             threading.Thread(target=_t, daemon=True).start()
 
+        def _topup_stars_dialog():
+            target_name = _get_target_user_name()
+            if not target_name:
+                return
+            amt = simpledialog.askinteger(
+                "Nạp Sao cho User",
+                f"Nhập số lượng Sao cần nạp cho '{target_name}' (Ví dụ: 100, 500):",
+                initialvalue=100,
+                parent=win,
+            )
+            if not amt:
+                return
+            note = simpledialog.askstring(
+                "Ghi chú nạp Sao",
+                f"Nhập ghi chú nạp +{amt} Sao cho '{target_name}':",
+                initialvalue=f"Admin XO nạp +{amt} Sao",
+                parent=win,
+            )
+            _quick_action("adminTopupStars", {"amount": amt, "note": note or f"Admin XO nạp +{amt} Sao"})
+
+        def _reset_password_dialog():
+            target_name = _get_target_user_name()
+            if not target_name:
+                return
+            new_pw = simpledialog.askstring(
+                "Reset Mật Khẩu User",
+                f"Nhập mật khẩu mới cho tài khoản '{target_name}' (Mặc định: 123):",
+                initialvalue="123",
+                parent=win,
+            )
+            if new_pw is None:
+                return
+            _quick_action("adminResetPassword", {"newPassword": new_pw.strip() or "123"})
+
+        def _custom_extend_days_dialog():
+            target_name = _get_target_user_name()
+            if not target_name:
+                return
+            days = simpledialog.askinteger(
+                "Chỉnh / Gia Hạn Số Ngày Sử Dụng",
+                f"Nhập số ngày muốn cộng thêm cho '{target_name}' (Nhập 0 để cấp Vĩnh viễn):",
+                initialvalue=30,
+                parent=win,
+            )
+            if days is None:
+                return
+            _quick_action("adminExtendPlayer", {"addDays": days, "lifetime": (days == 0)})
+
+        tk.Button(action_bar, text="💰 Nạp Sao (+⭐)", command=_topup_stars_dialog, font=("Segoe UI", 9, "bold"), bg="#b45309", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(action_bar, text="🔑 Reset Mật Khẩu", command=_reset_password_dialog, font=("Segoe UI", 9, "bold"), bg="#4f46e5", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
         tk.Button(action_bar, text="⏳ Gia hạn +30 Ngày", command=lambda: _quick_action("adminExtendPlayer", {"addDays": 30}), font=("Segoe UI", 9, "bold"), bg="#0284c7", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
         tk.Button(action_bar, text="⏳ Gia hạn +1 Năm", command=lambda: _quick_action("adminExtendPlayer", {"addDays": 365}), font=("Segoe UI", 9, "bold"), bg="#0369a1", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(action_bar, text="📅 Chỉnh Hạn (+N Ngày)", command=_custom_extend_days_dialog, font=("Segoe UI", 9, "bold"), bg="#0d9488", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
         tk.Button(action_bar, text="♾️ Cấp Vĩnh Viễn", command=lambda: _quick_action("adminExtendPlayer", {"addDays": 0, "lifetime": True}), font=("Segoe UI", 9, "bold"), bg="#0f766e", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
-        tk.Button(action_bar, text="🔒 Khóa / 🔓 Mở Khóa (Active)", command=lambda: _quick_action("adminToggleActive", {}), font=("Segoe UI", 9, "bold"), bg="#d97706", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(action_bar, text="🔒 Khóa / 🔓 Mở", command=lambda: _quick_action("adminToggleActive", {}), font=("Segoe UI", 9, "bold"), bg="#d97706", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
         tk.Button(action_bar, text="🗑️ Xóa User", command=lambda: _quick_action("adminDeletePlayer", {}), font=("Segoe UI", 9, "bold"), bg="#dc2626", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
         tk.Button(action_bar, text="🔄 Làm mới", command=_refresh_users, font=("Segoe UI", 9, "bold"), bg="#1e293b", fg="#f8fafc", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="right")
 
+        _render_user_histories(None)
         _refresh_users()
 
     def _sync_overlay_config_to_ui(self, ov_cfg: dict):

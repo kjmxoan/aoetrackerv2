@@ -42,6 +42,9 @@ const DEFAULT_STATE = {
       overlayConfig: { ...DEFAULT_OVERLAY_CONFIG },
       friends: [],
       starsReceived: 0,
+      starsBalance: 9999,
+      starHistory: [],
+      vipHistory: [],
       lastSeenAt: Date.now(),
       createdAt: Date.now()
     }
@@ -94,6 +97,13 @@ function normalizePlayerRecord(raw) {
     : (Array.isArray(rawSocial.friends) ? rawSocial.friends : []);
   const friends = Array.from(new Set(friendsRaw.map(f => String(f || '').trim()).filter(Boolean)));
   const starsReceived = Number(raw.starsReceived ?? rawSocial.starsReceived ?? 0) || 0;
+  const starsBalance = Number(raw.starsBalance ?? rawSocial.starsBalance ?? 0) || 0;
+  const starHistoryRaw = Array.isArray(raw.starHistory)
+    ? raw.starHistory
+    : (Array.isArray(rawSocial.starHistory) ? rawSocial.starHistory : []);
+  const vipHistoryRaw = Array.isArray(raw.vipHistory)
+    ? raw.vipHistory
+    : (Array.isArray(rawSocial.vipHistory) ? rawSocial.vipHistory : []);
   const lastSeenAt = Number(raw.lastSeenAt ?? rawSocial.lastSeenAt ?? raw.createdAt ?? raw.created_at ?? 0) || 0;
 
   return {
@@ -111,6 +121,9 @@ function normalizePlayerRecord(raw) {
     overlayConfig: normalizeOverlayConfig(rawOverlay),
     friends,
     starsReceived,
+    starsBalance,
+    starHistory: starHistoryRaw.slice(-100),
+    vipHistory: vipHistoryRaw.slice(-100),
     lastSeenAt,
     createdAt: Number(raw.createdAt || raw.created_at || now)
   };
@@ -246,6 +259,9 @@ async function savePlayers(players) {
       const socialJson = JSON.stringify({
         friends: p.friends || [],
         starsReceived: p.starsReceived || 0,
+        starsBalance: p.starsBalance || 0,
+        starHistory: p.starHistory || [],
+        vipHistory: p.vipHistory || [],
         lastSeenAt: p.lastSeenAt || 0
       });
       await client.query(
@@ -259,7 +275,8 @@ async function savePlayers(players) {
            expires_at = EXCLUDED.expires_at,
            note = EXCLUDED.note,
            overlay_config = EXCLUDED.overlay_config,
-           social_data = EXCLUDED.social_data`,
+           social_data = EXCLUDED.social_data,
+           created_at = EXCLUDED.created_at`,
         [p.name, p.password, p.tier, p.isActive, p.activatedAt, p.expiresAt, p.note, JSON.stringify(p.overlayConfig), socialJson, p.createdAt]
       );
     }
@@ -282,7 +299,9 @@ async function upsertPlayer(playerObj) {
     const idx = state.players.findIndex(item => item.name.toLowerCase() === p.name.toLowerCase());
     if (idx >= 0) {
       p.name = state.players[idx].name;
-      p.createdAt = state.players[idx].createdAt || p.createdAt;
+      if (!playerObj.createdAt && !playerObj.created_at) {
+        p.createdAt = state.players[idx].createdAt || p.createdAt;
+      }
       state.players[idx] = p;
     } else {
       state.players.push(p);
@@ -294,6 +313,9 @@ async function upsertPlayer(playerObj) {
   const socialJson = JSON.stringify({
     friends: p.friends || [],
     starsReceived: p.starsReceived || 0,
+    starsBalance: p.starsBalance || 0,
+    starHistory: p.starHistory || [],
+    vipHistory: p.vipHistory || [],
     lastSeenAt: p.lastSeenAt || 0
   });
 
@@ -308,7 +330,8 @@ async function upsertPlayer(playerObj) {
        expires_at = EXCLUDED.expires_at,
        note = EXCLUDED.note,
        overlay_config = EXCLUDED.overlay_config,
-       social_data = EXCLUDED.social_data`,
+       social_data = EXCLUDED.social_data,
+       created_at = EXCLUDED.created_at`,
     [p.name, p.password, p.tier, p.isActive, p.activatedAt, p.expiresAt, p.note, JSON.stringify(p.overlayConfig), socialJson, p.createdAt]
   );
   return p;

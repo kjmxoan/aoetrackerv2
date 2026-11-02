@@ -152,10 +152,17 @@
 
             <!-- Thông tin tài khoản Player đang đăng nhập -->
             <div v-if="sessionPlayerName" class="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3.5 py-1.5 rounded-xl">
-              <span class="text-sm font-bold text-slate-100">{{ sessionPlayerName }}</span>
-              <span :class="getTierBadgeClass(currentActiveTier)" class="text-xs px-2 py-0.5 rounded-md font-bold">
-                {{ getTierLabel(currentActiveTier) }}
-              </span>
+              <button @click="openMyProfileModal" class="flex items-center gap-1.5 hover:opacity-90 transition" title="Xem thông tin tài khoản của tôi">
+                <i class="fa-solid fa-circle-user text-sky-400"></i>
+                <span class="text-sm font-bold text-slate-100">{{ sessionPlayerName }}</span>
+                <span :class="getTierBadgeClass(currentActiveTier)" class="text-xs px-2 py-0.5 rounded-md font-bold">
+                  {{ getTierLabel(currentActiveTier) }}
+                </span>
+              </button>
+              <button @click="openMyProfileModal"
+                      class="text-xs bg-sky-500/20 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-sky-500/40 font-bold px-2.5 py-1 rounded-lg transition">
+                <i class="fa-solid fa-id-card mr-1"></i>Thông Tin TK
+              </button>
               <button @click="showVipControlPanel = !showVipControlPanel"
                       class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg transition">
                 <i class="fa-solid fa-sliders mr-1"></i>Cấu hình VIP
@@ -898,23 +905,150 @@
         </div>
       </div>
 
-      <!-- MODAL QUẢN TRỊ USER & PHÂN HẠNG VIP -->
-      <div v-if="showPlayerManagerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[160]">
-        <div class="premium-card rounded-2xl max-w-5xl w-full p-6 space-y-4 max-h-[92vh] flex flex-col">
+      <!-- MODAL THÔNG TIN TÀI KHOẢN CỦA TÔI (DÀNH CHO MỌI USER) -->
+      <div v-if="showMyProfileModal && myPlayerObj" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[165]">
+        <div class="premium-card rounded-2xl max-w-3xl w-full p-6 space-y-4 max-h-[92vh] overflow-y-auto">
           <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-11 h-11 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-300 text-xl font-bold">
+                <i class="fa-solid fa-id-card"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-100 uppercase flex items-center gap-2">
+                  <span>Thông Tin Tài Khoản Của Tôi</span>
+                  <span :class="getTierBadgeClass(myPlayerObj.tier)" class="text-xs px-2.5 py-0.5 rounded-md font-bold">
+                    {{ getTierLabel(myPlayerObj.tier) }}
+                  </span>
+                </h3>
+                <p class="text-xs text-slate-400">Xem chi tiết thời hạn sử dụng, số dư Sao, lịch sử nạp Sao & lịch sử gia hạn VIP</p>
+              </div>
+            </div>
+            <button @click="showMyProfileModal = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
+          </div>
+
+          <!-- Thẻ thông tin tổng quan -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div class="bg-slate-950/90 border border-slate-800 p-3.5 rounded-xl">
+              <div class="text-slate-400 mb-1">Tên Tài Khoản</div>
+              <div class="text-base font-black text-white flex items-center gap-1.5">
+                <span>{{ myPlayerObj.name }}</span>
+                <span :class="getPlayerStatusBadge(myPlayerObj).class" class="text-[10px] px-2 py-0.5 rounded-full">
+                  {{ getPlayerStatusBadge(myPlayerObj).label }}
+                </span>
+              </div>
+            </div>
+            <div class="bg-slate-950/90 border border-slate-800 p-3.5 rounded-xl">
+              <div class="text-slate-400 mb-1">Ngày Tạo Tài Khoản</div>
+              <div class="text-sm font-bold text-slate-200 font-mono">{{ formatDateVN(myPlayerObj.createdAt) }}</div>
+              <div class="text-[11px] text-slate-500">Kích hoạt: {{ formatDateVN(myPlayerObj.activatedAt) }}</div>
+            </div>
+            <div class="bg-slate-950/90 border border-slate-800 p-3.5 rounded-xl">
+              <div class="text-slate-400 mb-1">Ngày Hết Hạn VIP</div>
+              <div class="text-sm font-bold font-mono" :class="isPlayerExpired(myPlayerObj) ? 'text-red-400' : 'text-emerald-400'">
+                {{ myPlayerObj.expiresAt ? formatDateVN(myPlayerObj.expiresAt) : '♾️ Vĩnh viễn' }}
+              </div>
+              <div class="text-[11px] text-amber-300 font-semibold">{{ getRemainingDaysText(myPlayerObj) }}</div>
+            </div>
+            <div class="bg-slate-950/90 border border-slate-800 p-3.5 rounded-xl">
+              <div class="text-slate-400 mb-1">Số Dư Sao & Sao Nhận</div>
+              <div class="text-sm font-black text-amber-400">💰 {{ myPlayerObj.starsBalance || 0 }} ⭐ (Số dư)</div>
+              <div class="text-[11px] text-sky-300 font-semibold">🎁 {{ myPlayerObj.starsReceived || 0 }} ⭐ nhận trên Live</div>
+            </div>
+          </div>
+
+          <!-- Đổi mật khẩu cá nhân & Ghi chú -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div class="text-xs space-y-1">
+              <div class="text-slate-300"><b>Ghi chú tài khoản:</b> <span class="text-slate-400">{{ myPlayerObj.note || 'Tài khoản thành viên chính thức' }}</span></div>
+              <div class="text-slate-400">Bạn bè đã kết nối: <b class="text-sky-300">{{ (myPlayerObj.friends || []).length }} người chơi</b></div>
+            </div>
+            <div class="flex items-center gap-2 w-full md:w-auto">
+              <input type="password" v-model="myNewPasswordInput" placeholder="Nhập mật khẩu mới..."
+                     class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white outline-none flex-1 md:w-44">
+              <button @click="changeMyPassword"
+                      class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs shrink-0 transition">
+                🔑 Đổi Mật Khẩu
+              </button>
+            </div>
+          </div>
+
+          <!-- 2 Bảng Lịch Sử: Nạp Sao & Gia Hạn VIP -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Bảng 1: Lịch sử Nạp Sao & Giao dịch Sao -->
+            <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-4 flex flex-col">
+              <h4 class="text-xs font-bold text-amber-400 uppercase mb-2.5 flex items-center gap-1.5">
+                <i class="fa-solid fa-star"></i>
+                <span>Lịch Sử Nạp Sao & Giao Dịch Sao ({{ (myPlayerObj.starHistory || []).length }})</span>
+              </h4>
+              <div class="max-h-52 overflow-y-auto space-y-2 pr-1">
+                <div v-if="!myPlayerObj.starHistory || myPlayerObj.starHistory.length === 0" class="text-xs text-slate-500 text-center py-6">
+                  Chưa có lịch sử nạp Sao hoặc tặng/nhận Sao.
+                </div>
+                <div v-for="sh in (myPlayerObj.starHistory || []).slice().reverse()" :key="sh.id"
+                     class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 text-xs">
+                  <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold" :class="sh.amount >= 0 ? 'text-emerald-400' : 'text-amber-300'">
+                      {{ sh.type === 'TOPUP' ? '💰 Nạp Sao' : (sh.type === 'GIFT_RECEIVED' ? '🎁 Nhận Sao Live' : '🌟 Tặng Sao') }}:
+                      {{ sh.amount > 0 ? '+' + sh.amount : sh.amount }} ⭐
+                    </span>
+                    <span class="text-[10px] text-slate-500 font-mono">{{ sh.formattedTime }}</span>
+                  </div>
+                  <div class="text-slate-300 text-[11px]">{{ sh.note }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bảng 2: Lịch sử Gia Hạn VIP & Thay đổi gói -->
+            <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-4 flex flex-col">
+              <h4 class="text-xs font-bold text-sky-400 uppercase mb-2.5 flex items-center gap-1.5">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>Lịch Sử Gia Hạn VIP & Tài Khoản ({{ (myPlayerObj.vipHistory || []).length }})</span>
+              </h4>
+              <div class="max-h-52 overflow-y-auto space-y-2 pr-1">
+                <div v-if="!myPlayerObj.vipHistory || myPlayerObj.vipHistory.length === 0" class="text-xs text-slate-500 text-center py-6">
+                  Chưa có lịch sử biến động gia hạn VIP.
+                </div>
+                <div v-for="vh in (myPlayerObj.vipHistory || []).slice().reverse()" :key="vh.id"
+                     class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 text-xs">
+                  <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-sky-300">{{ getTierLabel(vh.tier) }}</span>
+                    <span class="text-[10px] text-slate-500 font-mono">{{ vh.formattedTime }}</span>
+                  </div>
+                  <div class="text-slate-200 text-[11px]">{{ vh.note }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button @click="showMyProfileModal = false" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold">
+            Đóng Thông Tin Tài Khoản
+          </button>
+        </div>
+      </div>
+
+      <!-- MODAL QUẢN TRỊ USER, CHỈNH SỬA THÔNG TIN, NẠP SAO & LỊCH SỬ GIA HẠN VIP (ADMIN XO) -->
+      <div v-if="showPlayerManagerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[160]">
+        <div class="premium-card rounded-2xl max-w-6xl w-full p-6 space-y-4 max-h-[94vh] flex flex-col overflow-hidden">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3 shrink-0">
             <div>
               <h3 class="text-base font-bold text-sky-400 uppercase flex items-center gap-2">
                 <i class="fa-solid fa-users-gear text-amber-400"></i>
-                <span>Quản Trị Tài Khoản User, Hạng VIP & Gia Hạn</span>
+                <span>Quản Trị Tài Khoản User, Hạng VIP, Nạp Sao & Lịch Sử Gia Hạn</span>
               </h3>
-              <p class="text-xs text-slate-400">Cấp tài khoản mới, phân hạng VIP (Kim Cương / Vàng / Bạc / Đồng) và quản lý thời hạn</p>
+              <p class="text-xs text-slate-400">
+                Cấp tạo tài khoản mới, tìm kiếm nhanh, chỉnh sửa ngày tạo/ngày hết hạn, reset mật khẩu, nạp Sao và xem lịch sử User
+              </p>
             </div>
             <button @click="showPlayerManagerModal = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
           </div>
 
-          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-2.5">
-            <div class="text-xs font-bold text-slate-200">Cấp Tạo Tài Khoản Mới & Phân Hạng VIP:</div>
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+          <!-- 1. Form Cấp Tạo Tài Khoản Mới Nhanh -->
+          <div class="bg-slate-950/80 border border-slate-800 p-3.5 rounded-xl space-y-2 shrink-0">
+            <div class="text-xs font-bold text-slate-200 flex items-center justify-between">
+              <span>➕ Cấp Tạo Tài Khoản User Mới Nhanh:</span>
+              <span class="text-[11px] text-slate-400">Tổng số: <b class="text-sky-400">{{ players.length }}</b> tài khoản (Hiển thị: <b class="text-emerald-400">{{ filteredAdminPlayers.length }}</b>)</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
               <input type="text" v-model="newPlayerForm.name" placeholder="Tên Player..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-white font-bold">
               <input type="password" v-model="newPlayerForm.password" placeholder="Mật khẩu..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-amber-300 font-mono">
               <select v-model="newPlayerForm.tier" class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-amber-300 font-bold">
@@ -937,20 +1071,181 @@
             </div>
           </div>
 
+          <!-- 2. Thanh Search Tìm Kiếm User Nhanh & Bộ Lọc -->
+          <div class="flex flex-col md:flex-row gap-2.5 items-center bg-slate-900/90 border border-slate-800 px-3.5 py-2.5 rounded-xl shrink-0">
+            <div class="relative flex-1 w-full">
+              <i class="fa-solid fa-magnifying-glass text-sky-400 absolute left-3 top-1/2 -translate-y-1/2 text-xs"></i>
+              <input type="text" v-model="adminSearchQuery"
+                     placeholder="🔍 Tìm kiếm nhanh User theo tên Player, ghi chú, hạng VIP..."
+                     class="w-full bg-slate-950 border border-slate-700 focus:border-sky-400 rounded-lg pl-8 pr-8 py-1.5 text-xs text-white outline-none">
+              <button v-if="adminSearchQuery" @click="adminSearchQuery = ''"
+                      class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">&times;</button>
+            </div>
+            <select v-model="adminFilterTier" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-semibold">
+              <option value="ALL">Tất cả Hạng VIP</option>
+              <option value="DIAMOND">💎 Kim Cương</option>
+              <option value="GOLD">🥇 Vàng</option>
+              <option value="SILVER">🥈 Bạc</option>
+              <option value="BRONZE">🥉 Đồng</option>
+            </select>
+            <select v-model="adminFilterStatus" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-semibold">
+              <option value="ALL">Tất cả Trạng thái</option>
+              <option value="ACTIVE">🟢 Đang Active</option>
+              <option value="EXPIRED">⚠️ Đã hết hạn</option>
+              <option value="LOCKED">🔴 Đang tạm khóa</option>
+            </select>
+          </div>
+
+          <!-- 3. Khung Chỉnh Sửa Chi Tiết User & Xem Lịch Sử Nạp Sao / Gia Hạn VIP (Khi Admin bấm "✏️ Sửa / Lịch Sử" trên 1 User) -->
+          <div v-if="adminEditForm.originalName" class="bg-slate-900/95 border-2 border-sky-500/50 rounded-xl p-4 space-y-3.5 shrink-0 max-h-[46vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+              <div class="text-xs font-bold text-sky-300 uppercase flex items-center gap-2">
+                <i class="fa-solid fa-user-pen text-amber-400"></i>
+                <span>Chỉnh Sửa Toàn Bộ Thông Tin & Xem Lịch Sử User: <b class="text-white text-sm">{{ adminEditForm.originalName }}</b></span>
+              </div>
+              <button @click="closeAdminEditUser" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg">
+                Đóng khung chi tiết &times;
+              </button>
+            </div>
+
+            <!-- Hàng chỉnh sửa thông tin cơ bản, ngày tạo, ngày hết hạn, mật khẩu -->
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-2.5 text-xs">
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Tên Tài Khoản</label>
+                <input type="text" v-model="adminEditForm.name" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-bold">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Đổi / Reset Mật Khẩu</label>
+                <div class="flex gap-1">
+                  <input type="password" v-model="adminEditForm.password" placeholder="Giữ nguyên (******)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-amber-300 font-mono">
+                  <button @click="resetUserPasswordQuick(adminEditForm.originalName)" title="Reset mật khẩu nhanh về 123"
+                          class="bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 px-2 rounded-lg font-bold shrink-0">
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Hạng VIP</label>
+                <select v-model="adminEditForm.tier" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-amber-300 font-bold">
+                  <option value="DIAMOND">💎 Kim Cương</option>
+                  <option value="GOLD">🥇 Vàng</option>
+                  <option value="SILVER">🥈 Bạc</option>
+                  <option value="BRONZE">🥉 Đồng</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Ngày Tạo Tài Khoản</label>
+                <input type="date" v-model="adminEditForm.createdDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 font-mono">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Ngày Hết Hạn (Hoặc Vĩnh viễn)</label>
+                <div class="flex items-center gap-1">
+                  <input type="date" v-model="adminEditForm.expiresDate" :disabled="adminEditForm.lifetime"
+                         class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-emerald-300 font-mono disabled:opacity-40">
+                  <label class="flex items-center gap-1 text-[10px] text-sky-300 shrink-0 cursor-pointer" title="Cấp hạn Vĩnh viễn">
+                    <input type="checkbox" v-model="adminEditForm.lifetime" class="accent-sky-400">
+                    <span>♾️</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-400 block mb-1">Số Dư Sao & Ghi Chú</label>
+                <div class="flex gap-1">
+                  <input type="number" v-model.number="adminEditForm.starsBalance" placeholder="Số sao" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-amber-300 font-bold">
+                  <input type="text" v-model="adminEditForm.note" placeholder="Ghi chú..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
+                </div>
+              </div>
+            </div>
+
+            <!-- Hàng thao tác Lưu + Nạp Sao nhanh + Gia hạn số ngày tùy chỉnh -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800 text-xs">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-amber-300">💰 Nạp Sao cho {{ adminEditForm.name }}:</span>
+                <input type="number" v-model.number="adminTopupAmount" class="w-20 bg-slate-950 border border-amber-500/40 rounded-lg px-2.5 py-1 text-amber-300 font-bold text-center">
+                <input type="text" v-model="adminTopupNote" placeholder="Nội dung nạp sao..." class="w-44 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-200">
+                <button @click="topupStarsAdmin(adminEditForm.originalName, adminTopupAmount, adminTopupNote)"
+                        class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-lg transition">
+                  + Nạp Sao
+                </button>
+                <button @click="topupStarsAdmin(adminEditForm.originalName, 100, 'Nạp nhanh +100 Sao')"
+                        class="bg-amber-950 hover:bg-amber-700 text-amber-300 border border-amber-600/40 px-2 py-1 rounded-lg font-bold">
+                  +100 ⭐
+                </button>
+                <button @click="topupStarsAdmin(adminEditForm.originalName, 500, 'Nạp nhanh +500 Sao')"
+                        class="bg-amber-950 hover:bg-amber-700 text-amber-300 border border-amber-600/40 px-2 py-1 rounded-lg font-bold">
+                  +500 ⭐
+                </button>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button @click="saveEditedUserAdmin"
+                        class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-1.5 rounded-lg shadow transition">
+                  💾 Lưu Mọi Chỉnh Sửa User
+                </button>
+              </div>
+            </div>
+
+            <!-- 2 Bảng Lịch Sử của User đang chọn: Lịch sử Nạp Sao & Lịch sử Gia Hạn VIP -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+              <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                <div class="text-xs font-bold text-amber-400 mb-2">
+                  🌟 Lịch Sử Nạp Sao & Giao Dịch Sao ({{ (adminSelectedUserObj && adminSelectedUserObj.starHistory ? adminSelectedUserObj.starHistory.length : 0) }})
+                </div>
+                <div class="max-h-32 overflow-y-auto space-y-1.5 text-[11px]">
+                  <div v-if="!adminSelectedUserObj || !adminSelectedUserObj.starHistory || adminSelectedUserObj.starHistory.length === 0" class="text-slate-500 py-3 text-center">
+                    Chưa có lịch sử nạp Sao / giao dịch Sao.
+                  </div>
+                  <div v-for="sh in ((adminSelectedUserObj && adminSelectedUserObj.starHistory) || []).slice().reverse()" :key="sh.id"
+                       class="flex justify-between items-center bg-slate-900 px-2.5 py-1.5 rounded border border-slate-800/80">
+                    <div>
+                      <span class="font-bold" :class="sh.amount >= 0 ? 'text-emerald-400' : 'text-amber-300'">
+                        {{ sh.amount > 0 ? '+' + sh.amount : sh.amount }} ⭐
+                      </span>
+                      <span class="text-slate-300 ml-1.5">{{ sh.note }}</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-mono shrink-0 ml-2">{{ sh.formattedTime }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                <div class="text-xs font-bold text-sky-400 mb-2">
+                  👑 Lịch Sử Gia Hạn VIP & Thay Đổi Tài Khoản ({{ (adminSelectedUserObj && adminSelectedUserObj.vipHistory ? adminSelectedUserObj.vipHistory.length : 0) }})
+                </div>
+                <div class="max-h-32 overflow-y-auto space-y-1.5 text-[11px]">
+                  <div v-if="!adminSelectedUserObj || !adminSelectedUserObj.vipHistory || adminSelectedUserObj.vipHistory.length === 0" class="text-slate-500 py-3 text-center">
+                    Chưa có lịch sử gia hạn VIP.
+                  </div>
+                  <div v-for="vh in ((adminSelectedUserObj && adminSelectedUserObj.vipHistory) || []).slice().reverse()" :key="vh.id"
+                       class="flex justify-between items-center bg-slate-900 px-2.5 py-1.5 rounded border border-slate-800/80">
+                    <div>
+                      <span class="font-bold text-sky-300">[{{ getTierLabel(vh.tier) }}]</span>
+                      <span class="text-slate-200 ml-1.5">{{ vh.note }}</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-mono shrink-0 ml-2">{{ vh.formattedTime }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Bảng Danh Sách User -->
           <div class="flex-1 overflow-y-auto border border-slate-800 rounded-xl bg-slate-950/90">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
-                <tr class="bg-slate-900 text-slate-300 border-b border-slate-800 uppercase">
+                <tr class="bg-slate-900 text-slate-300 border-b border-slate-800 uppercase sticky top-0 z-10">
                   <th class="py-2.5 px-3">Player & Ghi chú</th>
                   <th class="py-2.5 px-3">Mật khẩu</th>
                   <th class="py-2.5 px-3">Hạng VIP</th>
                   <th class="py-2.5 px-3 text-center">Trạng thái</th>
-                  <th class="py-2.5 px-3">Hạn sử dụng</th>
-                  <th class="py-2.5 px-3 text-right">Gia hạn / Thao tác</th>
+                  <th class="py-2.5 px-3">Ngày Tạo / Hết Hạn</th>
+                  <th class="py-2.5 px-3">Số Dư Sao</th>
+                  <th class="py-2.5 px-3 text-right">Chỉnh Sửa / Gia Hạn / Thao Tác</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800/70">
-                <tr v-for="p in players" :key="p.name" class="hover:bg-slate-900/60">
+                <tr v-for="p in filteredAdminPlayers" :key="p.name"
+                    :class="adminEditForm.originalName === p.name ? 'bg-sky-950/40' : 'hover:bg-slate-900/60'">
                   <td class="py-2.5 px-3">
                     <div class="font-bold text-white text-sm flex items-center gap-1.5">
                       <span>{{ p.name }}</span>
@@ -959,7 +1254,14 @@
                     <div class="text-[11px] text-slate-400">{{ p.note || 'Chưa có ghi chú' }}</div>
                   </td>
                   <td class="py-2.5 px-3">
-                    <span class="font-mono text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{{ '*'.repeat(Math.max(6, String(p.password || '').length)) }}</span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-mono text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{{ '*'.repeat(Math.max(6, String(p.password || '').length)) }}</span>
+                      <button @click="resetUserPasswordQuick(p.name)"
+                              class="text-[10px] bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 px-1.5 py-0.5 rounded transition"
+                              title="Reset mật khẩu của User này">
+                        🔑 Reset
+                      </button>
+                    </div>
                   </td>
                   <td class="py-2.5 px-3">
                     <select :value="p.tier || 'BRONZE'" @change="changePlayerTier(p, $event.target.value)"
@@ -978,17 +1280,26 @@
                     </button>
                   </td>
                   <td class="py-2.5 px-3">
+                    <div class="text-[11px] text-slate-400">Tạo: <span class="font-mono text-slate-200">{{ formatDateVN(p.createdAt) }}</span></div>
                     <div class="font-mono font-bold" :class="isPlayerExpired(p) ? 'text-red-400' : 'text-emerald-300'">
-                      {{ p.expiresAt ? formatDateVN(p.expiresAt) : '♾️ Vĩnh viễn' }}
+                      Hạn: {{ p.expiresAt ? formatDateVN(p.expiresAt) : '♾️ Vĩnh viễn' }}
                     </div>
-                    <div class="text-[11px] text-slate-400">{{ getRemainingDaysText(p) }}</div>
+                    <div class="text-[10px] text-amber-300">{{ getRemainingDaysText(p) }}</div>
+                  </td>
+                  <td class="py-2.5 px-3">
+                    <div class="font-bold text-amber-400">💰 {{ p.starsBalance || 0 }} ⭐</div>
+                    <div class="text-[10px] text-sky-300">🎁 Live: {{ p.starsReceived || 0 }} ⭐</div>
                   </td>
                   <td class="py-2.5 px-3 text-right">
-                    <div class="flex items-center justify-end gap-1.5">
-                      <button @click="extendPlayerDays(p, 30)" class="bg-emerald-950 hover:bg-emerald-600 text-emerald-300 hover:text-white px-2.5 py-1 rounded text-xs font-bold">+30N</button>
-                      <button @click="extendPlayerDays(p, 365)" class="bg-amber-950 hover:bg-amber-600 text-amber-300 hover:text-slate-950 px-2.5 py-1 rounded text-xs font-bold">+1 Năm</button>
-                      <button @click="extendPlayerDays(p, 0, true)" class="bg-sky-950 hover:bg-sky-600 text-sky-300 hover:text-white px-2.5 py-1 rounded text-xs font-bold">Vĩnh viễn</button>
-                      <button @click="deletePlayerAdmin(p)" class="bg-red-950 hover:bg-red-600 text-red-300 hover:text-white px-2.5 py-1 rounded text-xs font-bold">
+                    <div class="flex items-center justify-end gap-1 flex-wrap">
+                      <button @click="openAdminEditUser(p)"
+                              class="bg-sky-500 hover:bg-sky-400 text-slate-950 px-2.5 py-1 rounded text-xs font-bold shadow">
+                        ✏️ Sửa / Lịch Sử
+                      </button>
+                      <button @click="extendPlayerDays(p, 30)" class="bg-emerald-950 hover:bg-emerald-600 text-emerald-300 hover:text-white px-2 py-1 rounded text-xs font-bold">+30N</button>
+                      <button @click="extendPlayerDays(p, 365)" class="bg-amber-950 hover:bg-amber-600 text-amber-300 hover:text-slate-950 px-2 py-1 rounded text-xs font-bold">+1 Năm</button>
+                      <button @click="extendPlayerDays(p, 0, true)" class="bg-sky-950 hover:bg-sky-600 text-sky-300 hover:text-white px-2 py-1 rounded text-xs font-bold">Vĩnh viễn</button>
+                      <button @click="deletePlayerAdmin(p)" class="bg-red-950 hover:bg-red-600 text-red-300 hover:text-white px-2 py-1 rounded text-xs font-bold">
                         <i class="fa-solid fa-trash"></i>
                       </button>
                     </div>
@@ -998,7 +1309,7 @@
             </table>
           </div>
 
-          <button @click="showPlayerManagerModal = false" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold">Đóng Bảng Quản Trị</button>
+          <button @click="showPlayerManagerModal = false" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold shrink-0">Đóng Bảng Quản Trị</button>
         </div>
       </div>
 
@@ -1048,6 +1359,25 @@
           adminPasswordInput: '',
           adminPasswordSession: '',
           showPlayerManagerModal: false,
+          showMyProfileModal: false,
+          myNewPasswordInput: '',
+          adminSearchQuery: '',
+          adminFilterTier: 'ALL',
+          adminFilterStatus: 'ALL',
+          adminTopupAmount: 100,
+          adminTopupNote: '',
+          adminEditForm: {
+            originalName: '',
+            name: '',
+            password: '',
+            tier: 'GOLD',
+            isActive: true,
+            createdDate: '',
+            expiresDate: '',
+            lifetime: false,
+            starsBalance: 0,
+            note: ''
+          },
           newPlayerForm: { name: '', password: '123', tier: 'GOLD', durationDays: 30, note: '' },
           showCivStats: localCivStats !== null ? (localCivStats === 'true') : true,
           sessionPlayerName: sessionStorage.getItem('aoe_playerName') || '',
@@ -1110,6 +1440,29 @@
         myPlayerObj() {
           if (!this.sessionPlayerName) return null;
           return this.players.find(p => p.name.toLowerCase() === this.sessionPlayerName.toLowerCase()) || null;
+        },
+        filteredAdminPlayers() {
+          const q = (this.adminSearchQuery || '').trim().toLowerCase();
+          return (this.players || []).filter(p => {
+            if (this.adminFilterTier !== 'ALL' && String(p.tier || 'BRONZE').toUpperCase() !== this.adminFilterTier) {
+              return false;
+            }
+            if (this.adminFilterStatus !== 'ALL') {
+              const expired = this.isPlayerExpired(p);
+              if (this.adminFilterStatus === 'LOCKED' && p.isActive !== false) return false;
+              if (this.adminFilterStatus === 'EXPIRED' && (p.isActive === false || !expired)) return false;
+              if (this.adminFilterStatus === 'ACTIVE' && (p.isActive === false || expired)) return false;
+            }
+            if (!q) return true;
+            const nameMatch = String(p.name || '').toLowerCase().includes(q);
+            const noteMatch = String(p.note || '').toLowerCase().includes(q);
+            const tierMatch = String(p.tier || '').toLowerCase().includes(q) || this.getTierLabel(p.tier).toLowerCase().includes(q);
+            return nameMatch || noteMatch || tierMatch;
+          });
+        },
+        adminSelectedUserObj() {
+          if (!this.adminEditForm.originalName) return null;
+          return this.players.find(p => p.name.toLowerCase() === this.adminEditForm.originalName.toLowerCase()) || null;
         },
         myFriendsList() {
           if (!this.myPlayerObj || !Array.isArray(this.myPlayerObj.friends)) return [];
@@ -1780,6 +2133,172 @@
             this.players = data.players || this.players;
             this.newPlayerForm = { name: '', password: '123', tier: 'GOLD', durationDays: 30, note: '' };
             this.showNotify(data.message);
+          }
+        },
+        tsToDateInputVal(ts) {
+          if (!ts || Number(ts) <= 0) return '';
+          const d = new Date(Number(ts));
+          if (isNaN(d.getTime())) return '';
+          const pad = v => String(v).padStart(2, '0');
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        },
+        openMyProfileModal() {
+          if (!this.sessionPlayerName) {
+            this.openLoginUpdaterModal();
+            return;
+          }
+          this.myNewPasswordInput = '';
+          this.fetchInitialData();
+          this.showMyProfileModal = true;
+        },
+        async changeMyPassword() {
+          const newPass = (this.myNewPasswordInput || '').trim();
+          if (!newPass || newPass.length < 2) {
+            this.showNotify('Vui lòng nhập mật khẩu mới (ít nhất 2 ký tự)!', 'error');
+            return;
+          }
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'userChangePassword',
+                playerName: this.sessionPlayerName,
+                oldPassword: this.sessionPlayerPass,
+                newPassword: newPass
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.sessionPlayerPass = newPass;
+              sessionStorage.setItem('aoe_playerPass', newPass);
+              this.myNewPasswordInput = '';
+              this.fetchInitialData();
+              this.showNotify(data.message || 'Đã đổi mật khẩu thành công!');
+            } else {
+              this.showNotify(data.message || 'Không thể đổi mật khẩu!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối Server!', 'error');
+          }
+        },
+        openAdminEditUser(p) {
+          if (!p) return;
+          this.adminEditForm = {
+            originalName: p.name,
+            name: p.name,
+            password: '',
+            tier: p.tier || 'BRONZE',
+            isActive: p.isActive !== false,
+            createdDate: this.tsToDateInputVal(p.createdAt || Date.now()),
+            expiresDate: this.tsToDateInputVal(p.expiresAt),
+            lifetime: !p.expiresAt || Number(p.expiresAt) <= 0,
+            starsBalance: Number(p.starsBalance || 0),
+            note: p.note || ''
+          };
+        },
+        closeAdminEditUser() {
+          this.adminEditForm.originalName = '';
+        },
+        async saveEditedUserAdmin() {
+          if (!this.adminEditForm.name || !this.adminEditForm.name.trim()) {
+            this.showNotify('Tên tài khoản không được để trống!', 'error');
+            return;
+          }
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminSavePlayer',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                player: {
+                  originalName: this.adminEditForm.originalName,
+                  name: this.adminEditForm.name.trim(),
+                  password: (this.adminEditForm.password || '').trim(),
+                  tier: this.adminEditForm.tier,
+                  isActive: this.adminEditForm.isActive,
+                  createdDate: this.adminEditForm.createdDate,
+                  expiresDate: this.adminEditForm.lifetime ? 'lifetime' : this.adminEditForm.expiresDate,
+                  lifetime: this.adminEditForm.lifetime,
+                  starsBalance: Number(this.adminEditForm.starsBalance || 0),
+                  note: (this.adminEditForm.note || '').trim()
+                }
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              if (data.player) {
+                this.openAdminEditUser(data.player);
+              }
+              this.showNotify(data.message || 'Đã cập nhật thông tin User thành công!');
+            } else {
+              this.showNotify(data.message || 'Không thể lưu chỉnh sửa!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối Server!', 'error');
+          }
+        },
+        async resetUserPasswordQuick(userName) {
+          const newPass = prompt(`Nhập mật khẩu mới cho tài khoản "${userName}" (mặc định: 123):`, '123');
+          if (newPass === null) return;
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminResetPassword',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                name: userName,
+                newPassword: newPass.trim() || '123'
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              this.showNotify(data.message);
+            } else {
+              this.showNotify(data.message || 'Không thể reset mật khẩu!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối Server!', 'error');
+          }
+        },
+        async topupStarsAdmin(userName, amount, note = '') {
+          const stars = Number(amount);
+          if (!userName || isNaN(stars) || stars === 0) {
+            this.showNotify('Vui lòng nhập số Sao hợp lệ!', 'error');
+            return;
+          }
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminTopupStars',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                name: userName,
+                amount: stars,
+                note: note || `Admin XO nạp +${stars} ⭐`
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              if (data.player && this.adminEditForm.originalName.toLowerCase() === userName.toLowerCase()) {
+                this.adminEditForm.starsBalance = data.player.starsBalance || 0;
+              }
+              this.adminTopupNote = '';
+              this.showNotify(data.message);
+            } else {
+              this.showNotify(data.message || 'Không thể nạp Sao!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối Server!', 'error');
           }
         },
         async togglePlayerActive(p) {
