@@ -2,34 +2,47 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>AOE Live Chat & Star Overlay OBS</title>
+  <title>AOE Live Chat & Star Overlay OBS (Transparent Text Only)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap');
-    body {
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&display=swap');
+    html, body {
       font-family: 'Inter', sans-serif;
-      background: transparent;
+      background: transparent !important;
+      background-color: rgba(0, 0, 0, 0) !important;
       overflow: hidden;
+      margin: 0;
+      padding: 0;
     }
-    .chat-glass {
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    /* Viền đen sắc nét bao quanh chữ để đọc rõ trên mọi địa hình bản đồ AOE mà KHÔNG cần khung nền */
+    .stroke-text {
+      text-shadow:
+        -1.5px -1.5px 0 #000000,
+         1.5px -1.5px 0 #000000,
+        -1.5px  1.5px 0 #000000,
+         1.5px  1.5px 0 #000000,
+         0px    2px   6px rgba(0, 0, 0, 0.95);
+    }
+    .stroke-gold {
+      text-shadow:
+        -1.5px -1.5px 0 #000000,
+         1.5px -1.5px 0 #000000,
+        -1.5px  1.5px 0 #000000,
+         1.5px  1.5px 0 #000000,
+         0px    0px   12px rgba(251, 191, 36, 0.85);
     }
     .msg-item {
-      animation: slideIn 0.25s ease-out;
+      animation: slideIn 0.22s ease-out;
     }
     @keyframes slideIn {
-      from { transform: translateY(8px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+      from { transform: translateX(-10px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
     }
     @keyframes floatUp {
       0% { transform: translateY(20px) scale(0.5); opacity: 0; }
       20% { opacity: 1; }
-      100% { transform: translateY(-120px) scale(1.3); opacity: 0; }
+      100% { transform: translateY(-130px) scale(1.35); opacity: 0; }
     }
     .star-float {
       position: absolute;
@@ -38,69 +51,63 @@
     }
   </style>
 </head>
-<body class="p-2 m-0">
-  <div id="app" class="w-[360px] relative">
+<body class="p-2">
+  <div id="app" class="w-[370px] relative select-none" style="background: transparent !important;">
     <!-- Hiệu ứng sao bay khi có người tặng sao -->
     <span v-for="st in starParticles" :key="st.id"
-          class="star-float text-xl z-50"
+          class="star-float text-2xl z-50 stroke-gold"
           :style="{ left: st.left + '%', bottom: '40px', animationDelay: st.delay + 's' }">
       {{ st.icon }}
     </span>
 
-    <div class="chat-glass rounded-2xl overflow-hidden flex flex-col max-h-[420px]">
-      <!-- Header Khung Chat OBS -->
-      <div class="px-3.5 py-2 bg-slate-900/90 border-b border-slate-700/60 flex justify-between items-center">
-        <div class="flex items-center gap-2">
+    <!-- Khung hoàn toàn trong suốt, chỉ hiển thị chữ có viền đen sắc nét -->
+    <div class="flex flex-col justify-end min-h-[380px] max-h-[480px] overflow-hidden" style="background: transparent !important;">
+
+      <!-- Dòng tiêu đề nhỏ gọn chỉ gồm chữ trong suốt (ẩn khi không có bình luận/sao) -->
+      <div v-if="displayMessages.length > 0 || totalStars > 0"
+           class="flex items-center justify-between px-1 pb-1.5 stroke-text">
+        <div class="flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-xs font-bold text-slate-100 uppercase tracking-wide">
-            Bình Luận Trực Tiếp {{ streamerFilter ? ('• ' + streamerFilter) : '' }}
+          <span class="text-[12px] font-extrabold text-sky-300 uppercase tracking-wider">
+            💬 LIVE CHAT {{ streamerFilter ? ('• ' + streamerFilter) : '' }}
           </span>
         </div>
-        <div class="flex items-center gap-1 bg-amber-500/15 border border-amber-400/40 px-2 py-0.5 rounded-full text-[11px] font-bold text-amber-300">
-          <span>⭐</span>
-          <span>{{ totalStars }} Sao</span>
+        <div v-if="totalStars > 0" class="text-[12px] font-black text-amber-300 stroke-gold">
+          ⭐ {{ totalStars }} Sao
         </div>
       </div>
 
-      <!-- Thông báo nổi khi có người vừa Tặng Sao -->
+      <!-- Dòng vinh danh nổi khi có người vừa Tặng Sao (Chỉ hiển thị Text nổi, nền trong suốt 100%) -->
       <div v-if="activeStarGift"
-           class="mx-2.5 mt-2 p-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-lg flex items-center gap-2.5 msg-item">
+           class="px-1 py-1.5 mb-1 flex items-center gap-2 msg-item stroke-gold"
+           style="background: transparent !important;">
         <span class="text-2xl animate-bounce">🌟</span>
         <div class="flex-1 min-w-0">
-          <div class="text-xs font-black truncate">
-            {{ activeStarGift.senderName }} tặng +{{ activeStarGift.starCount }} Sao!
+          <div class="text-[14px] font-black text-amber-300 leading-tight">
+            {{ activeStarGift.senderName }} vừa tặng +{{ activeStarGift.starCount }} ⭐!
           </div>
-          <div class="text-[11px] font-semibold text-slate-900 truncate">
+          <div class="text-[12px] font-bold text-yellow-100 truncate">
             "{{ activeStarGift.message }}"
           </div>
         </div>
       </div>
 
-      <!-- Danh sách tin nhắn bình luận -->
-      <div ref="chatListRef" class="p-3 space-y-2 overflow-y-hidden flex-1 flex flex-col justify-end">
-        <div v-if="displayMessages.length === 0" class="text-center py-6 text-xs text-slate-400">
-          Chưa có bình luận nào. Hãy bình luận hoặc tặng ⭐ trên Web!
-        </div>
-
+      <!-- Danh sách tin nhắn bình luận: Nền trong suốt 100%, chỉ hiện chữ để không che bản đồ/quân trong game -->
+      <div ref="chatListRef" class="space-y-1.5 px-1 overflow-y-hidden flex flex-col justify-end" style="background: transparent !important;">
         <div v-for="m in displayMessages" :key="m.id"
-             class="msg-item rounded-xl px-3 py-2 text-xs leading-relaxed"
-             :class="m.type === 'STAR'
-               ? 'bg-amber-500/20 border border-amber-400/50 text-amber-100'
-               : 'bg-slate-900/75 border border-slate-800/90 text-slate-100'">
-          <div class="flex justify-between items-center mb-0.5">
-            <span class="font-bold flex items-center gap-1"
-                  :class="m.type === 'STAR' ? 'text-amber-300' : 'text-sky-300'">
-              <span v-if="m.type === 'STAR'">🌟</span>
-              <span>{{ m.senderName }}</span>
-              <span v-if="m.senderTier === 'DIAMOND'" class="text-[10px]">💎</span>
-              <span v-else-if="m.senderTier === 'GOLD'" class="text-[10px]">🥇</span>
+             class="msg-item text-[13px] leading-snug break-words stroke-text"
+             style="background: transparent !important;">
+          <span v-if="m.type === 'STAR' || m.type === 'STAR_GIFT'" class="font-black text-amber-300 stroke-gold">
+            🌟 {{ m.senderName }}: {{ m.text || m.message }}
+          </span>
+          <template v-else>
+            <span class="font-extrabold text-sky-300">
+              <span v-if="m.senderTier === 'DIAMOND'">💎 </span>
+              <span v-else-if="m.senderTier === 'GOLD'">🥇 </span>
+              {{ m.senderName }}:
             </span>
-            <span class="text-[10px] text-slate-400 font-mono">{{ m.timeText }}</span>
-          </div>
-          <div class="text-slate-100 break-words">
-            <span v-if="m.type === 'STAR'" class="font-semibold text-amber-200">{{ m.text }}</span>
-            <span v-else>{{ m.text }}</span>
-          </div>
+            <span class="font-bold text-white ml-1">{{ m.text || m.message }}</span>
+          </template>
         </div>
       </div>
     </div>
@@ -121,7 +128,7 @@
       },
       computed: {
         displayMessages() {
-          return this.messages.slice(-9);
+          return this.messages.slice(-10);
         },
         totalStars() {
           return (this.match && this.match.starsCount) || 0;
@@ -205,4 +212,3 @@
   </script>
 </body>
 </html>
-

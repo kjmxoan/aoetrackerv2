@@ -627,16 +627,24 @@ app.post('/api', async (req, res) => {
       });
     }
 
-    // ==================== KHUNG CHAT BÌNH LUẬN TRẬN ĐẤU & OVERLAY CHAT OBS ====================
+    // ==================== KHUNG CHAT BÌNH LUẬN TRẬN ĐẤU & OVERLAY CHAT OBS (BẮT BUỘC ĐĂNG NHẬP) ====================
     if (action === 'sendChatMessage') {
-      const text = String(data.text || '').trim().slice(0, 260);
+      const loginName = String(data.senderName || data.playerName || '').trim();
+      const auth = await validatePlayerAccount(loginName, data.password);
+      if (!auth.valid && !isAdminAuthorized(data)) {
+        return res.json({
+          status: 'error',
+          message: auth.reason || 'Bạn bắt buộc phải đăng nhập tài khoản Player để bình luận trong sảnh Live!'
+        });
+      }
+
+      const text = String(data.text || data.message || '').trim().slice(0, 260);
       if (!text) {
         return res.json({ status: 'error', message: 'Nội dung bình luận trống!' });
       }
-      const senderName = String(data.senderName || 'Khán giả').trim().slice(0, 32) || 'Khán giả';
-      const rawPlayers = await db.getPlayers();
-      const senderPlayer = rawPlayers.find(p => p.name.toLowerCase() === senderName.toLowerCase());
-      const senderTier = senderPlayer ? senderPlayer.tier : (data.senderTier || 'VIEWER');
+      const senderPlayer = auth.player || null;
+      const senderName = auth.canonicalName || loginName || 'XO';
+      const senderTier = senderPlayer ? senderPlayer.tier : (isAdminAuthorized(data) ? 'DIAMOND' : 'BRONZE');
 
       if (senderPlayer) {
         senderPlayer.lastSeenAt = Date.now();
@@ -658,15 +666,16 @@ app.post('/api', async (req, res) => {
         targetMatch = matches.find(m => m.status === 'LIVE') || matches[0] || null;
       }
 
-      const streamerName = (targetMatch && targetMatch.streamerName) || data.streamerName || 'XO';
+      const streamerName = (targetMatch && targetMatch.streamerName) || data.streamerName || senderName || 'XO';
       const now = Date.now();
       const msgObj = {
         id: 'MSG_' + now + '_' + Math.floor(Math.random() * 1000),
         matchId: targetMatch ? targetMatch.id : null,
         streamerName,
-        senderName: senderPlayer ? senderPlayer.name : senderName,
+        senderName,
         senderTier,
         text,
+        message: text,
         type: 'CHAT',
         createdAt: now,
         timeText: formatShortTimeVN(now)
@@ -697,10 +706,25 @@ app.post('/api', async (req, res) => {
       });
     }
 
-    // ==================== HIỆU ỨNG TẶNG SAO (STAR GIFT EFFECT TRÊN LIVESTREAM) ====================
+    // ==================== HIỆU ỨNG TẶNG SAO (BẮT BUỘC ĐĂNG NHẬP) ====================
     if (action === 'sendStarGift') {
-      const senderName = String(data.senderName || 'Fan AOE').trim().slice(0, 32) || 'Fan AOE';
-      const starCount = Math.max(1, Math.min(9999, Number(data.starCount) || 1));
+      const loginName = String(data.senderName || data.playerName || '').trim();
+      const auth = await validatePlayerAccount(loginName, data.password);
+      if (!auth.valid && !isAdminAuthorized(data)) {
+        return res.json({
+          status: 'error',
+          message: auth.reason || 'Bạn bắt buộc phải đăng nhập tài khoản Player để tặng sao trong sảnh Live!'
+        });
+      }
+
+      const senderPlayer = auth.player || null;
+      const senderName = auth.canonicalName || loginName || 'XO';
+      if (senderPlayer) {
+        senderPlayer.lastSeenAt = Date.now();
+        await db.upsertPlayer(senderPlayer);
+      }
+
+      const starCount = Math.max(1, Math.min(9999, Number(data.starCount || data.stars) || 1));
       const cheerText = String(data.message || 'Đánh hay quá! Tặng sao cổ vũ!').trim().slice(0, 160);
 
       const matches = await db.getMatches();
@@ -730,6 +754,7 @@ app.post('/api', async (req, res) => {
       }
 
       const now = Date.now();
+      const displayLine = `đã tặng ${starCount} ⭐ cho ${streamerName} — "${cheerText}"`;
       const starChatObj = {
         id: 'STAR_' + now + '_' + Math.floor(Math.random() * 1000),
         matchId: targetMatch ? targetMatch.id : null,
@@ -737,7 +762,8 @@ app.post('/api', async (req, res) => {
         senderName,
         senderTier: 'STAR',
         starCount,
-        text: `đã tặng ${starCount} ⭐ cho ${streamerName} — "${cheerText}"`,
+        text: displayLine,
+        message: displayLine,
         type: 'STAR',
         createdAt: now,
         timeText: formatShortTimeVN(now)

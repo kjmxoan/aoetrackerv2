@@ -934,6 +934,7 @@ class AOETrackerApp:
         self.player_tier = "BRONZE"
         self.known_players = []
         self.my_friends = []
+        self.active_lobby_streamer = ""
         self.current_match = None
         self.last_parsed_teams = None
         self.running = True
@@ -1857,27 +1858,47 @@ class AOETrackerApp:
             justify="left",
             anchor="w",
             padx=10,
-            pady=6,
+            pady=5,
             wraplength=420,
         )
-        self.friends_status_lbl.pack(fill="x", pady=(6, 8))
+        self.friends_status_lbl.pack(fill="x", pady=(6, 4))
+
+        # Thanh nút bấm nhanh để vào Sảnh Live của Bạn bè đang phát sóng
+        self.friends_live_btn_frame = tk.Frame(social_card, bg="#121b2f")
+        self.friends_live_btn_frame.pack(fill="x", pady=(0, 6))
 
         # Phần 2 của cột phải: Khung Chat Bình Luận & Tặng Sao ⭐
         chat_hdr = tk.Frame(social_card, bg="#121b2f")
         chat_hdr.pack(fill="x", pady=(0, 4))
 
-        tk.Label(
+        self.lobby_badge_lbl = tk.Label(
             chat_hdr,
-            text="💬 BÌNH LUẬN TRẬN ĐẤU & TẶNG SAO LIVE",
-            font=("Segoe UI", 10, "bold"),
+            text="🏟️ SẢNH CHAT LIVE: Máy XO",
+            font=("Segoe UI", 9, "bold"),
             fg="#38bdf8",
             bg="#121b2f",
-        ).pack(side="left")
+        )
+        self.lobby_badge_lbl.pack(side="left")
 
         star_btns = tk.Frame(chat_hdr, bg="#121b2f")
         star_btns.pack(side="right")
 
-        for amt, lbl_txt in [(1, "🌟 +1 Sao"), (10, "🌟 +10"), (50, "💎 +50")]:
+        btn_my_lobby = tk.Button(
+            star_btns,
+            text="🏠 Sảnh của tôi",
+            command=lambda: self.enter_friend_live_lobby(""),
+            font=("Segoe UI", 8, "bold"),
+            bg="#1e293b",
+            fg="#cbd5e1",
+            relief="flat",
+            padx=6,
+            pady=1,
+            cursor="hand2",
+        )
+        btn_my_lobby.pack(side="left", padx=(0, 4))
+        self._bind_hover(btn_my_lobby, "#1e293b", "#334155", "#cbd5e1", "#ffffff")
+
+        for amt, lbl_txt in [(1, "🌟 +1"), (10, "🌟 +10"), (50, "💎 +50")]:
             b = tk.Button(
                 star_btns,
                 text=lbl_txt,
@@ -1890,7 +1911,7 @@ class AOETrackerApp:
                 pady=1,
                 cursor="hand2",
             )
-            b.pack(side="left", padx=(4, 0))
+            b.pack(side="left", padx=(3, 0))
             self._bind_hover(b, "#451a03", "#78350f", "#fbbf24", "#ffffff")
 
         self.chat_box = tk.Text(
@@ -2343,7 +2364,7 @@ class AOETrackerApp:
 
         tk.Label(form_row, text="Mật khẩu:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
         u_pass_var = tk.StringVar(value="123")
-        tk.Entry(form_row, textvariable=u_pass_var, font=("Consolas", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=10, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+        tk.Entry(form_row, textvariable=u_pass_var, show="*", font=("Consolas", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=10, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
 
         tk.Label(form_row, text="Hạng VIP:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
         u_tier_var = tk.StringVar(value="GOLD")
@@ -2407,13 +2428,15 @@ class AOETrackerApp:
                 exp_ts = p.get("expiresAt")
                 is_exp = bool(exp_ts and int(exp_ts) > 0 and (time.time() * 1000 > int(exp_ts)))
                 st_txt = "🔴 Đã khóa" if not is_act else ("⚠️ Hết hạn" if is_exp else "🟢 Active")
+                raw_pwd_str = str(p.get("password", "") or "")
+                masked_pwd = "*" * max(6, len(raw_pwd_str))
                 tree.insert(
                     "",
                     "end",
                     iid=p.get("name"),
                     values=(
                         p.get("name", ""),
-                        p.get("password", ""),
+                        masked_pwd,
                         t_label,
                         st_txt,
                         _fmt_date(p.get("activatedAt")),
@@ -2626,19 +2649,44 @@ class AOETrackerApp:
 
         threading.Thread(target=_task, daemon=True).start()
 
+    def get_active_lobby_streamer(self) -> str:
+        if self.active_lobby_streamer and self.active_lobby_streamer.strip():
+            return self.active_lobby_streamer.strip()
+        return self.player_name_var.get().strip() or "XO"
+
+    def enter_friend_live_lobby(self, streamer_name: str):
+        clean_target = (streamer_name or "").strip()
+        self.active_lobby_streamer = clean_target
+        target_display = self.get_active_lobby_streamer()
+        if clean_target:
+            self.log(f"🏟️ Đã vào Sảnh Live của '{target_display}'! Bạn có thể bình luận và tặng Sao cổ vũ.", "TEAM")
+        else:
+            self.log(f"🏠 Đã quay về Sảnh Live của bạn ('{target_display}').", "DEFAULT")
+        threading.Thread(target=self.refresh_initial_state, daemon=True).start()
+
     def refresh_initial_state(self):
         try:
             api_url = self.get_api_endpoint()
             name = self.player_name_var.get().strip()
-            res = requests.get(f"{api_url}?action=getInitialData&streamer={name}", timeout=10)
+            lobby_target = self.get_active_lobby_streamer()
+            res = requests.get(f"{api_url}?action=getInitialData&streamer={lobby_target}", timeout=10)
             data = res.json()
             self.known_players = data.get("players", [])
             self._update_friends_and_social_ui(data)
 
-            match = data.get("currentMatch")
-            if match and str(match.get("streamerName", "")).lower() == name.lower() and match.get("status") == "LIVE":
-                self.current_match = match
-                self._update_battle_arena_ui(match)
+            all_matches = data.get("matches") or []
+            my_live_match = next(
+                (m for m in all_matches if m.get("status") == "LIVE" and str(m.get("streamerName", "")).lower() == name.lower()),
+                None,
+            )
+            if not my_live_match:
+                cm = data.get("currentMatch")
+                if cm and str(cm.get("streamerName", "")).lower() == name.lower() and cm.get("status") == "LIVE":
+                    my_live_match = cm
+
+            if my_live_match:
+                self.current_match = my_live_match
+                self._update_battle_arena_ui(my_live_match)
             else:
                 self.current_match = None
                 self.root.after(
@@ -2655,49 +2703,108 @@ class AOETrackerApp:
     def _update_friends_and_social_ui(self, data: dict):
         my_name = self.player_name_var.get().strip()
         players = data.get("players") or []
+        matches = data.get("matches") or []
         me = next((p for p in players if str(p.get("name", "")).lower() == my_name.lower()), None)
         if me and isinstance(me.get("friends"), list):
             self.my_friends = me.get("friends")
 
-        # 1. Cập nhật danh sách Bạn bè & Trạng thái Live
+        # 1. Cập nhật danh sách Bạn bè & Trạng thái Live + Nút bấm vào Sảnh Live của bạn bè
         friend_badges = []
+        live_friends_list = []
         for f_name in self.my_friends:
             fp = next((p for p in players if str(p.get("name", "")).lower() == str(f_name).lower()), None)
             if fp and fp.get("isLive"):
                 friend_badges.append(f"🔴 {fp.get('name')} (Đang LIVE {fp.get('liveMatchMode') or ''})")
+                live_friends_list.append(fp)
             elif fp and fp.get("isOnline"):
                 friend_badges.append(f"🟢 {fp.get('name')} (Online)")
             else:
                 friend_badges.append(f"⚫ {f_name} (Offline)")
+
+        # Bổ sung các kèo đang LIVE khác trên hệ thống để người chơi tiện vào sảnh giao lưu
+        for m in matches:
+            if m.get("status") == "LIVE":
+                s_name = m.get("streamerName")
+                if s_name and not any(str(x.get("name", "")).lower() == str(s_name).lower() for x in live_friends_list):
+                    live_friends_list.append({"name": s_name, "liveMatchMode": m.get("mode", "4v4"), "isLive": True})
 
         if friend_badges:
             friends_txt = "  •  ".join(friend_badges)
         else:
             live_now = [p.get("name") for p in players if p.get("isLive")]
             if live_now:
-                friends_txt = f"Chưa kết bạn. Đang LIVE trên hệ thống: 🔴 {', '.join(live_now)}"
+                friends_txt = f"Đang LIVE trên hệ thống: 🔴 {', '.join(live_now)} (Bấm nút bên dưới để vào Sảnh Chat & Tặng Sao)"
             else:
-                friends_txt = "Chưa có bạn bè. Nhập tên Player vào ô bên trên rồi bấm '+ Kết bạn / Hủy'."
+                friends_txt = "Chưa có bạn bè đang Live. Nhập tên Player vào ô bên trên rồi bấm '+ Kết bạn / Hủy'."
 
-        # 2. Cập nhật Khung Chat & Tổng số Sao
-        match = data.get("currentMatch")
-        chats = (match.get("chatMessages") if match else None) or data.get("recentChat") or []
-        stars_total = (match.get("starsCount") if match else 0) or (me.get("starsReceived") if me else 0) or 0
+        # 2. Tìm kèo đấu của Sảnh đang chọn (Sảnh của bạn bè hoặc Sảnh của mình)
+        lobby_target = self.get_active_lobby_streamer()
+        lobby_match = next(
+            (m for m in matches if m.get("status") == "LIVE" and str(m.get("streamerName", "")).lower() == lobby_target.lower()),
+            None,
+        ) or data.get("currentMatch")
+
+        if lobby_match and str(lobby_match.get("streamerName", "")).lower() == lobby_target.lower():
+            chats = lobby_match.get("chatMessages") or []
+            stars_total = lobby_match.get("starsCount") or 0
+        else:
+            all_recent = data.get("recentChat") or []
+            chats = [c for c in all_recent if str(c.get("streamerName", "")).lower() == lobby_target.lower()]
+            target_p = next((p for p in players if str(p.get("name", "")).lower() == lobby_target.lower()), None)
+            stars_total = (target_p.get("starsReceived") if target_p else 0) or 0
 
         def _render():
             try:
                 self.friends_status_lbl.config(text=friends_txt)
-                self.stars_counter_lbl.config(text=f"⭐ {stars_total} sao được tặng trên Live")
+                self.lobby_badge_lbl.config(
+                    text=f"🏟️ SẢNH LIVE: Máy {lobby_target}",
+                    fg="#fbbf24" if lobby_target.lower() != my_name.lower() else "#38bdf8",
+                )
+                self.stars_counter_lbl.config(text=f"⭐ {stars_total} sao tại sảnh {lobby_target}")
+
+                # Render các nút bấm vào Sảnh Live của bạn bè đang phát sóng
+                for child in self.friends_live_btn_frame.winfo_children():
+                    child.destroy()
+
+                if live_friends_list:
+                    self.tk.Label(
+                        self.friends_live_btn_frame,
+                        text="Vào sảnh Live:",
+                        font=("Segoe UI", 8, "bold"),
+                        fg="#94a3b8",
+                        bg="#121b2f",
+                    ).pack(side="left", padx=(0, 6))
+                    for lf in live_friends_list[:5]:
+                        f_streamer = lf.get("name", "")
+                        f_mode = lf.get("liveMatchMode") or "LIVE"
+                        is_current = f_streamer.lower() == lobby_target.lower()
+                        btn = self.tk.Button(
+                            self.friends_live_btn_frame,
+                            text=f"🔴 Vào sảnh {f_streamer} ({f_mode})",
+                            command=lambda s=f_streamer: self.enter_friend_live_lobby(s),
+                            font=("Segoe UI", 8, "bold"),
+                            bg="#dc2626" if is_current else "#1e293b",
+                            fg="#ffffff" if is_current else "#fca5a5",
+                            relief="flat",
+                            padx=8,
+                            pady=2,
+                            cursor="hand2",
+                        )
+                        btn.pack(side="left", padx=(0, 5))
 
                 self.chat_box.configure(state="normal")
                 self.chat_box.delete("1.0", "end")
                 if not chats:
-                    self.chat_box.insert("end", "Chưa có bình luận nào. Hãy gửi lời chúc hoặc tặng sao!\n", "MSG")
+                    self.chat_box.insert(
+                        "end",
+                        f"Đang ở sảnh Live của {lobby_target}. Chưa có bình luận nào — hãy chat hoặc tặng Sao!\n",
+                        "MSG",
+                    )
                 else:
                     for c in chats[-25:]:
-                        sender = c.get("senderName", "Khán giả")
-                        msg = c.get("message", "")
-                        if c.get("type") == "STAR_GIFT":
+                        sender = c.get("senderName", "Player")
+                        msg = c.get("text") or c.get("message") or ""
+                        if c.get("type") in ("STAR", "STAR_GIFT"):
                             self.chat_box.insert("end", f"🌟 {sender}: {msg}\n", "STAR")
                         else:
                             self.chat_box.insert("end", f"{sender}: ", "SENDER")
@@ -2744,10 +2851,17 @@ class AOETrackerApp:
         threading.Thread(target=_task, daemon=True).start()
 
     def send_chat_message_action(self):
+        if not self.is_logged_in:
+            self.messagebox.showwarning(
+                "Yêu cầu đăng nhập",
+                "Bạn bắt buộc phải đăng nhập tài khoản Player trước khi bình luận trong sảnh Live!",
+            )
+            return
         msg = self.chat_msg_var.get().strip()
         if not msg:
             return
-        sender = self.player_name_var.get().strip() or "Khán giả"
+        sender = self.player_name_var.get().strip()
+        target_streamer = self.get_active_lobby_streamer()
         self.chat_msg_var.set("")
 
         def _task():
@@ -2756,9 +2870,12 @@ class AOETrackerApp:
                     self.get_api_endpoint(),
                     json={
                         "action": "sendChatMessage",
-                        "streamerName": sender,
+                        "streamerName": target_streamer,
                         "senderName": sender,
                         "password": self._get_effective_player_password(),
+                        "isAdmin": self.is_admin,
+                        "adminPassword": self.admin_password,
+                        "text": msg,
                         "message": msg,
                     },
                     timeout=10,
@@ -2774,7 +2891,14 @@ class AOETrackerApp:
         threading.Thread(target=_task, daemon=True).start()
 
     def send_star_gift_action(self, stars: int = 1):
-        sender = self.player_name_var.get().strip() or "Khán giả"
+        if not self.is_logged_in:
+            self.messagebox.showwarning(
+                "Yêu cầu đăng nhập",
+                "Bạn bắt buộc phải đăng nhập tài khoản Player trước khi tặng Sao trong sảnh Live!",
+            )
+            return
+        sender = self.player_name_var.get().strip()
+        target_streamer = self.get_active_lobby_streamer()
 
         def _task():
             try:
@@ -2782,16 +2906,20 @@ class AOETrackerApp:
                     self.get_api_endpoint(),
                     json={
                         "action": "sendStarGift",
-                        "streamerName": sender,
+                        "streamerName": target_streamer,
                         "senderName": sender,
+                        "password": self._get_effective_player_password(),
+                        "isAdmin": self.is_admin,
+                        "adminPassword": self.admin_password,
+                        "starCount": stars,
                         "stars": stars,
-                        "message": f"Tặng {stars} sao cổ vũ trận đấu!",
+                        "message": f"Tặng {stars} sao cổ vũ {target_streamer}!",
                     },
                     timeout=10,
                 )
                 data = res.json()
                 if data.get("status") == "success":
-                    self.log(f"✅ 🌟 Đã phát hiệu ứng tặng +{stars} Sao lên màn hình Livestream!", "SUCCESS")
+                    self.log(f"✅ 🌟 Đã tặng +{stars} Sao vào sảnh Live của {target_streamer}!", "SUCCESS")
                     self.refresh_initial_state()
                 else:
                     self.log(f"⚠️ {data.get('message', 'Không thể tặng sao')}", "WARN")
