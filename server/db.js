@@ -20,7 +20,15 @@ if (DATABASE_URL && DATABASE_URL.startsWith('postgres')) {
 
 const DEFAULT_STATE = {
   players: [
-    { name: 'XO', password: '111' }
+    {
+      name: 'XO',
+      password: '111',
+      isActive: true,
+      activatedAt: Date.now(),
+      expiresAt: null,
+      note: 'Admin / Chủ hệ thống',
+      createdAt: Date.now()
+    }
   ],
   matches: [],
   settings: {
@@ -28,13 +36,32 @@ const DEFAULT_STATE = {
   }
 };
 
+function normalizePlayerRecord(raw) {
+  const now = Date.now();
+  return {
+    name: String(raw.name || '').trim(),
+    password: String(raw.password !== undefined && raw.password !== null ? raw.password : '123').trim(),
+    isActive: raw.isActive !== undefined ? Boolean(raw.isActive) : (raw.is_active !== undefined ? Boolean(raw.is_active) : true),
+    activatedAt: Number(raw.activatedAt || raw.activated_at || raw.createdAt || raw.created_at || now),
+    expiresAt: (raw.expiresAt !== undefined && raw.expiresAt !== null && raw.expiresAt !== '' && Number(raw.expiresAt) > 0)
+      ? Number(raw.expiresAt)
+      : ((raw.expires_at !== undefined && raw.expires_at !== null && raw.expires_at !== '' && Number(raw.expires_at) > 0)
+        ? Number(raw.expires_at)
+        : null),
+    note: String(raw.note || '').trim(),
+    createdAt: Number(raw.createdAt || raw.created_at || now)
+  };
+}
+
 function readLocalState() {
   try {
     if (!fs.existsSync(LOCAL_DB_PATH)) {
       fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(DEFAULT_STATE, null, 2), 'utf-8');
       return JSON.parse(JSON.stringify(DEFAULT_STATE));
     }
-    return JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf-8'));
+    const state = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf-8'));
+    state.players = (state.players || []).map(normalizePlayerRecord);
+    return state;
   } catch (err) {
     console.error('[DB] Error reading local_db.json:', err.message);
     return JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -61,8 +88,18 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS players (
         name TEXT PRIMARY KEY,
         password TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        activated_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+        expires_at BIGINT NULL,
+        note TEXT DEFAULT '',
         created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       );
+
+      ALTER TABLE players ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+      ALTER TABLE players ADD COLUMN IF NOT EXISTS activated_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
+      ALTER TABLE players ADD COLUMN IF NOT EXISTS expires_at BIGINT NULL;
+      ALTER TABLE players ADD COLUMN IF NOT EXISTS note TEXT DEFAULT '';
+      ALTER TABLE players ADD COLUMN IF NOT EXISTS created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 
       CREATE TABLE IF NOT EXISTS matches (
         id TEXT PRIMARY KEY,
@@ -86,9 +123,12 @@ async function initDb() {
     // Seed default player XO if players table is empty
     const { rows: playerCount } = await pool.query('SELECT COUNT(*)::INT AS cnt FROM players');
     if (playerCount[0].cnt === 0) {
+      const now = Date.now();
       await pool.query(
-        'INSERT INTO players (name, password) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING',
-        ['XO', '111']
+        `INSERT INTO players (name, password, is_active, activated_at, expires_at, note, created_at)
+         VALUES ($1, $2, TRUE, $3, NULL, $4, $3)
+         ON CONFLICT (name) DO NOTHING`,
+        ['XO', '111', now, 'Admin / Chủ hệ thống']
       );
     }
 
@@ -107,25 +147,26 @@ async function initDb() {
 
 async function getPlayers() {
   if (!usePostgres) {
-    return readLocalState().players || [];
+    return (readLocalState().players || []).map(normalizePlayerRecord);
   }
-  const { rows } = await pool.query('SELECT name, password FROM players ORDER BY created_at ASC, name ASC');
-  return rows;
+  const { rows } = await pool.query(
+    `SELECT name, password, is_active, activated_at, expires_at, note, created_at
+     FROM players
+     ORDER BY created_at ASC, name ASC`
+  );
+  return rows.map(normalizePlayerRecord);
 }
 
 async function savePlayers(players) {
   const cleanPlayers = (Array.isArray(players) ? players : [])
-    .map(p => ({
-      name: String(p.name || '').trim(),
-      password: String(p.password !== undefined ? p.password : '123').trim()
-    }))
+    .map(normalizePlayerRecord)
     .filter(p => p.name.length > 0);
 
   if (!usePostgres) {
     const state = readLocalState();
     state.players = cleanPlayers;
     writeLocalState(state);
-    return;
+    return cleanPlayers;
   }
 
   const client = await pool.connect();
@@ -134,8 +175,15 @@ async function savePlayers(players) {
     await client.query('DELETE FROM players');
     for (const p of cleanPlayers) {
       await client.query(
-        'INSERT INTO players (name, password) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET password = EXCLUDED.password',
-        [p.name, p.password]
+        `INSERT INTO players (name, password, is_active, activated_at, expires_at, note, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (name) DO UPDATE SET
+           password = EXCLUDED.password,
+           is_active = EXCLUDED.is_active,
+           activated_at = EXCLUDED.activated_at,
+           expires_at = EXCLUDED.expires_at,
+           note = EXCLUDED.note`,
+        [p.name, p.password, p.isActive, p.activatedAt, p.expiresAt, p.note, p.createdAt]
       );
     }
     await client.query('COMMIT');
@@ -145,6 +193,51 @@ async function savePlayers(players) {
   } finally {
     client.release();
   }
+  return cleanPlayers;
+}
+
+async function upsertPlayer(playerObj) {
+  const p = normalizePlayerRecord(playerObj);
+  if (!p.name) throw new Error('Tên Player không hợp lệ');
+
+  if (!usePostgres) {
+    const state = readLocalState();
+    const idx = state.players.findIndex(item => item.name.toLowerCase() === p.name.toLowerCase());
+    if (idx >= 0) {
+      p.name = state.players[idx].name;
+      p.createdAt = state.players[idx].createdAt || p.createdAt;
+      state.players[idx] = p;
+    } else {
+      state.players.push(p);
+    }
+    writeLocalState(state);
+    return p;
+  }
+
+  await pool.query(
+    `INSERT INTO players (name, password, is_active, activated_at, expires_at, note, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (name) DO UPDATE SET
+       password = EXCLUDED.password,
+       is_active = EXCLUDED.is_active,
+       activated_at = EXCLUDED.activated_at,
+       expires_at = EXCLUDED.expires_at,
+       note = EXCLUDED.note`,
+    [p.name, p.password, p.isActive, p.activatedAt, p.expiresAt, p.note, p.createdAt]
+  );
+  return p;
+}
+
+async function deletePlayerByName(name) {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) return;
+  if (!usePostgres) {
+    const state = readLocalState();
+    state.players = (state.players || []).filter(p => p.name.toLowerCase() !== cleanName.toLowerCase());
+    writeLocalState(state);
+    return;
+  }
+  await pool.query('DELETE FROM players WHERE LOWER(name) = LOWER($1)', [cleanName]);
 }
 
 async function getMatches() {
@@ -232,6 +325,8 @@ module.exports = {
   initDb,
   getPlayers,
   savePlayers,
+  upsertPlayer,
+  deletePlayerByName,
   getMatches,
   saveMatch,
   deleteMatches,
@@ -239,4 +334,3 @@ module.exports = {
   saveSetting,
   isPostgresActive: () => usePostgres
 };
-

@@ -14,7 +14,9 @@ import numpy as np
 import requests
 from PIL import Image, ImageGrab, ImageDraw, ImageFont
 
-APP_VERSION = "v4.0.0"
+APP_VERSION = "v4.1.0"
+APP_TITLE = "TOOL BẢNG QUÂN AOE BY XO"
+DEFAULT_SERVER_URL = "https://aoe-tracker.onrender.com/"
 
 # ==============================================================================
 # 1. DANH SÁCH 16 QUÂN AOE 1 & BẢNG MÀU CHUẨN TRONG BẢNG DIPLOMACY
@@ -39,17 +41,18 @@ CIV_LIST = [
 ]
 
 # 8 màu chuẩn của AOE (0..7 tương ứng mảng COLORS trên overlay.html)
+# Đo trực tiếp trên dải vải cờ thuần túy (loại bỏ 100% nền đá xám và chữ trắng)
 # 0: Blue (Xanh lam), 1: Orange (Cam), 2: Red (Đỏ), 3: Yellow (Vàng),
 # 4: Green (Xanh lá), 5: Gray/White (Xám trắng), 6: Brown (Nâu), 7: Cyan (Xanh cung)
 AOE_RIBBON_HSV = {
-    0: (115.0, 155.0, 105.0),  # P1 - Blue (Xanh lam)
-    1: (13.0,  200.0, 120.0),  # P2 - Orange (Cam)
-    2: (2.0,   172.0, 110.0),  # P3 - Red (Đỏ)
-    3: (21.0,  142.0, 105.0),  # P4 - Yellow (Vàng)
-    4: (50.0,   72.0,  75.0),  # P5 - Green (Xanh lá)
-    5: (0.0,     5.0,  78.0),  # P6 - Gray/White (Xám trắng)
-    6: (14.5,   88.0,  82.0),  # P7 - Brown (Nâu)
-    7: (88.0,  108.0,  84.0),  # P8 - Cyan (Xanh cung)
+    0: (113.0, 195.0, 118.0),  # P1 - Blue (Xanh lam)
+    1: (13.0,  232.0, 142.0),  # P2 - Orange (Cam)
+    2: (2.0,   232.0, 122.0),  # P3 - Red (Đỏ)
+    3: (22.5,  168.0, 124.0),  # P4 - Yellow (Vàng)
+    4: (50.0,  128.0,  72.0),  # P5 - Green (Xanh lá)
+    5: (0.0,     4.0,  78.0),  # P6 - Gray/White (Xám trắng)
+    6: (14.5,  128.0,  82.0),  # P7 - Brown (Nâu)
+    7: (88.5,  215.0,  80.0),  # P8 - Cyan (Xanh cung)
 }
 
 COLOR_NAMES_VI = {
@@ -74,15 +77,31 @@ COLOR_HEX = {
     7: "#22d3ee",
 }
 
-# Danh sách tên máy (AI) chuẩn trong AOE 1 để tự động sửa lỗi chính tả OCR nếu đấu với máy
-KNOWN_AI_NAMES = [
-    "Nabonidus", "Hyon", "Zobdas", "Keiko", "Syphax", "Amenophis",
-    "Hamilcar Barca", "Erythrus", "Hippocrates", "Enmerkar", "Tudhalyas",
-    "Gilgamesh", "Mithridates", "Astyages", "Marcus Aurelius", "Himiko",
-    "Cleopatra", "Pericles", "Hammurabi", "Ashurbanipal", "Minos",
-    "Suppiluliumas", "Hiram", "Sargon", "Cyrus", "Tang", "Jimmu",
-    "Dangun", "Caesar", "Hannibal", "Zenobia", "Alexander"
-]
+# Danh sách tên máy (AI) chuẩn theo từng loại quân trong AOE 1 Rise of Rome
+CIV_AI_NAMES = {
+    "Assyrian": ["Ashurbanipal", "Sargon", "Sennacherib", "Shalmaneser", "Tiglath-Pileser", "Tukulti-Ninurta", "Adad-nirari", "Esarhaddon"],
+    "Babylonian": ["Nabonidus", "Hammurabi", "Nebuchadnezzar", "Tiglath-Pileser", "Sumu-abum", "Samsu-iluna", "Burna-Buriash"],
+    "Carthaginian": ["Hamilcar Barca", "Matho", "Hannibal", "Hasdrubal", "Hanno", "Mago", "Gisco", "Bomilcar"],
+    "Choson": ["Hyon", "Dangun", "Gwanggaeto", "Jumong", "Kija", "Ugeo", "Wiman", "Ulji Mundok"],
+    "Egyptian": ["Amenophis", "Ramses", "Cleopatra", "Hatshepsut", "Khufu", "Nefertiti", "Ptolemy", "Seti", "Thutmose", "Tutankhamun"],
+    "Greek": ["Leonidas", "Erythrus", "Pericles", "Alexander", "Hippocrates", "Themistocles", "Pyrrhus", "Lysander", "Alcibiades"],
+    "Hittite": ["Tudhalyas", "Suppiluliumas", "Hattusilis", "Labarnas", "Mursilis", "Muwatalli", "Telipinus"],
+    "Macedonian": ["Alexander", "Antigonus", "Antipater", "Cassander", "Craterus", "Demetrius", "Lysimachus", "Philip", "Ptolemy", "Seleucus"],
+    "Minoan": ["Erythrus", "Minos", "Asterion", "Deucalion", "Idomeneus", "Rhadamanthus", "Sarpedon", "Talos"],
+    "Palmyran": ["Zobdas", "Syphax", "Jugurtha", "Zenobia", "Odaenathus", "Vaballathus", "Hairan", "Longinus"],
+    "Persian": ["Astyages", "Cyrus", "Mithridates", "Darius", "Xerxes", "Cambyses", "Artaxerxes", "Shapur", "Tigranes"],
+    "Phoenician": ["Ahiram", "Hiram", "Abibaal", "Dido", "Ethbaal", "Ittobaal", "Pygmalion", "Zakarbaal"],
+    "Roman": ["Marcus Aurelius", "Caesar", "Augustus", "Pompey", "Scipio", "Sulla", "Trajan", "Crassus", "Marius"],
+    "Shang": ["Zhou Xin", "Tang", "Wu Ding", "Pan Geng", "Tai Jia", "Zu Yi", "Di Yi", "Tai Wu"],
+    "Sumerian": ["Enmerkar", "Gilgamesh", "Sargon", "Ur-Nammu", "Shulgi", "Eannatum", "Gudea", "Lugal-zage-si"],
+    "Yamato": ["Keiko", "Kammu", "Jimmu", "Himiko", "Nintoku", "Ojin", "Suinin", "Sujin", "Shotoku"],
+}
+
+KNOWN_AI_NAMES = []
+for _civ_names in CIV_AI_NAMES.values():
+    for _n in _civ_names:
+        if _n not in KNOWN_AI_NAMES:
+            KNOWN_AI_NAMES.append(_n)
 
 
 def normalize_ocr_for_civ(s: str) -> str:
@@ -99,23 +118,26 @@ NORM_CIV_TARGETS = [
 ]
 
 
-def build_civ_templates():
-    templates = {}
-    font = None
+def _get_arial_bold_font():
     for font_path in ["C:/Windows/Fonts/arialbd.ttf", "C:/Windows/Fonts/arial.ttf"]:
         if os.path.exists(font_path):
             try:
-                font = ImageFont.truetype(font_path, 12)
-                break
+                return ImageFont.truetype(font_path, 12)
             except Exception:
                 pass
+    return None
+
+
+def build_text_templates(word_list, max_w=110):
+    templates = {}
+    font = _get_arial_bold_font()
     if font is None:
         return templates
 
-    for full_name, _, _ in CIV_LIST:
-        img = Image.new("L", (110, 24), 0)
+    for word in word_list:
+        img = Image.new("L", (140, 24), 0)
         draw = ImageDraw.Draw(img)
-        draw.text((0, 2), full_name, fill=255, font=font)
+        draw.text((0, 2), word, fill=255, font=font)
         arr = np.array(img)
         ys, xs = np.where(arr > 80)
         if len(xs) == 0:
@@ -123,14 +145,15 @@ def build_civ_templates():
         patch = arr[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         new_w = max(1, int(round(patch.shape[1] * (12.0 / patch.shape[0]))))
         resized = cv2.resize(patch, (new_w, 12), interpolation=cv2.INTER_AREA)
-        canvas = np.zeros((12, 90), dtype=np.float32)
-        w_clip = min(90, new_w)
+        canvas = np.zeros((12, max_w), dtype=np.float32)
+        w_clip = min(max_w, new_w)
         canvas[:, :w_clip] = resized[:, :w_clip] / 255.0
-        templates[full_name] = (canvas, new_w)
+        templates[word] = (canvas, new_w)
     return templates
 
 
-CIV_TEMPLATES = build_civ_templates()
+CIV_TEMPLATES = build_text_templates([full for full, _, _ in CIV_LIST], max_w=90)
+AI_NAME_TEMPLATES = build_text_templates(KNOWN_AI_NAMES, max_w=110)
 
 
 # ==============================================================================
@@ -163,7 +186,6 @@ class DiplomacyScanner:
         best_score = -1.0
         best_box = None
 
-        # Khung Diplomacy luôn nằm tâm màn hình với bán rộng từ 14%..42% chiều ngang màn hình
         for hw in range(int(w * 0.14), int(w * 0.42), max(1, int(w / 1000))):
             hh = int(round(hw * (301.0 / 468.0)))
             x1, x2 = int(round(cx - hw)), int(round(cx + hw))
@@ -188,7 +210,6 @@ class DiplomacyScanner:
         if best_box is None or best_score < 480.0:
             return None, best_score
 
-        # Tinh chỉnh ±2px quanh best_box
         bx1, by1, bx2, by2 = best_box
         hw_base = (bx2 - bx1) // 2
         for hw in range(max(50, hw_base - 3), hw_base + 4):
@@ -214,12 +235,6 @@ class DiplomacyScanner:
 
     @staticmethod
     def verify_is_diplomacy_dialog(norm_624x400: np.ndarray) -> bool:
-        """
-        Kiểm tra chắc chắn 100% đây là cửa sổ DIPLOMACY:
-        1. Tiêu đề 'DIPLOMACY' chữ trắng ở (x: 230..400, y: 6..32)
-        2. Nút 'OK' chữ vàng ở góc dưới trái (x: 85..130, y: 370..394)
-        3. Tiêu đề cột 'Name' & 'Civilization' ở y: 54..72
-        """
         # 1. Check tiêu đề DIPLOMACY chữ trắng
         title_crop = norm_624x400[6:32, 230:400]
         min_t = np.min(title_crop, axis=2).astype(np.float32)
@@ -254,36 +269,72 @@ class DiplomacyScanner:
 
     @staticmethod
     def extract_ribbon_hsv(norm_624x400: np.ndarray, row_idx: int):
+        """
+        Trích xuất màu HSV chuẩn xác 100% từ dải vải cờ thuần túy nằm ngay dưới chữ tên Player
+        (y: yc+3..yc+8, x: 20..98) và loại bỏ hoàn toàn nền đá xám (S < 45) khỏi histogram Hue.
+        """
         yc = int(round(95.0 + row_idx * 29.8))
-        banner_crop = norm_624x400[yc - 10:yc + 10, 15:120]
-        hsv_b = cv2.cvtColor(banner_crop, cv2.COLOR_BGR2HSV)
-        # Loại bỏ chữ trắng (S < 45 & V > 185) và bóng đen (V < 50)
-        mask = (hsv_b[:, :, 2] >= 50) & ~((hsv_b[:, :, 1] < 45) & (hsv_b[:, :, 2] > 185))
-        if not np.any(mask):
+        cloth_strip = norm_624x400[yc + 3:yc + 8, 20:98]
+        hsv_strip = cv2.cvtColor(cloth_strip, cv2.COLOR_BGR2HSV)
+
+        valid_strip = hsv_strip[:, :, 2] >= 35
+        if not np.any(valid_strip):
             return (0.0, 0.0, 75.0)
-        pts = hsv_b[mask]
-        hist = cv2.calcHist([hsv_b], [0], mask.astype(np.uint8), [180], [0, 180])
-        dom_h = float(np.argmax(hist))
-        med_s = float(np.median(pts[:, 1]))
-        med_v = float(np.median(pts[:, 2]))
+
+        # Kiểm tra cờ Xám trắng (Color 5): hầu hết pixel trên dải vải cờ có độ bão hòa S < 38
+        s_85 = float(np.percentile(hsv_strip[:, :, 1][valid_strip], 85))
+        if s_85 < 38.0:
+            med_s = float(np.median(hsv_strip[:, :, 1][valid_strip]))
+            med_v = float(np.median(hsv_strip[:, :, 2][valid_strip]))
+            return (0.0, med_s, med_v)
+
+        # Đối với 7 màu có sắc độ: chỉ lấy các pixel thực sự có màu (S >= 45, V >= 35)
+        # để nền đá xám (H=0, S=0) không bao giờ làm lệch góc màu Hue!
+        banner_crop = norm_624x400[yc - 8:yc + 9, 18:102]
+        hsv_b = cv2.cvtColor(banner_crop, cv2.COLOR_BGR2HSV)
+        chrom_mask = (hsv_b[:, :, 1] >= 45) & (hsv_b[:, :, 2] >= 35) & ~((hsv_b[:, :, 1] < 60) & (hsv_b[:, :, 2] > 180))
+
+        if np.sum(chrom_mask) < 20:
+            med_s = float(np.median(hsv_strip[:, :, 1][valid_strip]))
+            med_v = float(np.median(hsv_strip[:, :, 2][valid_strip]))
+            return (0.0, med_s, med_v)
+
+        pts = hsv_b[chrom_mask]
+        hist = cv2.calcHist([hsv_b], [0], chrom_mask.astype(np.uint8), [180], [0, 180]).flatten()
+        smooth_hist = np.zeros(180, dtype=np.float32)
+        for h_i in range(180):
+            smooth_hist[h_i] = 0.25 * hist[(h_i - 1) % 180] + 0.5 * hist[h_i] + 0.25 * hist[(h_i + 1) % 180]
+        dom_h = float(np.argmax(smooth_hist))
+
+        strip_chrom = (hsv_strip[:, :, 1] >= 45) & (hsv_strip[:, :, 2] >= 35)
+        if np.sum(strip_chrom) >= 10:
+            med_s = float(np.median(hsv_strip[:, :, 1][strip_chrom]))
+            med_v = float(np.median(hsv_strip[:, :, 2][strip_chrom]))
+        else:
+            med_s = float(np.median(pts[:, 1]))
+            med_v = float(np.median(pts[:, 2]))
+
         return (dom_h, med_s, med_v)
 
     @staticmethod
     def ribbon_hsv_distance(feat, color_idx: int) -> float:
         h_val, s_val, v_val = feat
         th, ts, tv = AOE_RIBBON_HSV[color_idx]
-        # Màu 5 (Xám trắng) có độ bão hòa S rất thấp (< 25)
+
+        # Màu 5 (Xám trắng) có độ bão hòa S rất thấp (< 38)
         if color_idx == 5:
-            if s_val < 30:
+            if s_val < 38.0:
                 return abs(s_val - ts) * 0.5 + abs(v_val - tv) * 0.3
-            return 250.0 + s_val * 2.0
-        # Nếu thực tế ảnh có S rất thấp (< 22) thì phạt nặng các màu có sắc độ
-        if s_val < 22:
-            return 250.0
+            return 500.0 + s_val * 3.0
+
+        # Nếu thực tế cờ có S < 38 thì phạt nặng các màu có sắc độ
+        if s_val < 38.0:
+            return 500.0
+
         dh = min(abs(h_val - th), 180.0 - abs(h_val - th))
         ds = abs(s_val - ts)
         dv = abs(v_val - tv)
-        return dh * 2.8 + ds * 0.85 + dv * 0.5
+        return dh * 6.0 + ds * 0.9 + dv * 1.1
 
     @classmethod
     def assign_player_colors(cls, hsv_features):
@@ -302,8 +353,7 @@ class DiplomacyScanner:
     @staticmethod
     def run_windows_ocr_batch(multi_canvas_bgr: np.ndarray):
         """
-        Sử dụng trực tiếp Windows.Media.Ocr có sẵn trên mọi máy Windows 10/11
-        (Không cần cài đặt Tesseract-OCR hay thư viện ngoài).
+        Sử dụng trực tiếp Windows.Media.Ocr có sẵn trên mọi máy Windows 10/11.
         """
         tmp_fd, tmp_path = tempfile.mkstemp(suffix=".png", prefix="aoe_diplomacy_")
         os.close(tmp_fd)
@@ -382,7 +432,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
     def match_civ_for_row(norm_624x400: np.ndarray, row_idx: int, ocr_civ_candidates, w_obs: int):
         scores = {full: 0.0 for full, _, _ in CIV_LIST}
 
-        # 1. Điểm tương đồng chuỗi từ 3 mức phơi sáng OCR + điểm thưởng prefix 2 ký tự đầu duy nhất
         for full, short, exp_w, norm_target, raw_target in NORM_CIV_TARGETS:
             if w_obs > 0:
                 w_diff = abs(w_obs - exp_w)
@@ -404,7 +453,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 if len(clean_norm) >= 3 and (clean_norm in norm_target or norm_target in clean_norm):
                     sim3 = 0.65 + 0.35 * (min(len(clean_norm), len(norm_target)) / max(len(clean_norm), len(norm_target)))
 
-                # Kiểm tra 2 chữ cái đầu (Mỗi quân trong 16 quân AOE có 2 chữ cái đầu hoàn toàn khác nhau!)
                 if len(clean_raw) >= 2 and clean_raw[:2] == raw_target[:2]:
                     prefix_bonus = max(prefix_bonus, 0.45)
                 elif len(clean_norm) >= 2 and clean_norm[:2] == norm_target[:2]:
@@ -414,7 +462,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
             scores[full] += best_str_sim * 1.6 + prefix_bonus
 
-        # 2. Điểm tương quan mẫu ảnh (Template Matching 2D Arial Bold)
         if CIV_TEMPLATES:
             yc = int(round(95.0 + row_idx * 29.8))
             crop = norm_624x400[yc - 9:yc + 9, 139:235]
@@ -461,8 +508,14 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         return best_full, short_map[best_full]
 
     @staticmethod
-    def clean_and_match_player_name(ocr_name_candidates, row_idx: int, streamer_name: str, known_players=None):
-        # Hàng đầu tiên (Row 0) trong bảng Diplomacy luôn là người chơi mở bảng (Streamer)
+    def clean_and_match_player_name(
+        norm_624x400: np.ndarray,
+        ocr_name_candidates,
+        row_idx: int,
+        full_civ: str,
+        streamer_name: str,
+        known_players=None,
+    ):
         if row_idx == 0 and streamer_name and streamer_name.strip():
             return streamer_name.strip()
 
@@ -473,9 +526,10 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 ch = rep.get(ch, ch)
                 if ch.isascii() and ch.isalpha():
                     out.append(ch)
-            return "".join(out)
+            res_s = "".join(out)
+            res_s = res_s.replace("rn", "m").replace("nt", "m").replace("lt", "m").replace("ll", "l")
+            return res_s
 
-        # Chấm điểm độ sạch của từng ứng viên OCR (ưu tiên chữ cái ASCII chuẩn, phạt ký tự lạ)
         best_raw = ""
         best_quality = -1e9
         for exp_idx, raw in enumerate(ocr_name_candidates):
@@ -491,15 +545,18 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 best_quality = quality
                 best_raw = cleaned
 
-        # So khớp mờ (fuzzy match) với danh sách Player đã biết + tên AI chuẩn của AOE
-        pool = list(KNOWN_AI_NAMES)
+        civ_specific_ai = CIV_AI_NAMES.get(full_civ, [])
+        pool = list(civ_specific_ai) + [n for n in KNOWN_AI_NAMES if n not in civ_specific_ai]
+        human_pool = []
         if known_players:
             for p in known_players:
                 pname = p.get("name") if isinstance(p, dict) else str(p)
-                if pname and pname not in pool:
-                    pool.append(pname)
+                if pname and pname not in human_pool:
+                    human_pool.append(pname)
+                    if pname not in pool:
+                        pool.insert(0, pname)
         if streamer_name and streamer_name not in pool:
-            pool.append(streamer_name)
+            pool.insert(0, streamer_name)
 
         all_candidates = [c for c in ocr_name_candidates if c]
         if best_raw:
@@ -511,24 +568,107 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             cand_alpha = normalize_name_token(cand)
             if len(cand_alpha) < 2:
                 continue
+            cand_i = cand_alpha.replace("l", "i")
             for target in pool:
                 target_alpha = normalize_name_token(target)
-                sim = difflib.SequenceMatcher(None, cand_alpha, target_alpha).ratio()
-                if len(cand_alpha) >= 4 and (target_alpha.endswith(cand_alpha) or target_alpha.startswith(cand_alpha)):
-                    sim = max(sim, 0.85)
+                target_i = target_alpha.replace("l", "i")
+                sim = max(
+                    difflib.SequenceMatcher(None, cand_alpha, target_alpha).ratio(),
+                    difflib.SequenceMatcher(None, cand_i, target_i).ratio(),
+                )
+                if len(cand_i) >= 3 and (target_i.endswith(cand_i) or target_i.startswith(cand_i)):
+                    len_ratio = min(len(cand_i), len(target_i)) / max(len(cand_i), len(target_i))
+                    sim = max(sim, 0.74 + 0.18 * len_ratio)
+                # Điểm thưởng lớn nếu tên AI thuộc đúng loại quân (full_civ) của dòng này
+                if target in civ_specific_ai:
+                    sim += 0.22
                 if sim > best_sim:
                     best_sim = sim
                     best_match_name = target
 
+        # Nếu phân vân giữa Kammu và Jimmu (cùng quân Yamato), kiểm tra độ rộng của cụm chữ đầu 'Ka' (rộng) so với 'Ji' (hẹp)
+        if best_match_name in ("Kammu", "Jimmu") and full_civ == "Yamato":
+            yc = int(round(95.0 + row_idx * 29.8))
+            fc_crop = norm_624x400[yc - 7:yc + 3, 14:65]
+            wh_fc = np.min(fc_crop, axis=2).astype(np.float32) - 0.55 * (
+                np.max(fc_crop, axis=2).astype(np.float32) - np.min(fc_crop, axis=2).astype(np.float32)
+            )
+            cols_fc = np.where(np.sum(wh_fc > 155.0, axis=0) >= 1)[0]
+            span_w = int(cols_fc[-1] - cols_fc[0] + 1) if len(cols_fc) >= 2 else 0
+            best_match_name = "Kammu" if span_w >= 34 else "Jimmu"
+
         if best_match_name and best_sim >= 0.60:
             return best_match_name
+
+        # Fallback thông minh cho dòng cờ Xám trắng (hoặc ảnh độ phân giải thấp) khi đấu với AI:
+        # So khớp chiều rộng & mẫu chữ 2D với danh sách AI chuẩn của đúng loại quân (full_civ)
+        if civ_specific_ai and AI_NAME_TEMPLATES:
+            yc = int(round(95.0 + row_idx * 29.8))
+            crop = norm_624x400[yc - 7:yc + 3, 14:120]
+            min_rgb = np.min(crop, axis=2).astype(np.float32)
+            max_rgb = np.max(crop, axis=2).astype(np.float32)
+            wh = min_rgb - 0.55 * (max_rgb - min_rgb)
+            thr = max(float(np.percentile(wh, 84)) + 14.0, 168.0)
+            val = np.clip((wh - thr) / 55.0, 0.0, 1.0)
+            mask = val > 0.25
+            col_sum = np.sum(mask, axis=0)
+            xmin = 0
+            while xmin < len(col_sum) and col_sum[xmin] < 2:
+                xmin += 1
+            xmax = xmin
+            empty_run = 0
+            for x in range(xmin, len(col_sum)):
+                if col_sum[x] >= 2:
+                    xmax = x
+                    empty_run = 0
+                else:
+                    empty_run += 1
+                    if empty_run >= 5 and (xmax - xmin) >= 12:
+                        break
+            if xmax > xmin + 8:
+                patch = val[:, xmin:xmax + 1]
+                nw = max(1, int(round(patch.shape[1] * (12.0 / 10.0))))
+                resized = cv2.resize(patch, (nw, 12), interpolation=cv2.INTER_LINEAR)
+                feat = np.zeros((12, 110), dtype=np.float32)
+                wc = min(110, nw)
+                feat[:, :wc] = resized[:, :wc]
+                best_ai_t = None
+                best_ai_sc = -1.0
+                for ai_name in civ_specific_ai:
+                    if ai_name not in AI_NAME_TEMPLATES:
+                        continue
+                    tmpl, tw = AI_NAME_TEMPLATES[ai_name]
+                    w_score = max(0.0, 1.0 - abs(nw - tw) / 20.0) * 0.55
+                    max_corr = -1.0
+                    for dx in range(-2, 3):
+                        if dx >= 0:
+                            a = feat[:, dx:]
+                            b_t = tmpl[:, :a.shape[1]]
+                        else:
+                            b_t = tmpl[:, -dx:]
+                            a = feat[:, :b_t.shape[1]]
+                        num = float(np.sum((a - a.mean()) * (b_t - b_t.mean())))
+                        den = float(np.sqrt(np.sum((a - a.mean()) ** 2) * np.sum((b_t - b_t.mean()) ** 2))) + 1e-6
+                        corr = num / den
+                        if corr > max_corr:
+                            max_corr = corr
+                    total_sc = max(0.0, max_corr) * 0.45 + w_score
+                    if total_sc > best_ai_sc:
+                        best_ai_sc = total_sc
+                        best_ai_t = ai_name
+                if best_ai_t in ("Kammu", "Jimmu") and full_civ == "Yamato":
+                    first_char = norm_624x400[yc - 7:yc + 2, 14:22]
+                    wh_fc = np.min(first_char, axis=2).astype(np.float32)
+                    top_left_ink = float(np.mean(wh_fc[:4, :3] > 165))
+                    best_ai_t = "Kammu" if top_left_ink >= 0.25 else "Jimmu"
+                if best_ai_t and best_ai_sc >= 0.48:
+                    return best_ai_t
 
         return best_raw if best_raw else f"Player {row_idx + 1}"
 
     def parse_diplomacy_from_image(self, img_bgr: np.ndarray, streamer_name: str = "XO", known_players=None, force: bool = False):
         """
         Trích xuất toàn bộ thông tin từ ảnh chụp màn hình có mở bảng DIPLOMACY.
-        Trả về dict kết quả hoặc None nếu không phải màn hình DIPLOMACY.
         """
         box, box_score = self.find_diplomacy_box(img_bgr)
         if box is None:
@@ -548,14 +688,12 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         self.last_dialog_signature = sig
         self.last_scan_time = time.time()
 
-        # Tính gradient để nhận diện dấu 'X' trong 3 cột Ally / Neutral / Enemy
         gray = cv2.cvtColor(norm, cv2.COLOR_BGR2GRAY)
         edges = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)) + np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
 
         active_rows = []
-        multi_canvas = np.full((8 * 70, 2300, 3), 255, dtype=np.uint8)
+        multi_canvas = np.full((8 * 70, 2900, 3), 255, dtype=np.uint8)
 
-        # Đặt thêm vùng bảng điểm F4 góc dưới phải màn hình (nếu có) vào x=1820..2280 để hỗ trợ đọc tên người chơi nền đen
         h_full, w_full = img_bgr.shape[:2]
         f4_crop = img_bgr[int(h_full * 0.58):int(h_full * 0.85), int(w_full * 0.82):w_full]
         if f4_crop.size > 0:
@@ -563,7 +701,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             max_f4 = np.max(f4_up, axis=2).astype(np.float32)
             a_f4 = np.clip((max_f4 - 48.0) / 110.0, 0.0, 1.0)
             ink_f4 = cv2.cvtColor((255.0 * (1.0 - a_f4)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
-            multi_canvas[10:530, 1830:2270] = ink_f4
+            multi_canvas[10:530, 2430:2870] = ink_f4
 
         for r in range(8):
             yc = int(round(95.0 + r * 29.8))
@@ -580,7 +718,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             valid_xs = np.where(col_counts >= 1)[0]
             w_obs = int(valid_xs[-1] - valid_xs[0] + 1) if len(valid_xs) > 0 else 0
 
-            # Xác định phe (ALLY vs ENEMY)
             if r == 0:
                 stance = "ALLY"
             else:
@@ -600,7 +737,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 "w_obs": w_obs,
             })
 
-            # Vẽ 3 mức phơi sáng cho Name & Civilization lên multi_canvas để OCR 1 lần duy nhất
             for x_start, x_end, base_x in [(12, 136, 20), (140, 238, 320)]:
                 cell = norm[yc - 11:yc + 11, x_start:x_end]
                 up1 = cv2.resize(cell, (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_LANCZOS4)
@@ -628,33 +764,43 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 a3 = np.clip((contrast - (bg3 + 15.0)) / 45.0, 0.0, 1.0)
                 ink3 = cv2.cvtColor((255.0 * (1.0 - a3)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
 
+                # Phơi sáng 4: Thích ứng ngưỡng cao trên nền cờ màu (cắt sát dòng yc-10..yc+10)
+                cell4 = norm[yc - 10:yc + 10, x_start:x_end]
+                up4 = cv2.resize(cell4, (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_LANCZOS4)
+                min4 = np.min(up4, axis=2).astype(np.float32)
+                max4 = np.max(up4, axis=2).astype(np.float32)
+                wh4 = min4 - 0.55 * (max4 - min4)
+                bg_high = max(float(np.percentile(wh4, 65)) + 16.0, float(np.percentile(wh4, 88)) + 6.0)
+                a4 = np.clip((wh4 - bg_high) / 38.0, 0.0, 1.0)
+                ink4 = cv2.cvtColor((255.0 * (1.0 - a4)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+                hp4, wp4 = ink4.shape[:2]
+
                 hp, wp = ink1.shape[:2]
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x:base_x + wp] = ink1
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x + 600:base_x + 600 + wp] = ink2
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
+                multi_canvas[r * 70 + 8:r * 70 + 8 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
 
         if not active_rows:
             return None
 
-        # Gán màu chuẩn không trùng lặp cho tất cả người chơi trong trận
         assigned_colors = self.assign_player_colors([item["hsv_feat"] for item in active_rows])
         for item, color_id in zip(active_rows, assigned_colors):
             item["color_id"] = color_id
 
-        # Chạy Windows OCR trên toàn bộ các dòng
         ocr_words = self.run_windows_ocr_batch(multi_canvas)
 
         for item in active_rows:
             r = item["row_idx"]
             row_y_min, row_y_max = r * 70, (r + 1) * 70
-            name_cands = [[], [], []]
-            civ_cands = [[], [], []]
+            name_cands = [[], [], [], []]
+            civ_cands = [[], [], [], []]
             for w in ocr_words:
                 wy = w.get("y", -1)
                 if row_y_min <= wy <= row_y_max:
                     wx = w.get("x", 0)
                     exp_idx = wx // 600
-                    if exp_idx > 2:
+                    if exp_idx > 3:
                         continue
                     rel_x = wx % 600
                     if rel_x < 300:
@@ -666,17 +812,17 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             civ_strs = [" ".join(t for _, t in sorted(cand)) for cand in civ_cands if cand]
 
             full_civ, short_civ = self.match_civ_for_row(norm, r, civ_strs, item["w_obs"])
-            player_name = self.clean_and_match_player_name(name_strs, r, streamer_name, known_players)
+            player_name = self.clean_and_match_player_name(
+                norm, name_strs, r, full_civ, streamer_name, known_players
+            )
 
             item["name"] = player_name
             item["civ_full"] = full_civ
             item["civ_short"] = short_civ
 
-        # Chia thành Team Đỏ (Bản thân + Đồng minh ALLY) và Team Xanh (Đối thủ ENEMY)
         red_rows = [item for item in active_rows if item["stance"] == "ALLY"]
         blue_rows = [item for item in active_rows if item["stance"] != "ALLY"]
 
-        # Trường hợp đầu trận chưa kịp tích Ally (tất cả đều là ENEMY trừ Row 0) và có >= 4 người chơi:
         if len(red_rows) == 1 and len(blue_rows) >= 3 and len(active_rows) % 2 == 0:
             half = len(active_rows) // 2
             red_rows = active_rows[:half]
@@ -707,7 +853,7 @@ def get_settings_path() -> Path:
 def load_user_settings() -> dict:
     path = get_settings_path()
     default_cfg = {
-        "server_url": "http://localhost:3000",
+        "server_url": DEFAULT_SERVER_URL,
         "player_name": "XO",
         "player_password": "111",
         "auto_scan": True,
@@ -715,6 +861,10 @@ def load_user_settings() -> dict:
     if path.exists():
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
+            # Tự động nâng cấp URL cũ localhost sang server Render mặc định mới
+            saved_url = str(data.get("server_url", "")).strip()
+            if not saved_url or "localhost:3000" in saved_url:
+                data["server_url"] = DEFAULT_SERVER_URL
             default_cfg.update(data)
         except Exception:
             pass
@@ -738,8 +888,8 @@ class AOETrackerApp:
         self.filedialog = filedialog
         self.messagebox = messagebox
         self.root = root
-        self.root.title(f"Tool Bảng Quân AOE (bangquanaoe) {APP_VERSION} - Tự Động Quét Diplomacy")
-        self.root.geometry("680x640")
+        self.root.title(APP_TITLE)
+        self.root.geometry("720x660")
         self.root.configure(bg="#090d16")
         self.root.resizable(True, True)
 
@@ -754,7 +904,6 @@ class AOETrackerApp:
         self.threading_loop = threading.Thread(target=self._background_worker, daemon=True)
         self.threading_loop.start()
 
-        # Tự động kết nối nếu đã lưu thông tin từ lần trước
         if self.settings.get("player_name") and self.settings.get("player_password"):
             self.root.after(400, self.login_and_start)
 
@@ -767,8 +916,8 @@ class AOETrackerApp:
 
         title_lbl = tk.Label(
             hdr,
-            text="⚔️ TOOL BẢNG QUÂN AOE (BANGQUANAOE) - AUTO DIPLOMACY",
-            font=("Segoe UI", 12, "bold"),
+            text=f"⚔️ {APP_TITLE}",
+            font=("Segoe UI", 13, "bold"),
             fg="#fbbf24",
             bg="#111827",
         )
@@ -776,7 +925,7 @@ class AOETrackerApp:
 
         sub_lbl = tk.Label(
             hdr,
-            text="Tự động nhận diện Bảng Quân & Màu khi mở Diplomacy (F2) trong game • Không cần cài đặt Tesseract hay sửa file config",
+            text="Tự động nhận diện Bảng Quân & Màu chuẩn khi ấn Diplomacy (F2) trong game • Đồng bộ OBS Overlay & Web Realtime",
             font=("Segoe UI", 8),
             fg="#94a3b8",
             bg="#111827",
@@ -795,10 +944,10 @@ class AOETrackerApp:
         )
         login_frame.pack(fill="x", padx=12, pady=6)
 
-        tk.Label(login_frame, text="Server URL (Render/Web):", font=("Segoe UI", 9), fg="#cbd5e1", bg="#0f172a").grid(
+        tk.Label(login_frame, text="Server URL:", font=("Segoe UI", 9), fg="#cbd5e1", bg="#0f172a").grid(
             row=0, column=0, sticky="w", pady=4
         )
-        self.server_url_var = tk.StringVar(value=self.settings.get("server_url", "http://localhost:3000"))
+        self.server_url_var = tk.StringVar(value=self.settings.get("server_url", DEFAULT_SERVER_URL))
         tk.Entry(
             login_frame,
             textvariable=self.server_url_var,
@@ -806,7 +955,7 @@ class AOETrackerApp:
             bg="#1e293b",
             fg="#f8fafc",
             insertbackground="#f8fafc",
-            width=48,
+            width=50,
             relief="flat",
         ).grid(row=0, column=1, columnspan=3, sticky="we", padx=(8, 0), pady=4, ipady=3)
 
@@ -853,7 +1002,7 @@ class AOETrackerApp:
             fg="#090d16",
             activebackground="#d97706",
             relief="flat",
-            padx=12,
+            padx=10,
             pady=4,
             cursor="hand2",
         )
@@ -861,7 +1010,7 @@ class AOETrackerApp:
 
         self.copy_obs_btn = tk.Button(
             btn_row,
-            text="📺 Copy Link OBS Overlay",
+            text="📺 Copy Link OBS",
             command=self.copy_obs_link,
             font=("Segoe UI", 9, "bold"),
             bg="#312e81",
@@ -872,17 +1021,32 @@ class AOETrackerApp:
             pady=4,
             cursor="hand2",
         )
-        self.copy_obs_btn.pack(side="left", padx=8)
+        self.copy_obs_btn.pack(side="left", padx=6)
+
+        self.obs_guide_btn = tk.Button(
+            btn_row,
+            text="📖 Hướng Dẫn Gán OBS",
+            command=self.show_obs_guide_window,
+            font=("Segoe UI", 9, "bold"),
+            bg="#4f46e5",
+            fg="#ffffff",
+            activebackground="#4338ca",
+            relief="flat",
+            padx=10,
+            pady=4,
+            cursor="hand2",
+        )
+        self.obs_guide_btn.pack(side="left", padx=(0, 6))
 
         self.open_web_btn = tk.Button(
             btn_row,
-            text="🌐 Mở Trang Web Quản Lý",
+            text="🌐 Mở Web Quản Lý",
             command=self.open_web_dashboard,
             font=("Segoe UI", 9),
             bg="#1e293b",
             fg="#cbd5e1",
             relief="flat",
-            padx=10,
+            padx=8,
             pady=4,
             cursor="hand2",
         )
@@ -904,7 +1068,7 @@ class AOETrackerApp:
         # Khung Điều Khiển Trận Đấu & Quét Bảng Quân
         match_frame = tk.LabelFrame(
             self.root,
-            text=" 2. Trạng Thái Quét & Điều Khiển Nhanh Kèo Đấu ",
+            text=" 2. Trạng Thái Tài Khoản & Điều Khiển Nhanh Kèo Đấu ",
             font=("Segoe UI", 9, "bold"),
             fg="#4ade80",
             bg="#0f172a",
@@ -1023,9 +1187,9 @@ class AOETrackerApp:
             pady=8,
         )
         self.log_box.pack(fill="both", expand=True)
-        self.log("✨ Chào mừng bạn đến với Tool Bảng Quân AOE (bangquanaoe) v4.0.0!")
-        self.log("👉 Nhập Server URL, Tên Player & Mật khẩu rồi bấm 'Lưu & Kết Nối Ngay'.")
-        self.log("👉 Trong khi chơi AOE, chỉ cần bấm Diplomacy (F2) là bảng quân và OBS Overlay sẽ tự động cập nhật!")
+        self.log(f"✨ Chào mừng bạn đến với {APP_TITLE} ({APP_VERSION})!")
+        self.log("👉 Nhập Tên Player & Mật khẩu đã được Admin XO cấp rồi bấm 'Lưu & Kết Nối Ngay'.")
+        self.log("👉 Bấm nút '📖 Hướng Dẫn Gán OBS' để xem cách đưa bảng quân lên Livestream.")
 
     def log(self, message: str):
         ts = time.strftime("%H:%M:%S")
@@ -1037,22 +1201,130 @@ class AOETrackerApp:
 
         self.root.after(0, _append)
 
-    def get_api_endpoint(self) -> str:
+    def get_base_server_url(self) -> str:
         base = self.server_url_var.get().strip().rstrip("/")
+        if not base:
+            base = DEFAULT_SERVER_URL.rstrip("/")
         if not base.startswith("http"):
             base = "https://" + base
         if base.endswith("/api"):
-            return base
-        return base + "/api"
+            base = base[:-4]
+        return base
+
+    def get_api_endpoint(self) -> str:
+        return self.get_base_server_url() + "/api"
 
     def save_current_config(self):
+        url_val = self.server_url_var.get().strip() or DEFAULT_SERVER_URL
         self.settings = {
-            "server_url": self.server_url_var.get().strip().rstrip("/"),
+            "server_url": url_val,
             "player_name": self.player_name_var.get().strip(),
             "player_password": self.player_pass_var.get().strip(),
             "auto_scan": bool(self.auto_scan_var.get()),
         }
         save_user_settings(self.settings)
+
+    def show_obs_guide_window(self):
+        tk = self.tk
+        base = self.get_base_server_url()
+        name = self.player_name_var.get().strip() or "XO"
+        obs_url = f"{base}/overlay.html?streamer={name}"
+
+        win = tk.Toplevel(self.root)
+        win.title("Hướng Dẫn Gán Link OBS Hiển Thị Lên Livestream")
+        win.geometry("620x470")
+        win.configure(bg="#0f172a")
+        win.resizable(False, False)
+
+        tk.Label(
+            win,
+            text="📺 HƯỚNG DẪN GÁN BẢNG QUÂN VÀO OBS STUDIO",
+            font=("Segoe UI", 12, "bold"),
+            fg="#fbbf24",
+            bg="#0f172a",
+            pady=10,
+        ).pack(anchor="w", padx=16)
+
+        step1 = tk.LabelFrame(
+            win,
+            text=" Bước 1: Copy Link OBS Overlay của bạn ",
+            font=("Segoe UI", 9, "bold"),
+            fg="#38bdf8",
+            bg="#1e293b",
+            padx=12,
+            pady=8,
+        )
+        step1.pack(fill="x", padx=16, pady=6)
+
+        url_entry = tk.Entry(
+            step1,
+            font=("Consolas", 9, "bold"),
+            bg="#090d16",
+            fg="#4ade80",
+            relief="flat",
+            readonlybackground="#090d16",
+        )
+        url_entry.insert(0, obs_url)
+        url_entry.configure(state="readonly")
+        url_entry.pack(side="left", fill="x", expand=True, ipady=4, padx=(0, 8))
+
+        tk.Button(
+            step1,
+            text="📋 Copy Link OBS",
+            command=self.copy_obs_link,
+            font=("Segoe UI", 9, "bold"),
+            bg="#4f46e5",
+            fg="#ffffff",
+            relief="flat",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right")
+
+        step2 = tk.LabelFrame(
+            win,
+            text=" Bước 2: Thêm Browser Source trong phần mềm OBS Studio ",
+            font=("Segoe UI", 9, "bold"),
+            fg="#38bdf8",
+            bg="#1e293b",
+            padx=12,
+            pady=8,
+        )
+        step2.pack(fill="x", padx=16, pady=6)
+
+        guide_text = (
+            "1. Mở phần mềm OBS Studio trên máy tính.\n"
+            "2. Nhìn xuống khung 'Sources' (Nguồn) -> Bấm dấu [+] -> Chọn 'Browser' (Trình duyệt).\n"
+            "3. Đặt tên nguồn (ví dụ: Bang Quan AOE) rồi bấm OK.\n"
+            "4. Trong bảng Properties hiện ra, điền chính xác như sau:\n"
+            "   • Ô Local file : Bỏ tích (Không chọn)\n"
+            f"   • Ô URL        : Dán link vừa Copy ({obs_url})\n"
+            "   • Ô Width      : 800\n"
+            "   • Ô Height     : 600\n"
+            "5. Bấm OK! Bảng quân nền trong suốt sẽ hiển thị ngay trên màn hình Live.\n"
+            "   Mỗi khi vào trận bạn bấm Diplomacy (F2), bảng quân trên OBS sẽ tự động cập nhật!"
+        )
+        tk.Label(
+            step2,
+            text=guide_text,
+            justify="left",
+            font=("Segoe UI", 9),
+            fg="#f8fafc",
+            bg="#1e293b",
+        ).pack(anchor="w")
+
+        tk.Button(
+            win,
+            text="Đã Hiểu & Đóng Hướng Dẫn",
+            command=win.destroy,
+            font=("Segoe UI", 9, "bold"),
+            bg="#f59e0b",
+            fg="#090d16",
+            relief="flat",
+            padx=16,
+            pady=6,
+            cursor="hand2",
+        ).pack(pady=14)
 
     def login_and_start(self):
         self.save_current_config()
@@ -1071,7 +1343,6 @@ class AOETrackerApp:
                         "action": "verifyPlayerLogin",
                         "playerName": name,
                         "password": pw,
-                        "autoRegister": True,
                     },
                     timeout=12,
                 )
@@ -1079,11 +1350,14 @@ class AOETrackerApp:
                 if data.get("status") == "success":
                     self.is_logged_in = True
                     canonical = data.get("playerName", name)
+                    exp_fmt = data.get("expiresFormatted", "Vĩnh viễn")
+                    days_left = data.get("daysLeft")
+                    exp_str = f"{exp_fmt} (Còn {days_left} ngày)" if days_left is not None else exp_fmt
                     self.root.after(0, lambda: self.player_name_var.set(canonical))
                     self.root.after(
                         0,
                         lambda: self.status_lbl.config(
-                            text=f"🟢 Đã kết nối ({canonical}) - Đang tự động theo dõi màn hình Diplomacy (F2)",
+                            text=f"🟢 Đã kết nối: {canonical} | Trạng thái: ACTIVE | Hạn SD: {exp_str}",
                             fg="#4ade80",
                         ),
                     )
@@ -1131,7 +1405,7 @@ class AOETrackerApp:
         self.root.after(0, lambda: self.score_lbl.config(text=txt))
 
     def copy_obs_link(self):
-        base = self.server_url_var.get().strip().rstrip("/")
+        base = self.get_base_server_url()
         name = self.player_name_var.get().strip() or "XO"
         obs_url = f"{base}/overlay.html?streamer={name}"
         self.root.clipboard_clear()
@@ -1140,8 +1414,7 @@ class AOETrackerApp:
 
     def open_web_dashboard(self):
         import webbrowser
-        base = self.server_url_var.get().strip().rstrip("/")
-        webbrowser.open(base)
+        webbrowser.open(self.get_base_server_url())
 
     def _send_parsed_diplomacy_to_server(self, parsed: dict, allow_same_civ: bool = False):
         red_str = ", ".join(
@@ -1152,7 +1425,7 @@ class AOETrackerApp:
             f"{p} [{c} - {COLOR_NAMES_VI.get(col, col)}]"
             for p, c, col in zip(parsed["bluePlayers"], parsed["blueCivs"], parsed["blueColors"])
         )
-        self.log(f"🎯 Đã quét bảng Diplomacy:")
+        self.log("🎯 Đã quét bảng Diplomacy:")
         self.log(f"   🔴 Team Đỏ  : {red_str}")
         self.log(f"   🔵 Team Xanh: {blue_str}")
 
@@ -1172,6 +1445,10 @@ class AOETrackerApp:
         try:
             res = requests.post(api_url, json=payload, timeout=15)
             data = res.json()
+            if data.get("status") == "error":
+                self.log(f"   ⛔ Từ chối: {data.get('message', '')}")
+                self.root.after(0, lambda: self.status_lbl.config(text=f"🔴 {data.get('message', '')}", fg="#f87171"))
+                return
             self.log(f"   ☁️ Server phản hồi: {data.get('message', '')}")
             if data.get("match"):
                 self.current_match = data["match"]
@@ -1209,7 +1486,6 @@ class AOETrackerApp:
 
         def _task():
             try:
-                # Đọc file hỗ trợ đường dẫn tiếng Việt Unicode trên Windows
                 raw_bytes = np.fromfile(file_path, dtype=np.uint8)
                 img_bgr = cv2.imdecode(raw_bytes, cv2.IMREAD_COLOR)
                 res = self.scanner.parse_diplomacy_from_image(
@@ -1301,7 +1577,6 @@ class AOETrackerApp:
                     if res and res.get("status") == "ok":
                         self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
 
-                # Định kỳ gửi heartbeat mỗi 60s để giữ kèo LIVE
                 if self.is_logged_in and (time.time() - last_heartbeat > 60.0):
                     last_heartbeat = time.time()
                     try:

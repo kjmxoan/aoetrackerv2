@@ -68,11 +68,25 @@ function getMode(count) {
 }
 
 function formatVietnamTime(ts = Date.now()) {
-  const now = new Date(ts);
-  // Adjust to UTC+7 if server runs in UTC (like Render.com)
+  const now = new Date(Number(ts));
   const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
   const pad = v => String(v).padStart(2, '0');
   return `${pad(vnTime.getHours())}:${pad(vnTime.getMinutes())} - ${pad(vnTime.getDate())}/${pad(vnTime.getMonth() + 1)}/${vnTime.getFullYear()}`;
+}
+
+function formatVietnamDateOnly(ts) {
+  if (!ts || Number(ts) <= 0) return 'Vĩnh viễn';
+  const now = new Date(Number(ts));
+  const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  const pad = v => String(v).padStart(2, '0');
+  return `${pad(vnTime.getDate())}/${pad(vnTime.getMonth() + 1)}/${vnTime.getFullYear()}`;
+}
+
+function isAdminAuthorized(data) {
+  if (!data || !data.isAdmin) return false;
+  if (data.adminPassword && String(data.adminPassword).trim() === ADMIN_PASSWORD) return true;
+  // Backward compatibility if session isAdmin was already verified
+  return Boolean(data.isAdmin && !data.adminPassword);
 }
 
 async function checkAndAutoFinishDeadMatches() {
@@ -87,36 +101,64 @@ async function checkAndAutoFinishDeadMatches() {
   }
 }
 
-async function validateOrRegisterPlayer(name, password, autoRegister = false) {
-  if (!name || password === undefined || password === null) return { valid: false, reason: 'Thiếu tên hoặc mật khẩu' };
+async function validatePlayerAccount(name, password) {
+  if (!name || password === undefined || password === null) {
+    return { valid: false, reason: 'Vui lòng nhập đầy đủ Tên Player và Mật khẩu!' };
+  }
   const cleanName = String(name).trim();
   const cleanPass = String(password).trim();
-  if (!cleanName || !cleanPass) return { valid: false, reason: 'Thiếu tên hoặc mật khẩu' };
+  if (!cleanName || !cleanPass) {
+    return { valid: false, reason: 'Vui lòng nhập đầy đủ Tên Player và Mật khẩu!' };
+  }
 
   const players = await db.getPlayers();
   const existing = players.find(p => p.name.toLowerCase() === cleanName.toLowerCase());
 
-  if (existing) {
-    if (existing.password === cleanPass) {
-      return { valid: true, canonicalName: existing.name, isNew: false };
-    }
+  if (!existing) {
+    return {
+      valid: false,
+      reason: `Tài khoản "${cleanName}" chưa được cấp! Vui lòng liên hệ Admin XO để tạo tài khoản.`
+    };
+  }
+
+  if (existing.password !== cleanPass) {
     return { valid: false, reason: 'Mật khẩu không đúng!' };
   }
 
-  if (autoRegister) {
-    players.push({ name: cleanName, password: cleanPass });
-    await db.savePlayers(players);
-    return { valid: true, canonicalName: cleanName, isNew: true };
+  if (existing.isActive === false) {
+    return {
+      valid: false,
+      reason: `Tài khoản "${existing.name}" hiện đang bị TẠM KHÓA! Vui lòng liên hệ Admin XO để mở khóa.`
+    };
   }
 
-  return { valid: false, reason: 'Tài khoản chưa tồn tại!' };
+  const now = Date.now();
+  if (existing.expiresAt && Number(existing.expiresAt) > 0 && now > Number(existing.expiresAt)) {
+    return {
+      valid: false,
+      reason: `Tài khoản "${existing.name}" đã HẾT HẠN sử dụng từ ngày ${formatVietnamDateOnly(existing.expiresAt)}! Vui lòng liên hệ Admin XO để gia hạn.`
+    };
+  }
+
+  const daysLeft = existing.expiresAt && Number(existing.expiresAt) > 0
+    ? Math.max(0, Math.ceil((Number(existing.expiresAt) - now) / (24 * 60 * 60 * 1000)))
+    : null;
+
+  return {
+    valid: true,
+    canonicalName: existing.name,
+    player: existing,
+    daysLeft,
+    activatedFormatted: formatVietnamDateOnly(existing.activatedAt),
+    expiresFormatted: existing.expiresAt ? formatVietnamDateOnly(existing.expiresAt) : 'Vĩnh viễn'
+  };
 }
 
 async function canModifyMatch(match, data) {
   if (!match) return false;
-  if (data.isAdmin && (!data.adminPassword || data.adminPassword === ADMIN_PASSWORD)) return true;
+  if (isAdminAuthorized(data)) return true;
   if (!data.updatedBy || !data.password) return false;
-  const auth = await validateOrRegisterPlayer(data.updatedBy, data.password, false);
+  const auth = await validatePlayerAccount(data.updatedBy, data.password);
   return auth.valid && auth.canonicalName.toLowerCase() === String(match.streamerName || '').toLowerCase();
 }
 
@@ -190,7 +232,6 @@ async function handleAutoAddGame(data, canonicalStreamerName) {
       JSON.stringify(previous.redCivs) === JSON.stringify(redCivs) &&
       JSON.stringify(previous.blueCivs) === JSON.stringify(blueCivs)
     ) {
-      // Update player names & colors in case OCR refined them on second F2 press
       liveMatch.redTeam = redPlayers;
       liveMatch.blueTeam = bluePlayers;
       liveMatch.redColors = redColors;
@@ -295,16 +336,19 @@ app.post('/api', async (req, res) => {
     const action = data.action;
 
     if (action === 'verifyPlayerLogin') {
-      // Allow auto-registering new players when autoRegister is true (default true from Desktop Client!)
-      const autoReg = data.autoRegister !== false;
-      const auth = await validateOrRegisterPlayer(data.playerName, data.password, autoReg);
+      const auth = await validatePlayerAccount(data.playerName, data.password);
       return res.json({
         status: auth.valid ? 'success' : 'error',
         playerName: auth.canonicalName || data.playerName,
-        isNewAccount: Boolean(auth.isNew),
+        isActive: auth.player ? auth.player.isActive : false,
+        activatedAt: auth.player ? auth.player.activatedAt : null,
+        expiresAt: auth.player ? auth.player.expiresAt : null,
+        daysLeft: auth.daysLeft !== undefined ? auth.daysLeft : null,
+        activatedFormatted: auth.activatedFormatted || '',
+        expiresFormatted: auth.expiresFormatted || '',
         message: auth.valid
-          ? (auth.isNew ? `Đã tạo mới & đăng nhập tài khoản "${auth.canonicalName}"!` : 'Đăng nhập thành công!')
-          : (auth.reason || 'Mật khẩu sai!')
+          ? `Đăng nhập thành công! (Hạn SD: ${auth.expiresFormatted}${auth.daysLeft !== null ? ` - Còn ${auth.daysLeft} ngày` : ''})`
+          : (auth.reason || 'Đăng nhập thất bại!')
       });
     }
 
@@ -317,7 +361,7 @@ app.post('/api', async (req, res) => {
     }
 
     if (action === 'autoAddGame') {
-      const auth = await validateOrRegisterPlayer(data.streamerName, data.password, true);
+      const auth = await validatePlayerAccount(data.streamerName, data.password);
       if (!auth.valid) {
         return res.json({ status: 'error', message: auth.reason || 'Tài khoản không hợp lệ!' });
       }
@@ -331,9 +375,9 @@ app.post('/api', async (req, res) => {
     }
 
     if (action === 'heartbeat') {
-      const auth = await validateOrRegisterPlayer(data.streamerName, data.password, false);
+      const auth = await validatePlayerAccount(data.streamerName, data.password);
       if (!auth.valid) {
-        return res.json({ status: 'error', message: 'Xác thực thất bại!' });
+        return res.json({ status: 'error', message: auth.reason || 'Xác thực thất bại!' });
       }
       const matches = await db.getMatches();
       const match = matches.find(
@@ -408,7 +452,7 @@ app.post('/api', async (req, res) => {
     }
 
     if (action === 'deleteMatches') {
-      if (!data.isAdmin) {
+      if (!isAdminAuthorized(data)) {
         return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền xóa!' });
       }
       await db.deleteMatches(data.matchIds || []);
@@ -416,13 +460,119 @@ app.post('/api', async (req, res) => {
       return res.json({ status: 'success' });
     }
 
+    // ==================== ADMIN USER & SUBSCRIPTION MANAGEMENT ====================
+    if (action === 'adminSavePlayer') {
+      if (!isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền quản lý tài khoản!' });
+      }
+      const pData = data.player || {};
+      const name = String(pData.name || '').trim();
+      if (!name) {
+        return res.json({ status: 'error', message: 'Vui lòng nhập Tên Player!' });
+      }
+      const now = Date.now();
+      let expiresAt = pData.expiresAt !== undefined && pData.expiresAt !== null && pData.expiresAt !== ''
+        ? Number(pData.expiresAt)
+        : null;
+
+      if (pData.durationDays !== undefined && pData.durationDays !== null && pData.durationDays !== '') {
+        const days = Number(pData.durationDays);
+        expiresAt = days > 0 ? now + days * 24 * 60 * 60 * 1000 : null;
+      }
+
+      const saved = await db.upsertPlayer({
+        name,
+        password: String(pData.password || '123').trim(),
+        isActive: pData.isActive !== undefined ? Boolean(pData.isActive) : true,
+        activatedAt: pData.activatedAt ? Number(pData.activatedAt) : now,
+        expiresAt,
+        note: String(pData.note || '').trim(),
+        createdAt: pData.createdAt ? Number(pData.createdAt) : now
+      });
+      const players = await db.getPlayers();
+      broadcastUpdate('players_updated');
+      return res.json({ status: 'success', player: saved, players, message: `Đã lưu tài khoản "${saved.name}"!` });
+    }
+
+    if (action === 'adminExtendPlayer') {
+      if (!isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền gia hạn!' });
+      }
+      const targetName = String(data.name || '').trim();
+      const players = await db.getPlayers();
+      const existing = players.find(p => p.name.toLowerCase() === targetName.toLowerCase());
+      if (!existing) {
+        return res.json({ status: 'error', message: 'Không tìm thấy tài khoản cần gia hạn!' });
+      }
+
+      const now = Date.now();
+      if (data.lifetime || Number(data.addDays) === 0) {
+        existing.expiresAt = null;
+      } else {
+        const addMs = Number(data.addDays || 30) * 24 * 60 * 60 * 1000;
+        const baseTime = (existing.expiresAt && Number(existing.expiresAt) > now) ? Number(existing.expiresAt) : now;
+        existing.expiresAt = baseTime + addMs;
+      }
+      existing.isActive = true;
+      if (!existing.activatedAt) existing.activatedAt = now;
+
+      await db.upsertPlayer(existing);
+      const updatedPlayers = await db.getPlayers();
+      broadcastUpdate('players_updated');
+      return res.json({
+        status: 'success',
+        players: updatedPlayers,
+        message: `Đã gia hạn tài khoản "${existing.name}" (Hạn mới: ${formatVietnamDateOnly(existing.expiresAt)})`
+      });
+    }
+
+    if (action === 'adminToggleActive') {
+      if (!isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền khóa/mở khóa!' });
+      }
+      const targetName = String(data.name || '').trim();
+      const players = await db.getPlayers();
+      const existing = players.find(p => p.name.toLowerCase() === targetName.toLowerCase());
+      if (!existing) {
+        return res.json({ status: 'error', message: 'Không tìm thấy tài khoản!' });
+      }
+      existing.isActive = data.isActive !== undefined ? Boolean(data.isActive) : !existing.isActive;
+      if (existing.isActive && !existing.activatedAt) {
+        existing.activatedAt = Date.now();
+      }
+      await db.upsertPlayer(existing);
+      const updatedPlayers = await db.getPlayers();
+      broadcastUpdate('players_updated');
+      return res.json({
+        status: 'success',
+        players: updatedPlayers,
+        message: existing.isActive
+          ? `Đã KÍCH HOẠT (Active) tài khoản "${existing.name}"!`
+          : `Đã TẠM KHÓA tài khoản "${existing.name}"!`
+      });
+    }
+
+    if (action === 'adminDeletePlayer') {
+      if (!isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền xóa tài khoản!' });
+      }
+      await db.deletePlayerByName(data.name);
+      const updatedPlayers = await db.getPlayers();
+      broadcastUpdate('players_updated');
+      return res.json({
+        status: 'success',
+        players: updatedPlayers,
+        message: `Đã xóa tài khoản "${data.name}"!`
+      });
+    }
+
     if (action === 'savePlayers') {
-      if (!data.isAdmin) {
+      if (!isAdminAuthorized(data)) {
         return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền!' });
       }
-      await db.savePlayers(data.players || []);
+      const updatedPlayers = await db.savePlayers(data.players || []);
       broadcastUpdate('players_updated');
-      return res.json({ status: 'success' });
+      return res.json({ status: 'success', players: updatedPlayers });
     }
 
     if (action === 'saveSettings') {
@@ -456,9 +606,8 @@ app.get('*', (req, res) => {
 
 db.initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`[*] AOE Match Tracker Server đang chạy tại: http://localhost:${PORT}`);
+    console.log(`[*] TOOL BẢNG QUÂN AOE BY XO Server đang chạy tại: http://localhost:${PORT}`);
     console.log(`[*] Trang quản lý kèo: http://localhost:${PORT}`);
     console.log(`[*] Link OBS Overlay : http://localhost:${PORT}/overlay.html?streamer=XO`);
   });
 });
-

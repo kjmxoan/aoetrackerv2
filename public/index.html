@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AOE Match Tracker - Quản Lý Kèo Đấu Đế Chế</title>
+  <title>TOOL BẢNG QUÂN AOE BY XO - Quản Lý Kèo Đấu & OBS Overlay</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700;900&display=swap');
     body { font-family: 'Roboto Condensed', sans-serif; }
     @keyframes pulse-cute { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     .animate-cute { animation: pulse-cute 2s infinite ease-in-out; }
@@ -21,7 +21,7 @@
       <!-- NOTIFICATION ALERT -->
       <div v-if="notification"
            :class="notification.type === 'error' ? 'bg-red-900 border-red-500 text-red-100' : 'bg-emerald-900 border-emerald-500 text-emerald-100'"
-           class="fixed top-4 right-4 z-[100] max-w-sm p-4 rounded-xl border shadow-2xl flex justify-between items-center text-xs animate-bounce">
+           class="fixed top-4 right-4 z-[120] max-w-md p-4 rounded-xl border shadow-2xl flex justify-between items-center text-xs animate-bounce">
         <span class="flex items-center gap-2">
           <i :class="notification.type === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-circle-check text-emerald-400'" class="fa-solid text-base"></i>
           <b>{{ notification.message }}</b>
@@ -32,10 +32,10 @@
       <!-- HEADER -->
       <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 border border-amber-500/30 p-4 rounded-xl shadow-lg mb-6 gap-4">
         <div class="flex items-center gap-3 cursor-pointer" @click="goHome">
-          <div class="bg-amber-500 text-slate-950 p-2.5 rounded-lg font-black text-xl">AOE</div>
+          <div class="bg-amber-500 text-slate-950 p-2.5 rounded-lg font-black text-xl shadow">AOE</div>
           <div>
-            <h1 class="text-xl font-bold text-amber-400 tracking-wide">AOE MATCH TRACKER</h1>
-            <p class="text-xs text-slate-400">Hệ thống quản lý & theo dõi kèo đấu Đế Chế Realtime</p>
+            <h1 class="text-xl font-black text-amber-400 tracking-wide uppercase">TOOL BẢNG QUÂN AOE BY XO</h1>
+            <p class="text-xs text-slate-400">Hệ thống tự động quét Diplomacy, lưu lịch sử kèo đấu & hiển thị OBS Overlay Realtime</p>
           </div>
         </div>
 
@@ -44,6 +44,12 @@
                   class="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold px-3.5 py-1.5 rounded-full text-xs shadow-lg animate-cute border border-pink-300/40 flex items-center gap-1.5 transition">
             <span>🧋</span>
             <span>Gửi Admin ly nước</span>
+          </button>
+
+          <button @click="showObsGuideModal = true"
+                  class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow border border-indigo-400/40 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-tv"></i>
+            <span>Hướng Dẫn Gán OBS</span>
           </button>
 
           <button @click="goHome" :class="currentTab === 'matches' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'" class="px-3 py-1.5 rounded-lg text-xs transition">
@@ -56,8 +62,11 @@
 
           <div v-if="sessionPlayerName" class="flex items-center gap-2 bg-slate-800 border border-amber-500/50 px-3 py-1 rounded-lg">
             <span class="text-xs text-amber-400 font-bold"><i class="fa-solid fa-user-check"></i> {{ sessionPlayerName }}</span>
+            <span v-if="sessionPlayerExpires" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-700/40 px-1.5 py-0.5 rounded">
+              Hạn: {{ sessionPlayerExpires }}
+            </span>
             <button @click="copyOverlayLink(sessionPlayerName)" class="text-[11px] bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded" title="Copy Link OBS Overlay">
-              <i class="fa-solid fa-tv mr-1"></i>Link OBS
+              <i class="fa-solid fa-copy mr-1"></i>Link OBS
             </button>
             <button @click="logoutPlayer" class="text-xs text-red-400 hover:text-red-300 ml-1" title="Đăng xuất"><i class="fa-solid fa-right-from-bracket"></i></button>
           </div>
@@ -70,8 +79,10 @@
             <i class="fa-solid fa-lock mr-1"></i> Admin
           </button>
           <div v-else class="flex items-center gap-2 bg-slate-800 border border-emerald-500/50 px-3 py-1 rounded-lg">
-            <span class="text-xs text-emerald-400 font-bold"><i class="fa-solid fa-user-shield"></i> Admin</span>
-            <button @click="showPlayerManagerModal = true" class="text-[11px] bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded">Quản Lý</button>
+            <span class="text-xs text-emerald-400 font-bold"><i class="fa-solid fa-user-shield"></i> Admin XO</span>
+            <button @click="showPlayerManagerModal = true" class="text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-0.5 rounded shadow">
+              <i class="fa-solid fa-users-gear mr-1"></i>Quản Lý User & Gia Hạn
+            </button>
             <button @click="logoutAdmin" class="text-xs text-red-400 hover:text-red-300 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button>
           </div>
         </div>
@@ -79,15 +90,20 @@
 
       <!-- TAB 1: DANH SÁCH KÈO ĐẤU -->
       <div v-if="currentTab === 'matches'" class="space-y-4">
-        <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+        <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-lg border border-slate-800 flex-wrap gap-2">
           <div class="flex gap-2">
             <button @click="filterStatus = 'ALL'" :class="filterStatus === 'ALL' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400'" class="px-3 py-1 rounded text-xs">Tất cả ({{ matches.length }})</button>
             <button @click="filterStatus = 'LIVE'" :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-bold' : 'bg-slate-800 text-slate-400'" class="px-3 py-1 rounded text-xs">🔴 Trực tiếp ({{ liveMatchesCount }})</button>
             <button @click="filterStatus = 'FINISHED'" :class="filterStatus === 'FINISHED' ? 'bg-slate-700 text-white font-bold' : 'bg-slate-800 text-slate-400'" class="px-3 py-1 rounded text-xs">🏁 Đã kết thúc</button>
           </div>
-          <button @click="fetchInitialData" class="text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1">
-            <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i> Làm mới
-          </button>
+          <div class="flex items-center gap-3">
+            <button @click="showObsGuideModal = true" class="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1">
+              <i class="fa-solid fa-circle-question"></i> Cách gắn bảng quân vào OBS Livestream
+            </button>
+            <button @click="fetchInitialData" class="text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1">
+              <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i> Làm mới
+            </button>
+          </div>
         </div>
 
         <div v-if="filteredMatches.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -133,7 +149,7 @@
           </div>
         </div>
         <div v-else class="text-center py-10 bg-slate-900/40 rounded-xl border border-dashed border-slate-800 text-slate-500 text-sm">
-          Chưa có kèo đấu nào. Hãy mở App Desktop và bấm Diplomacy (F2) trong game để tự động tạo kèo!
+          Chưa có kèo đấu nào. Hãy mở <b>TOOL BẢNG QUÂN AOE BY XO</b> và bấm Diplomacy (F2) trong game để tự động tạo kèo!
         </div>
       </div>
 
@@ -210,11 +226,15 @@
                 <div class="divide-y divide-slate-800/50">
                   <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'row-'+pi" class="grid grid-cols-2 gap-4 py-2 items-center text-xs">
                     <div class="flex items-center justify-between pr-2 border-r border-slate-800">
-                      <span class="font-bold text-red-300 truncate">{{ selectedMatch.redTeam[pi] || ('Player ' + (pi + 1)) }}:</span>
+                      <span class="font-bold truncate" :style="{ color: getPlayerColorHex(g.redColors || selectedMatch.redColors, pi, '#fca5a5') }">
+                        ● {{ selectedMatch.redTeam[pi] || ('Player ' + (pi + 1)) }}:
+                      </span>
                       <span :class="getCivTypeClass(g.redCivs[pi])" class="px-2 py-0.5 rounded text-[11px] font-bold min-w-[65px] text-center">{{ g.redCivs[pi] || '---' }}</span>
                     </div>
                     <div class="flex items-center justify-between pl-2">
-                      <span class="font-bold text-blue-300 truncate">{{ selectedMatch.blueTeam[pi] || ('Player ' + (pi + 1)) }}:</span>
+                      <span class="font-bold truncate" :style="{ color: getPlayerColorHex(g.blueColors || selectedMatch.blueColors, pi, '#93c5fd') }">
+                        ● {{ selectedMatch.blueTeam[pi] || ('Player ' + (pi + 1)) }}:
+                      </span>
                       <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-2 py-0.5 rounded text-[11px] font-bold min-w-[65px] text-center">{{ g.blueCivs[pi] || '---' }}</span>
                     </div>
                   </div>
@@ -242,6 +262,70 @@
             <h3 class="text-xs font-bold text-slate-300 mb-3 text-center">🏹 Tỉ Lệ Quân Cung vs Chém</h3>
             <canvas id="civTypeChart" class="max-h-64"></canvas>
           </div>
+        </div>
+      </div>
+
+      <!-- MODAL HƯỚNG DẪN GÁN LINK OBS HIỂN THỊ LIVESTREAM -->
+      <div v-if="showObsGuideModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[110]">
+        <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+          <button @click="showObsGuideModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">&times;</button>
+          <div class="flex items-center gap-2.5 border-b border-slate-800 pb-3">
+            <div class="bg-indigo-600 text-white p-2 rounded-lg"><i class="fa-solid fa-tv text-lg"></i></div>
+            <div>
+              <h3 class="text-base font-black text-indigo-300 uppercase">Hướng Dẫn Gán Bảng Quân Vào OBS Studio</h3>
+              <p class="text-xs text-slate-400">Hiển thị bảng quân & tỉ số tự động lên màn hình Livestream</p>
+            </div>
+          </div>
+
+          <div class="space-y-3 text-xs text-slate-200">
+            <div class="bg-slate-950 border border-indigo-500/30 p-3.5 rounded-xl space-y-2">
+              <div class="font-bold text-amber-400 flex items-center gap-1.5">
+                <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-black text-[10px]">BƯỚC 1</span>
+                <span>Sao chép đường dẫn (Link) OBS Overlay của bạn:</span>
+              </div>
+              <div class="flex gap-2 items-center">
+                <input type="text" readonly :value="currentObsPreviewUrl" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-[11px] text-emerald-300">
+                <button @click="copyOverlayLink(sessionPlayerName || 'XO')" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded-lg shrink-0">
+                  <i class="fa-solid fa-copy mr-1"></i> Copy Link
+                </button>
+              </div>
+              <p class="text-[11px] text-slate-400">💡 Thay chữ <b class="text-amber-300">XO</b> ở cuối link bằng đúng <b>Tên Player</b> bạn dùng đăng nhập trên Tool.</p>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-1.5">
+              <div class="font-bold text-amber-400 flex items-center gap-1.5">
+                <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-black text-[10px]">BƯỚC 2</span>
+                <span>Thêm nguồn Browser (Trình duyệt) trong OBS Studio:</span>
+              </div>
+              <ul class="list-disc list-inside space-y-1 text-slate-300 pl-1">
+                <li>Mở phần mềm <b>OBS Studio</b>.</li>
+                <li>Tại cột <b>Sources (Nguồn)</b> bên dưới, bấm vào dấu <b><i class="fa-solid fa-plus"></i> (Thêm)</b>.</li>
+                <li>Chọn <b>🌐 Browser (Trình duyệt)</b> &rarr; Đặt tên (ví dụ: <i>Bảng Quân AOE</i>) &rarr; Bấm <b>OK</b>.</li>
+              </ul>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-2">
+              <div class="font-bold text-amber-400 flex items-center gap-1.5">
+                <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-black text-[10px]">BƯỚC 3</span>
+                <span>Dán Link và thiết lập kích thước chuẩn:</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-[11px]">
+                <div class="text-slate-400">Ô <b>Local file</b>:</div>
+                <div class="col-span-2 text-slate-200 font-bold">⬜ Không tích (Bỏ trống)</div>
+                <div class="text-slate-400">Ô <b>URL</b>:</div>
+                <div class="col-span-2 text-emerald-400 font-mono break-all">{{ currentObsPreviewUrl }}</div>
+                <div class="text-slate-400">Ô <b>Width (Chiều rộng)</b>:</div>
+                <div class="col-span-2 text-amber-300 font-mono font-bold">800</div>
+                <div class="text-slate-400">Ô <b>Height (Chiều cao)</b>:</div>
+                <div class="col-span-2 text-amber-300 font-mono font-bold">600</div>
+              </div>
+              <p class="text-[11px] text-slate-400">Sau đó bấm <b>OK</b>. Bảng quân nền trong suốt sẽ hiện ngay trên màn hình OBS để bạn kéo thả tới góc mong muốn!</p>
+            </div>
+          </div>
+
+          <button @click="showObsGuideModal = false" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs">
+            Đã hiểu, đóng hướng dẫn
+          </button>
         </div>
       </div>
 
@@ -274,9 +358,10 @@
       <!-- MODAL LOGIN PLAYER WEB -->
       <div v-if="showLoginUpdaterModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
         <div class="bg-slate-900 border border-amber-500/30 rounded-xl max-w-sm w-full p-5 space-y-3">
-          <h3 class="text-sm font-bold text-amber-400 text-center">Đăng Nhập / Đăng Ký Player</h3>
+          <h3 class="text-sm font-bold text-amber-400 text-center">Đăng Nhập Tài Khoản Player</h3>
+          <p class="text-[11px] text-slate-400 text-center">Sử dụng tài khoản đã được Admin XO cấp để điều khiển kèo đấu.</p>
           <div>
-            <label class="text-[11px] text-slate-400 block mb-1">Chọn hoặc nhập tên Player:</label>
+            <label class="text-[11px] text-slate-400 block mb-1">Tên Player:</label>
             <input list="players-list" v-model="updaterNameInput" placeholder="Ví dụ: XO..." class="bg-slate-800 border border-slate-700 p-2 rounded text-xs w-full">
             <datalist id="players-list">
               <option v-for="p in players" :value="p.name" :key="p.name">{{ p.name }}</option>
@@ -288,7 +373,7 @@
           </div>
           <div class="flex gap-2 pt-1">
             <button @click="showLoginUpdaterModal = false" class="w-full py-1.5 bg-slate-800 rounded text-xs">Hủy</button>
-            <button @click="verifyUpdaterPassword" class="w-full py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Xác Nhận</button>
+            <button @click="verifyUpdaterPassword" class="w-full py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Đăng Nhập</button>
           </div>
         </div>
       </div>
@@ -296,8 +381,8 @@
       <!-- MODAL ADMIN LOGIN -->
       <div v-if="showAdminModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100]">
         <div class="bg-slate-900 border border-amber-500/30 rounded-xl max-w-sm w-full p-5 space-y-3 text-center">
-          <h3 class="text-sm font-bold text-amber-400">Đăng Nhập Admin</h3>
-          <input type="password" v-model="adminPasswordInput" @keyup.enter="loginAdmin" placeholder="Mật khẩu Admin..." class="bg-slate-800 border border-slate-700 p-2 rounded text-xs w-full text-center">
+          <h3 class="text-sm font-bold text-amber-400">Đăng Nhập Quyền Quản Trị (Admin XO)</h3>
+          <input type="password" v-model="adminPasswordInput" @keyup.enter="loginAdmin" placeholder="Nhập mật khẩu Admin..." class="bg-slate-800 border border-slate-700 p-2 rounded text-xs w-full text-center">
           <div class="flex gap-2">
             <button @click="showAdminModal = false" class="w-full py-1.5 bg-slate-800 rounded text-xs">Hủy</button>
             <button @click="loginAdmin" class="w-full py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Đăng Nhập</button>
@@ -305,50 +390,166 @@
         </div>
       </div>
 
-      <!-- MODAL QUẢN LÝ PLAYER & CẤU HÌNH ADMIN -->
-      <div v-if="showPlayerManagerModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-5 space-y-4 max-h-[90vh] flex flex-col">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <h3 class="text-sm font-bold text-emerald-400"><i class="fa-solid fa-sliders mr-1"></i> Bảng Quản Trị Hệ Thống</h3>
-            <button @click="showPlayerManagerModal = false" class="text-slate-400 hover:text-white">&times;</button>
-          </div>
-
-          <div class="bg-slate-950 p-3 rounded-lg border border-amber-500/30 flex justify-between items-center">
+      <!-- MODAL QUẢN TRỊ USER, TRẠNG THÁI ACTIVE, NGÀY KÍCH HOẠT & GIA HẠN THU PHÍ -->
+      <div v-if="showPlayerManagerModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-[110]">
+        <div class="bg-slate-900 border border-emerald-500/40 rounded-2xl max-w-4xl w-full p-5 space-y-4 max-h-[92vh] flex flex-col shadow-2xl">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
             <div>
-              <span class="text-xs font-bold text-amber-400 block"><i class="fa-solid fa-chart-pie mr-1"></i> Hiển Thị Thông Số Cung - Chém</span>
-              <span class="text-[10px] text-slate-400">Ẩn/hiện chỉ số tỉ lệ Cung-Chém trên toàn giao diện</span>
+              <h3 class="text-base font-black text-emerald-400 uppercase flex items-center gap-2">
+                <i class="fa-solid fa-users-gear"></i>
+                <span>Quản Trị Tài Khoản User & Gia Hạn Thu Phí</span>
+              </h3>
+              <p class="text-xs text-slate-400">Cấp tài khoản mới, khóa/mở khóa (Active), theo dõi ngày kích hoạt và gia hạn gói sử dụng cho từng Player</p>
             </div>
-            <button @click="toggleCivStats"
-                    :class="showCivStats ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-800 text-slate-400'"
-                    class="px-3 py-1 rounded-full text-xs border border-slate-700 transition">
-              {{ showCivStats ? 'ON (Đang Hiện)' : 'OFF (Đang Ẩn)' }}
-            </button>
+            <button @click="showPlayerManagerModal = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
           </div>
 
-          <div class="space-y-2">
-            <span class="text-xs font-bold text-emerald-400 block"><i class="fa-solid fa-user-plus mr-1"></i> Thêm Player & Pass:</span>
-            <div class="grid grid-cols-5 gap-2">
-              <input type="text" v-model="newPlayerForm.name" placeholder="Tên Player..." class="col-span-3 bg-slate-800 border border-slate-700 p-1.5 rounded text-xs">
-              <input type="text" v-model="newPlayerForm.password" placeholder="Pass..." class="col-span-1 bg-slate-800 border border-slate-700 p-1.5 rounded text-xs">
-              <button @click="addPlayer" class="col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold">Thêm</button>
-            </div>
-          </div>
-
-          <div class="flex-1 overflow-y-auto space-y-1.5 border-t border-b border-slate-800 py-2 pr-1">
-            <div v-for="(p, idx) in players" :key="idx" class="flex justify-between items-center bg-slate-950 p-2 rounded border border-slate-800 text-xs">
+          <!-- Thống kê nhanh + Cài đặt Cung Chém -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
               <div>
-                <span class="font-bold text-slate-200">{{ p.name }}</span>
-                <span class="text-[10px] text-amber-400 ml-2">(Pass: {{ p.password || '123' }})</span>
+                <div class="text-[10px] text-slate-400 uppercase">Tổng số User</div>
+                <div class="text-xl font-black text-white">{{ players.length }}</div>
               </div>
-              <div class="flex gap-1">
-                <button @click="copyOverlayLink(p.name)" class="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded text-[10px]">Link OBS</button>
-                <button @click="editPlayerPass(idx)" class="bg-slate-800 text-amber-400 px-2 py-0.5 rounded text-[10px]">Đổi Pass</button>
-                <button @click="deletePlayer(idx)" class="bg-red-950 text-red-400 px-2 py-0.5 rounded text-[10px]">Xóa</button>
+              <i class="fa-solid fa-users text-2xl text-slate-700"></i>
+            </div>
+            <div class="bg-slate-950 border border-emerald-900/50 p-3 rounded-xl flex items-center justify-between">
+              <div>
+                <div class="text-[10px] text-emerald-400 uppercase">Đang Hoạt Động</div>
+                <div class="text-xl font-black text-emerald-400">{{ activePlayersCount }}</div>
               </div>
+              <i class="fa-solid fa-user-check text-2xl text-emerald-800"></i>
+            </div>
+            <div class="bg-slate-950 border border-red-900/50 p-3 rounded-xl flex items-center justify-between">
+              <div>
+                <div class="text-[10px] text-red-400 uppercase">Đã Khóa / Hết Hạn</div>
+                <div class="text-xl font-black text-red-400">{{ players.length - activePlayersCount }}</div>
+              </div>
+              <i class="fa-solid fa-user-lock text-2xl text-red-900"></i>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-amber-500/30 flex justify-between items-center">
+              <div>
+                <span class="text-xs font-bold text-amber-400 block">Chỉ số Cung - Chém</span>
+                <span class="text-[10px] text-slate-400">Trên Web & Overlay</span>
+              </div>
+              <button @click="toggleCivStats"
+                      :class="showCivStats ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-800 text-slate-400'"
+                      class="px-3 py-1 rounded-full text-xs border border-slate-700 transition">
+                {{ showCivStats ? 'ON' : 'OFF' }}
+              </button>
             </div>
           </div>
 
-          <button @click="showPlayerManagerModal = false" class="w-full py-1.5 bg-slate-800 rounded text-xs font-bold">Đóng</button>
+          <!-- Form cấp tạo tài khoản mới -->
+          <div class="bg-slate-950 border border-emerald-500/30 p-3.5 rounded-xl space-y-2.5">
+            <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-user-plus"></i>
+              <span>Cấp Tạo Tài Khoản Cho User Mới:</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
+              <input type="text" v-model="newPlayerForm.name" placeholder="Tên Player (VD: ChimSe)..." class="md:col-span-3 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-white font-bold">
+              <input type="text" v-model="newPlayerForm.password" placeholder="Mật khẩu (VD: 123456)..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-amber-300 font-mono">
+              <select v-model="newPlayerForm.durationDays" class="md:col-span-3 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-emerald-300 font-bold">
+                <option :value="30">Gói 1 Tháng (30 ngày)</option>
+                <option :value="7">Gói 1 Tuần (7 ngày)</option>
+                <option :value="3">Dùng thử 3 ngày</option>
+                <option :value="90">Gói 3 Tháng (90 ngày)</option>
+                <option :value="180">Gói 6 Tháng (180 ngày)</option>
+                <option :value="365">Gói 1 Năm (365 ngày)</option>
+                <option :value="0">♾️ Vĩnh viễn (Không giới hạn)</option>
+              </select>
+              <input type="text" v-model="newPlayerForm.note" placeholder="Ghi chú (SĐT/Zalo/Gói cước)..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-slate-300">
+              <button @click="createNewPlayerAdmin" class="md:col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold py-2 shadow transition">
+                <i class="fa-solid fa-plus mr-1"></i> Cấp Tài Khoản
+              </button>
+            </div>
+          </div>
+
+          <!-- Bảng danh sách User hiện có -->
+          <div class="flex-1 overflow-y-auto border border-slate-800 rounded-xl bg-slate-950">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-900 text-slate-400 border-b border-slate-800 text-[11px] uppercase">
+                  <th class="py-2.5 px-3">Player & Ghi chú</th>
+                  <th class="py-2.5 px-3">Mật khẩu</th>
+                  <th class="py-2.5 px-3 text-center">Trạng thái</th>
+                  <th class="py-2.5 px-3">Ngày Active</th>
+                  <th class="py-2.5 px-3">Ngày Hết Hạn ( Gia Hạn )</th>
+                  <th class="py-2.5 px-3 text-right">Thao tác / Gia hạn nhanh</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/70">
+                <tr v-for="(p, idx) in players" :key="p.name" class="hover:bg-slate-900/50 transition">
+                  <td class="py-2.5 px-3">
+                    <div class="font-bold text-white text-sm flex items-center gap-1.5">
+                      <span>{{ p.name }}</span>
+                      <button @click="copyOverlayLink(p.name)" class="text-[10px] bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/40 px-1.5 py-0.5 rounded font-normal" title="Copy Link OBS">
+                        <i class="fa-solid fa-tv"></i> OBS
+                      </button>
+                    </div>
+                    <div class="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                      <span>{{ p.note || 'Chưa có ghi chú' }}</span>
+                      <button @click="editPlayerNote(p)" class="text-amber-400 hover:underline text-[10px]"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                  </td>
+
+                  <td class="py-2.5 px-3">
+                    <span class="font-mono text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{{ p.password }}</span>
+                    <button @click="editPlayerPass(p)" class="ml-1.5 text-[10px] text-slate-400 hover:text-amber-400" title="Đổi mật khẩu">
+                      <i class="fa-solid fa-key"></i> Đổi
+                    </button>
+                  </td>
+
+                  <td class="py-2.5 px-3 text-center">
+                    <button @click="togglePlayerActive(p)"
+                            :class="getPlayerStatusBadge(p).class"
+                            class="px-2.5 py-1 rounded-full text-[10px] font-bold transition shadow-sm"
+                            title="Bấm để Khóa hoặc Mở khóa tài khoản">
+                      {{ getPlayerStatusBadge(p).label }}
+                    </button>
+                  </td>
+
+                  <td class="py-2.5 px-3 text-slate-300 font-mono text-[11px]">
+                    {{ formatDateVN(p.activatedAt) }}
+                  </td>
+
+                  <td class="py-2.5 px-3">
+                    <div class="font-mono font-bold text-[11px]" :class="isPlayerExpired(p) ? 'text-red-400' : 'text-emerald-300'">
+                      {{ p.expiresAt ? formatDateVN(p.expiresAt) : '♾️ Vĩnh viễn' }}
+                    </div>
+                    <div class="text-[10px]" :class="isPlayerExpired(p) ? 'text-red-400 font-bold' : 'text-slate-400'">
+                      {{ getRemainingDaysText(p) }}
+                    </div>
+                  </td>
+
+                  <td class="py-2.5 px-3 text-right">
+                    <div class="flex items-center justify-end gap-1 flex-wrap">
+                      <button @click="extendPlayerDays(p, 7)" class="bg-slate-800 hover:bg-emerald-700 text-emerald-300 hover:text-white border border-emerald-700/40 px-2 py-1 rounded text-[10px] font-bold transition" title="Gia hạn thêm 7 ngày">
+                        +7 Ngày
+                      </button>
+                      <button @click="extendPlayerDays(p, 30)" class="bg-emerald-950 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-600/40 px-2 py-1 rounded text-[10px] font-bold transition" title="Gia hạn thêm 30 ngày">
+                        +30 Ngày
+                      </button>
+                      <button @click="extendPlayerDays(p, 365)" class="bg-amber-950 hover:bg-amber-600 text-amber-300 hover:text-slate-950 border border-amber-600/40 px-2 py-1 rounded text-[10px] font-bold transition" title="Gia hạn thêm 1 năm">
+                        +1 Năm
+                      </button>
+                      <button @click="extendPlayerDays(p, 0, true)" class="bg-indigo-950 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-600/40 px-2 py-1 rounded text-[10px] font-bold transition" title="Đặt hạn Vĩnh viễn">
+                        Vĩnh viễn
+                      </button>
+                      <button @click="setCustomExpiryDate(p)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-1 rounded text-[10px]" title="Chọn ngày hết hạn tùy ý">
+                        <i class="fa-regular fa-calendar-days"></i>
+                      </button>
+                      <button @click="deletePlayerAdmin(p)" class="bg-red-950 hover:bg-red-600 text-red-300 hover:text-white border border-red-800/50 px-2 py-1 rounded text-[10px] font-bold transition" title="Xóa User">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <button @click="showPlayerManagerModal = false" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold">Đóng Bảng Quản Trị</button>
         </div>
       </div>
 
@@ -356,7 +557,7 @@
 
     <!-- FOOTER HIỂN THỊ VERSION BUILD -->
     <footer class="mt-8 pt-4 border-t border-slate-800 text-center text-[11px] text-slate-500 flex justify-center items-center gap-2 flex-wrap">
-      <span>AOE Match Tracker &bull; Powered by XO</span>
+      <span>TOOL BẢNG QUÂN AOE BY XO</span>
       <span>&bull;</span>
       <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-mono font-bold">
         {{ appVersion }}
@@ -370,27 +571,39 @@
 
   <script>
     const API_URL = '/api';
+    const AOE_COLORS = [
+      '#60a5fa', // 0: P1 - Blue (Xanh lam)
+      '#fb923c', // 1: P2 - Orange (Cam)
+      '#ef4444', // 2: P3 - Red (Đỏ)
+      '#facc15', // 3: P4 - Yellow (Vàng)
+      '#4ade80', // 4: P5 - Green (Xanh lá)
+      '#d1d5db', // 5: P6 - Gray/White (Xám trắng)
+      '#b45309', // 6: P7 - Brown (Nâu)
+      '#22d3ee'  // 7: P8 - Cyan (Xanh cung)
+    ];
 
     Vue.createApp({
       data() {
         const localCivStats = localStorage.getItem('aoe_showCivStats');
         return {
-          appVersion: 'v4.0.0 (Neon + Render)',
+          appVersion: 'v4.1.0 (By XO)',
           databaseMode: 'neon_postgres',
           currentTab: 'matches',
           filterStatus: 'ALL',
           isLoading: false,
           notification: null,
           showDonateModal: false,
+          showObsGuideModal: false,
           isAdmin: false,
           showAdminModal: false,
           adminPasswordInput: '',
           adminPasswordSession: '',
           showPlayerManagerModal: false,
-          newPlayerForm: { name: '', password: '' },
+          newPlayerForm: { name: '', password: '123', durationDays: 30, note: '' },
           showCivStats: localCivStats !== null ? (localCivStats === 'true') : true,
           sessionPlayerName: sessionStorage.getItem('aoe_playerName') || '',
           sessionPlayerPass: sessionStorage.getItem('aoe_playerPass') || '',
+          sessionPlayerExpires: sessionStorage.getItem('aoe_playerExpires') || '',
           showLoginUpdaterModal: false,
           updaterNameInput: '',
           updaterPassInput: '',
@@ -414,9 +627,53 @@
         filteredMatches() { return this.filterStatus === 'ALL' ? this.matches : this.matches.filter(m => m.status === this.filterStatus); },
         liveMatchesCount() { return this.matches.filter(m => m.status === 'LIVE').length; },
         activeMatchScore() { return this.selectedMatch ? this.getMatchScore(this.selectedMatch) : { red: 0, blue: 0 }; },
-        activeMatchCivStats() { return this.selectedMatch ? this.getMatchCivStats(this.selectedMatch) : { cung: 0, chem: 0 }; }
+        activeMatchCivStats() { return this.selectedMatch ? this.getMatchCivStats(this.selectedMatch) : { cung: 0, chem: 0 }; },
+        currentObsPreviewUrl() {
+          const name = this.sessionPlayerName || 'XO';
+          return `${window.location.origin}/overlay.html?streamer=${encodeURIComponent(name)}`;
+        },
+        activePlayersCount() {
+          return this.players.filter(p => p.isActive !== false && !this.isPlayerExpired(p)).length;
+        }
       },
       methods: {
+        getPlayerColorHex(colors, index, fallback) {
+          if (Array.isArray(colors) && colors[index] !== undefined && AOE_COLORS[colors[index]]) {
+            return AOE_COLORS[colors[index]];
+          }
+          return fallback || '#ffffff';
+        },
+        formatDateVN(ts) {
+          if (!ts || Number(ts) <= 0) return 'Vĩnh viễn';
+          const d = new Date(Number(ts));
+          const pad = v => String(v).padStart(2, '0');
+          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+        },
+        isPlayerExpired(p) {
+          if (!p || !p.expiresAt || Number(p.expiresAt) <= 0) return false;
+          return Date.now() > Number(p.expiresAt);
+        },
+        getRemainingDaysText(p) {
+          if (!p) return '';
+          if (p.isActive === false) return 'Đang tạm khóa bởi Admin';
+          if (!p.expiresAt || Number(p.expiresAt) <= 0) return 'Gói không giới hạn thời gian';
+          const diff = Number(p.expiresAt) - Date.now();
+          if (diff <= 0) {
+            const overdue = Math.ceil(Math.abs(diff) / (24 * 60 * 60 * 1000));
+            return `Đã quá hạn ${overdue} ngày`;
+          }
+          const days = Math.ceil(diff / (24 * 60 * 60 * 1000));
+          return `Còn lại ${days} ngày`;
+        },
+        getPlayerStatusBadge(p) {
+          if (p.isActive === false) {
+            return { label: '🔴 ĐÃ KHÓA (Click mở)', class: 'bg-red-950 text-red-300 border border-red-700/60 hover:bg-red-900' };
+          }
+          if (this.isPlayerExpired(p)) {
+            return { label: '⚠️ HẾT HẠN', class: 'bg-amber-950 text-amber-300 border border-amber-700/60 hover:bg-amber-900' };
+          }
+          return { label: '🟢 ACTIVE (Đang mở)', class: 'bg-emerald-950 text-emerald-300 border border-emerald-700/60 hover:bg-emerald-900' };
+        },
         canModify(match) {
           if (!match) return false;
           if (this.isAdmin) return true;
@@ -443,7 +700,7 @@
           const name = streamerName || this.sessionPlayerName || 'XO';
           const url = `${window.location.origin}/overlay.html?streamer=${encodeURIComponent(name)}`;
           navigator.clipboard.writeText(url).then(() => {
-            this.showNotify(`Đã copy link OBS Overlay của ${name}!`);
+            this.showNotify(`Đã copy link OBS Overlay của ${name}: ${url}`);
           }).catch(() => {
             this.showNotify('Không thể copy link OBS', 'error');
           });
@@ -481,7 +738,8 @@
               this.isAdmin = true;
               this.adminPasswordSession = this.adminPasswordInput.trim();
               this.showAdminModal = false;
-              this.showNotify('Đã đăng nhập Admin!');
+              this.showPlayerManagerModal = true;
+              this.showNotify('Đã đăng nhập quyền Quản Trị (Admin XO)!');
             } else {
               this.showNotify(data.message || 'Mật khẩu Admin sai!', 'error');
             }
@@ -504,27 +762,33 @@
               body: JSON.stringify({
                 action: 'verifyPlayerLogin',
                 playerName: this.updaterNameInput,
-                password: this.updaterPassInput,
-                autoRegister: true
+                password: this.updaterPassInput
               })
             });
             const data = await res.json();
             if (data.status === 'success') {
               this.sessionPlayerName = data.playerName || this.updaterNameInput;
               this.sessionPlayerPass = this.updaterPassInput;
+              this.sessionPlayerExpires = data.expiresFormatted || 'Vĩnh viễn';
               sessionStorage.setItem('aoe_playerName', this.sessionPlayerName);
               sessionStorage.setItem('aoe_playerPass', this.sessionPlayerPass);
+              sessionStorage.setItem('aoe_playerExpires', this.sessionPlayerExpires);
               this.showLoginUpdaterModal = false;
               this.fetchInitialData();
               this.showNotify(data.message || 'Đã đăng nhập Player!');
             } else {
-              this.showNotify(data.message || 'Mật khẩu sai!', 'error');
+              this.showNotify(data.message || 'Đăng nhập thất bại!', 'error');
             }
           } catch (e) {
             this.showNotify('Lỗi xác thực mạng!', 'error');
           }
         },
-        logoutPlayer() { this.sessionPlayerName = ''; this.sessionPlayerPass = ''; sessionStorage.clear(); },
+        logoutPlayer() {
+          this.sessionPlayerName = '';
+          this.sessionPlayerPass = '';
+          this.sessionPlayerExpires = '';
+          sessionStorage.clear();
+        },
         async setWinner(gameIndex, winnerTeam) {
           if (!this.canModify(this.selectedMatch)) {
             if (!this.sessionPlayerName) {
@@ -675,40 +939,174 @@
           });
           this.showNotify(this.showCivStats ? 'Đã BẬT hiển thị Cung-Chém' : 'Đã ẨN hiển thị Cung-Chém');
         },
-        async addPlayer() {
-          if (!this.newPlayerForm.name) return;
-          this.players.push({
-            name: this.newPlayerForm.name.trim(),
-            password: (this.newPlayerForm.password || '123').trim()
-          });
-          this.newPlayerForm = { name: '', password: '' };
-          await this.savePlayersToBackend();
-        },
-        async editPlayerPass(idx) {
-          const newPass = prompt('Nhập mật khẩu mới cho ' + this.players[idx].name + ':', this.players[idx].password);
-          if (newPass !== null) {
-            this.players[idx].password = newPass.trim();
-            await this.savePlayersToBackend();
+        async createNewPlayerAdmin() {
+          if (!this.newPlayerForm.name || !this.newPlayerForm.name.trim()) {
+            this.showNotify('Vui lòng nhập Tên Player!', 'error');
+            return;
+          }
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminSavePlayer',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                player: {
+                  name: this.newPlayerForm.name.trim(),
+                  password: (this.newPlayerForm.password || '123').trim(),
+                  durationDays: this.newPlayerForm.durationDays,
+                  isActive: true,
+                  note: (this.newPlayerForm.note || '').trim()
+                }
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              this.newPlayerForm = { name: '', password: '123', durationDays: 30, note: '' };
+              this.showNotify(data.message || 'Đã cấp tài khoản thành công!');
+            } else {
+              this.showNotify(data.message || 'Lỗi tạo tài khoản!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối Server!', 'error');
           }
         },
-        async deletePlayer(idx) {
-          if (confirm('Xóa player: ' + this.players[idx].name + '?')) {
-            this.players.splice(idx, 1);
-            await this.savePlayersToBackend();
+        async togglePlayerActive(p) {
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminToggleActive',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                name: p.name,
+                isActive: !p.isActive
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              this.showNotify(data.message);
+            }
+          } catch (e) {
+            this.showNotify('Lỗi cập nhật trạng thái!', 'error');
           }
         },
-        async savePlayersToBackend() {
-          await fetch(API_URL, {
+        async extendPlayerDays(p, addDays, lifetime = false) {
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminExtendPlayer',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                name: p.name,
+                addDays,
+                lifetime
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              this.showNotify(data.message);
+            }
+          } catch (e) {
+            this.showNotify('Lỗi khi gia hạn!', 'error');
+          }
+        },
+        async setCustomExpiryDate(p) {
+          const defaultDate = p.expiresAt
+            ? new Date(Number(p.expiresAt)).toISOString().slice(0, 10)
+            : new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+          const input = prompt(`Nhập ngày hết hạn mới cho "${p.name}" (Định dạng YYYY-MM-DD, hoặc để trống = Vĩnh viễn):`, defaultDate);
+          if (input === null) return;
+          let expiresAt = null;
+          if (input.trim() !== '') {
+            const parsed = new Date(input.trim() + 'T23:59:59');
+            if (isNaN(parsed.getTime())) {
+              this.showNotify('Định dạng ngày không hợp lệ! Hãy nhập theo dạng YYYY-MM-DD (VD: 2026-12-31)', 'error');
+              return;
+            }
+            expiresAt = parsed.getTime();
+          }
+          const res = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              action: 'savePlayers',
-              players: this.players,
+              action: 'adminSavePlayer',
               isAdmin: this.isAdmin,
-              adminPassword: this.adminPasswordSession
+              adminPassword: this.adminPasswordSession,
+              player: { ...p, expiresAt, isActive: true }
             })
           });
-          this.showNotify('Đã cập nhật danh sách Player!');
+          const data = await res.json();
+          if (data.status === 'success') {
+            this.players = data.players || this.players;
+            this.showNotify(`Đã cập nhật hạn sử dụng cho "${p.name}"!`);
+          }
+        },
+        async editPlayerPass(p) {
+          const newPass = prompt('Nhập mật khẩu mới cho ' + p.name + ':', p.password);
+          if (newPass !== null && newPass.trim()) {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminSavePlayer',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                player: { ...p, password: newPass.trim() }
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              this.showNotify(`Đã đổi mật khẩu cho "${p.name}"!`);
+            }
+          }
+        },
+        async editPlayerNote(p) {
+          const newNote = prompt('Nhập ghi chú cho ' + p.name + ' (SĐT/Zalo/Gói thu phí):', p.note || '');
+          if (newNote !== null) {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminSavePlayer',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                player: { ...p, note: newNote.trim() }
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              this.showNotify(`Đã cập nhật ghi chú cho "${p.name}"!`);
+            }
+          }
+        },
+        async deletePlayerAdmin(p) {
+          if (confirm(`Bạn có chắc muốn XÓA tài khoản "${p.name}"?`)) {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminDeletePlayer',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                name: p.name
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              this.showNotify(data.message || 'Đã xóa tài khoản!');
+            }
+          }
         },
         getCivType(civName) { const f = this.civs.find(c => c.name === civName); return f ? f.type : ''; },
         getCivTypeClass(civName) {
@@ -751,7 +1149,7 @@
         },
         showNotify(msg, type = 'success') {
           this.notification = { message: msg, type };
-          setTimeout(() => { this.notification = null; }, 3500);
+          setTimeout(() => { this.notification = null; }, 3800);
         },
         renderCharts() {
           const civCounts = {}; let cungCount = 0, chemCount = 0;
@@ -813,4 +1211,3 @@
   </script>
 </body>
 </html>
-
