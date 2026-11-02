@@ -2,66 +2,143 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>AOE Overlay OBS - Realtime</title>
+  <title>AOE Overlay OBS - Realtime HUD</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;900&display=swap');
     body { font-family: 'Roboto Condensed', sans-serif; background: transparent; overflow: hidden; }
-    .blur-text-white { color: #fff; text-shadow: 0 0 4px #fff, 0 0 8px rgba(255,255,255,.4); }
-    @keyframes glow { 0%,100% { text-shadow: 0 0 8px #f59e0b; color: #fbbf24; } 50% { text-shadow: 0 0 14px #ef4444; color: #f87171; } }
-    .effect-xo { animation: glow 2s infinite ease-in-out; }
-    @keyframes marquee { 0% { transform: translateX(100%); opacity: 0; } 2% { opacity: 1; } 98% { opacity: 1; } 100% { transform: translateX(-100%); opacity: 0; } }
-    .run-marquee { display: inline-block; white-space: nowrap; animation: marquee 38s linear forwards; }
+    .blur-text-white { color: #fff; text-shadow: 0 0 4px #fff, 0 0 8px rgba(56,189,248,.6); }
+    @keyframes glow {
+      0%, 100% { text-shadow: 0 0 8px #f59e0b; color: #fbbf24; }
+      50% { text-shadow: 0 0 14px #00f2fe; color: #38bdf8; }
+    }
+    .effect-xo { animation: glow 2.4s infinite ease-in-out; }
+    @keyframes marquee {
+      0% { transform: translateX(100%); opacity: 0; }
+      3% { opacity: 1; }
+      97% { opacity: 1; }
+      100% { transform: translateX(-100%); opacity: 0; }
+    }
+    .run-marquee { display: inline-block; white-space: nowrap; animation: marquee 32s linear infinite; }
+    .cyber-panel {
+      background: linear-gradient(180deg, rgba(6, 13, 30, 0.96) 0%, rgba(2, 6, 18, 0.98) 100%);
+      border: 1.5px solid rgba(56, 189, 248, 0.45);
+      box-shadow: 0 0 18px rgba(14, 165, 233, 0.25), inset 0 0 12px rgba(14, 165, 233, 0.08);
+    }
+    .cyber-tab {
+      background: rgba(6, 14, 34, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      box-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+    }
   </style>
 </head>
 <body class="p-0 m-0">
-  <div id="app" class="w-full">
-    <div v-if="match" class="flex flex-col w-[500px]">
-      <div class="flex justify-between items-center gap-2 mb-1">
-        <div class="flex items-center gap-2 shrink-0">
-          <div class="bg-slate-950/90 border border-amber-500/50 px-2.5 py-0.5 rounded-t-lg shadow-lg">
-            <span class="text-xs font-black uppercase effect-xo tracking-wider">MÁY {{ playerOverride || match.streamerName || 'XO' }}</span>
+  <div id="app" class="w-full p-1">
+    <div v-if="match" class="flex items-start gap-2.5">
+      <!-- BẢNG QUÂN CHÍNH (LEFT / MAIN OVERLAY) -->
+      <div class="flex flex-col w-[510px] shrink-0">
+        <!-- Thanh Header trên cùng -->
+        <div class="flex justify-between items-center gap-1.5 mb-1">
+          <div class="flex items-center gap-1.5 shrink-0">
+            <div class="cyber-tab border-amber-500/60 px-2.5 py-0.5 rounded-t-lg">
+              <span class="text-xs font-black uppercase effect-xo tracking-wider">MÁY {{ playerOverride || match.streamerName || 'XO' }}</span>
+            </div>
+            <div class="cyber-tab px-2 py-0.5 rounded-t-lg flex items-center gap-1">
+              <span class="text-xs font-black text-white uppercase tracking-wider">BẢNG QUÂN</span>
+              <span class="text-[11px] font-bold text-cyan-300 bg-slate-900/90 border border-cyan-500/40 px-1 rounded">{{ match.mode }}</span>
+            </div>
           </div>
-          <div class="bg-slate-950/90 border border-slate-700/80 px-2.5 py-0.5 rounded-t-lg shadow-lg flex items-center gap-1.5">
-            <span class="text-xs font-black text-white uppercase tracking-wider">Bảng quân</span>
-            <span class="text-[11px] font-bold text-amber-400 bg-slate-900 border border-amber-500/30 px-1 rounded">{{ match.mode }}</span>
+
+          <!-- Dòng chữ chạy (Marquee) -->
+          <div v-if="overlayCfg.marqueeMode !== 'OFF' && showCivStats"
+               class="flex-1 h-5 overflow-hidden cyber-tab border-amber-500/40 rounded-t-lg flex items-center px-2">
+            <div v-if="showMarquee" class="w-full text-[11px] font-bold text-amber-300">
+              <span class="run-marquee font-mono uppercase tracking-wider">{{ marqueeDisplayText }}</span>
+            </div>
+          </div>
+          <div v-else class="flex-1"></div>
+
+          <!-- Hiển thị Ngày ở góc phải -->
+          <div v-if="overlayCfg.showDateCorner !== false"
+               class="cyber-tab px-2 py-0.5 rounded-t-lg shrink-0 flex items-center gap-1">
+            <span class="text-[10px] text-cyan-400">📅</span>
+            <span class="text-[11px] font-bold text-slate-200 font-mono tracking-tight">{{ currentDateStr }}</span>
           </div>
         </div>
-        <div class="flex-1 h-5 overflow-hidden bg-slate-950/80 border border-amber-500/30 rounded-t-lg flex items-center px-2">
-          <div v-if="showMarquee && showCivStats" class="w-full text-[11px] font-bold text-amber-300">
-            <span class="run-marquee font-mono uppercase tracking-wider">{{ playerCivStatsText }}</span>
+
+        <!-- Khung Bảng Quân & Tỉ Số Trung Tâm -->
+        <div class="flex items-stretch justify-between cyber-panel text-white min-h-[115px] rounded-r-xl rounded-b-xl overflow-hidden">
+          <!-- Đội Đỏ (Bên trái) -->
+          <div class="flex-1 px-3 py-1.5 bg-slate-950/70 flex flex-col justify-center border-r border-cyan-500/30">
+            <div v-for="(player, index) in match.redTeam" :key="'red-'+index" class="flex justify-between items-center gap-2 text-sm font-bold leading-snug my-0.5">
+              <span class="truncate text-left max-w-[105px]" :style="playerStyle(currentRedColors, index)">{{ player }}</span>
+              <span class="font-mono uppercase text-right font-black flex items-center gap-1" :style="playerStyle(currentRedColors, index)">
+                <span v-if="isTopCiv(civAt(latestGame && latestGame.redCivs, index))" class="text-[8px] text-amber-300">⭐</span>
+                {{ getCivName(civAt(latestGame && latestGame.redCivs, index)) }}
+                <span class="text-[10px]">{{ getCivIcon(civAt(latestGame && latestGame.redCivs, index)) }}</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Cột Tỉ Số Trung Tâm -->
+          <div class="w-[98px] shrink-0 flex flex-col justify-between items-center bg-slate-900/95 border-r border-cyan-500/30 text-center">
+            <div class="w-full bg-gradient-to-r from-red-700 via-red-600 to-amber-600 text-white font-black text-xs py-1 uppercase tracking-wider shadow">
+              {{ overlayCfg.cModeEnabled ? ('CHẠM ' + (overlayCfg.cTargetWins || 3) + ' / C') : ('CHẠM ' + (overlayCfg.targetScore || 100)) }}
+            </div>
+            <div class="my-auto text-3xl font-black text-amber-400 drop-shadow">
+              {{ mainScoreDisplay.red }} <span class="text-cyan-500 text-xl">-</span> {{ mainScoreDisplay.blue }}
+            </div>
+            <div class="w-full bg-slate-950 py-0.5 border-t border-cyan-500/30">
+              <span class="text-[11px] font-black uppercase tracking-widest blur-text-white">
+                {{ overlayCfg.cModeEnabled ? ('C' + cModeData.currentSetNumber + ' • TRẬN ' + (match.games ? match.games.length : 1)) : ('TRẬN ' + (match.games ? match.games.length : 1)) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Đội Xanh (Bên phải) -->
+          <div class="flex-1 px-3 py-1.5 bg-slate-950/70 flex flex-col justify-center">
+            <div v-for="(player, index) in match.blueTeam" :key="'blue-'+index" class="flex justify-between items-center gap-2 text-sm font-bold leading-snug my-0.5">
+              <span class="font-mono uppercase text-left font-black flex items-center gap-1" :style="playerStyle(currentBlueColors, index)">
+                <span class="text-[10px]">{{ getCivIcon(civAt(latestGame && latestGame.blueCivs, index)) }}</span>
+                {{ getCivName(civAt(latestGame && latestGame.blueCivs, index)) }}
+                <span v-if="isTopCiv(civAt(latestGame && latestGame.blueCivs, index))" class="text-[8px] text-amber-300">⭐</span>
+              </span>
+              <span class="truncate text-right max-w-[105px]" :style="playerStyle(currentBlueColors, index)">{{ player }}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="flex items-stretch justify-between bg-black/95 text-white border-2 border-slate-800 shadow-2xl min-h-[115px] rounded-r-xl rounded-b-xl overflow-hidden">
-        <div class="flex-1 px-3 py-1.5 bg-black/80 flex flex-col justify-center border-r border-slate-800">
-          <div v-for="(player, index) in match.redTeam" :key="'red-'+index" class="flex justify-between items-center gap-2 text-sm font-bold leading-snug my-0.5">
-            <span class="truncate text-left max-w-[105px]" :style="playerStyle(currentRedColors, index, player)">{{ player }}</span>
-            <span class="font-mono uppercase text-right font-black flex items-center gap-1" :style="playerStyle(currentRedColors, index, player)">
-              <span v-if="isTopCiv(civAt(latestGame && latestGame.redCivs, index))" class="text-[8px] text-amber-300">⭐</span>
-              {{ getCivName(civAt(latestGame && latestGame.redCivs, index)) }} <span class="text-[10px]">{{ getCivIcon(civAt(latestGame && latestGame.redCivs, index)) }}</span>
-            </span>
-          </div>
+      <!-- OVERLAY PHỤ BÊN PHẢI: BẢNG KẾT QUẢ ĐÁNH THEO "C" (SÉC ĐẤU - VIP KIM CƯƠNG) -->
+      <div v-if="overlayCfg.cModeEnabled" class="flex flex-col w-[195px] shrink-0">
+        <div class="cyber-tab border-amber-500/60 px-2.5 py-0.5 rounded-t-lg mb-1 flex justify-between items-center">
+          <span class="text-[11px] font-black uppercase text-amber-400 tracking-wider">⚡ KẾT QUẢ C (SÉC)</span>
+          <span class="text-[11px] font-black text-cyan-300 bg-slate-900 px-1.5 rounded border border-cyan-500/40">
+            C: {{ cModeData.redSetsWon }} - {{ cModeData.blueSetsWon }}
+          </span>
         </div>
 
-        <div class="w-[95px] shrink-0 flex flex-col justify-between items-center bg-slate-900 border-r border-slate-800 text-center">
-          <div class="w-full bg-red-600 text-white font-black text-xs py-1 uppercase tracking-wider">CHẠM 100</div>
-          <div class="my-auto text-3xl font-black text-amber-400">{{ score.red }} <span class="text-slate-500 text-xl">-</span> {{ score.blue }}</div>
-          <div class="w-full bg-slate-950 py-0.5 border-t border-slate-800">
-            <span class="text-[11px] font-black uppercase tracking-widest blur-text-white">TRẬN {{ match.games ? match.games.length : 1 }}</span>
+        <div class="cyber-panel rounded-xl p-2 text-white min-h-[115px] flex flex-col justify-between">
+          <div class="space-y-1">
+            <div v-for="s in cModeData.sets" :key="'set-'+s.setNumber"
+                 class="flex justify-between items-center px-2 py-1 rounded bg-slate-900/90 border text-xs font-bold"
+                 :class="s.winner === 'RED' ? 'border-red-500/50' : (s.winner === 'BLUE' ? 'border-blue-500/50' : 'border-cyan-500/30')">
+              <span class="text-[11px] font-black uppercase tracking-wider"
+                    :class="s.finished ? 'text-slate-300' : 'text-cyan-300'">
+                SÉC {{ s.setNumber }} (C{{ s.setNumber }})
+              </span>
+              <div class="font-mono font-black text-sm flex items-center gap-1">
+                <span :class="s.red >= s.blue ? 'text-amber-400' : 'text-slate-400'">{{ s.red }}</span>
+                <span class="text-slate-600">-</span>
+                <span :class="s.blue >= s.red ? 'text-cyan-300' : 'text-slate-400'">{{ s.blue }}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div class="flex-1 px-3 py-1.5 bg-black/80 flex flex-col justify-center">
-          <div v-for="(player, index) in match.blueTeam" :key="'blue-'+index" class="flex justify-between items-center gap-2 text-sm font-bold leading-snug my-0.5">
-            <span class="font-mono uppercase text-left font-black flex items-center gap-1" :style="playerStyle(currentBlueColors, index, player)">
-              <span class="text-[10px]">{{ getCivIcon(civAt(latestGame && latestGame.blueCivs, index)) }}</span>
-              {{ getCivName(civAt(latestGame && latestGame.blueCivs, index)) }}
-              <span v-if="isTopCiv(civAt(latestGame && latestGame.blueCivs, index))" class="text-[8px] text-amber-300">⭐</span>
-            </span>
-            <span class="truncate text-right max-w-[105px]" :style="playerStyle(currentBlueColors, index, player)">{{ player }}</span>
+          <div class="mt-1.5 pt-1 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400 font-bold">
+            <span>TỔNG TRẬN: {{ (match.games || []).length }}</span>
+            <span class="text-amber-400">Hiệu số: {{ totalGameScore.red }}-{{ totalGameScore.blue }}</span>
           </div>
         </div>
       </div>
@@ -88,10 +165,25 @@
           playerOverride: '',
           showMarquee: true,
           showCivStats: true,
+          currentDateStr: '',
           topCivs: ['SHANG','ASSY','HIT','HITTITE','PER','PERSIAN','PAL','PALMYRAN','YAM','YAMATO','ROM','ROMAN']
         };
       },
       computed: {
+        overlayCfg() {
+          const defaultCfg = {
+            targetScore: 100,
+            marqueeMode: 'ALL',
+            customMarqueeText: '',
+            showDateCorner: true,
+            cModeEnabled: false,
+            cTargetWins: 3
+          };
+          if (this.match && this.match.overlayConfig) {
+            return { ...defaultCfg, ...this.match.overlayConfig };
+          }
+          return defaultCfg;
+        },
         latestGame() {
           return this.match && this.match.games && this.match.games.length
             ? this.match.games[this.match.games.length - 1]
@@ -103,7 +195,7 @@
         currentBlueColors() {
           return (this.latestGame && this.latestGame.blueColors) || (this.match && this.match.blueColors) || [];
         },
-        score() {
+        totalGameScore() {
           return ((this.match && this.match.games) || []).reduce(
             (result, game) => {
               if (game.winner === 'RED') result.red++;
@@ -113,7 +205,70 @@
             { red: 0, blue: 0 }
           );
         },
-        playerCivStatsText() {
+        cModeData() {
+          const targetWins = Number(this.overlayCfg.cTargetWins) || 3;
+          const games = (this.match && this.match.games) || [];
+          const sets = [];
+          let curRed = 0;
+          let curBlue = 0;
+          let setNum = 1;
+          let redSetsWon = 0;
+          let blueSetsWon = 0;
+
+          games.forEach((g, idx) => {
+            if (g.winner === 'RED') curRed++;
+            if (g.winner === 'BLUE') curBlue++;
+
+            if (curRed >= targetWins || curBlue >= targetWins) {
+              const winner = curRed >= targetWins ? 'RED' : 'BLUE';
+              if (winner === 'RED') redSetsWon++;
+              if (winner === 'BLUE') blueSetsWon++;
+              sets.push({
+                setNumber: setNum,
+                red: curRed,
+                blue: curBlue,
+                finished: true,
+                winner
+              });
+              setNum++;
+              curRed = 0;
+              curBlue = 0;
+            } else if (idx === games.length - 1) {
+              sets.push({
+                setNumber: setNum,
+                red: curRed,
+                blue: curBlue,
+                finished: false,
+                winner: null
+              });
+            }
+          });
+
+          if (sets.length === 0) {
+            sets.push({ setNumber: 1, red: 0, blue: 0, finished: false, winner: null });
+          }
+
+          const activeSet = sets[sets.length - 1];
+          return {
+            sets,
+            redSetsWon,
+            blueSetsWon,
+            currentSetNumber: activeSet.setNumber,
+            activeSetScore: { red: activeSet.red, blue: activeSet.blue }
+          };
+        },
+        mainScoreDisplay() {
+          if (this.overlayCfg.cModeEnabled) {
+            return this.cModeData.activeSetScore;
+          }
+          return this.totalGameScore;
+        },
+        marqueeDisplayText() {
+          const mode = this.overlayCfg.marqueeMode || 'ALL';
+          if (mode === 'CUSTOM' && this.overlayCfg.customMarqueeText) {
+            return this.overlayCfg.customMarqueeText;
+          }
+
           if (!this.match || !this.match.games || !this.match.games.length) {
             return 'TỔNG CUNG - CHÉM: CHƯA CÓ DỮ LIỆU';
           }
@@ -139,12 +294,28 @@
               })
             );
           });
-          return `TỔNG CUNG - CHÉM: ${totalCung} - ${totalChem} | ${Object.keys(map)
+
+          if (mode === 'TOTAL_ONLY') {
+            return `TỔNG CUNG - CHÉM: ${totalCung} - ${totalChem}`;
+          }
+
+          const perPlayerText = Object.keys(map)
             .map(name => `${name} (${map[name].cung}-${map[name].chem})`)
-            .join(', ')}`;
+            .join(', ');
+
+          if (mode === 'PER_PLAYER') {
+            return `CUNG - CHÉM TỪNG NGƯỜI: ${perPlayerText}`;
+          }
+
+          return `TỔNG CUNG - CHÉM: ${totalCung} - ${totalChem} | ${perPlayerText}`;
         }
       },
       methods: {
+        updateDateStr() {
+          const now = new Date();
+          const pad = v => String(v).padStart(2, '0');
+          this.currentDateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+        },
         civAt(list, index) {
           return (list && list[index]) || '';
         },
@@ -168,10 +339,11 @@
           }
           return COLORS[index % COLORS.length] || '#ffffff';
         },
-        playerStyle(colors, index, player) {
-          return { color: this.getPlayerHexColor(colors, index, player) };
+        playerStyle(colors, index) {
+          return { color: this.getPlayerHexColor(colors, index) };
         },
         async fetchMatch() {
+          this.updateDateStr();
           const query = new URLSearchParams(location.search);
           this.playerOverride = query.get('streamer') || query.get('player') || '';
           const matchIdParam = query.get('matchId') || '';
@@ -183,22 +355,33 @@
               this.showCivStats = Boolean(data.settings.showCivStats);
             }
             const matches = data.matches || [];
+            const players = data.players || [];
+            let chosenMatch = null;
             if (matchIdParam) {
-              this.match = matches.find(m => m.id === matchIdParam) || data.currentMatch || null;
+              chosenMatch = matches.find(m => m.id === matchIdParam) || data.currentMatch || null;
             } else if (this.playerOverride) {
               const target = this.playerOverride.trim().toLowerCase();
-              this.match =
+              chosenMatch =
                 matches.find(item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === target) ||
                 matches.find(item => String(item.streamerName || '').toLowerCase() === target) ||
                 data.currentMatch ||
                 null;
             } else {
-              this.match =
+              chosenMatch =
                 data.currentMatch ||
                 matches.find(item => item.status === 'LIVE') ||
                 matches[0] ||
                 null;
             }
+            if (chosenMatch) {
+              const owner = players.find(
+                p => String(p.name || '').toLowerCase() === String(chosenMatch.streamerName || '').toLowerCase()
+              );
+              if (owner && owner.overlayConfig) {
+                chosenMatch.overlayConfig = { ...owner.overlayConfig, ...(chosenMatch.overlayConfig || {}) };
+              }
+            }
+            this.match = chosenMatch;
           } catch (error) {
             console.error('Overlay API error:', error);
           }
@@ -215,18 +398,12 @@
         }
       },
       mounted() {
+        this.updateDateStr();
         this.fetchMatch();
         this.connectRealtimeStream();
         setInterval(this.fetchMatch, 3000);
-        setInterval(() => {
-          this.showMarquee = false;
-          setTimeout(() => {
-            this.showMarquee = true;
-          }, 2000);
-        }, 40000);
       }
     }).mount('#app');
   </script>
 </body>
 </html>
-

@@ -38,6 +38,50 @@ function broadcastUpdate(eventType = 'update', payload = {}) {
   }
 }
 
+const TIER_RANK = {
+  BRONZE: 1,
+  SILVER: 2,
+  GOLD: 3,
+  DIAMOND: 4
+};
+
+const TIER_NAMES_VI = {
+  BRONZE: '🥉 Hạng Đồng',
+  SILVER: '🥈 Hạng Bạc',
+  GOLD: '🥇 Hạng Vàng',
+  DIAMOND: '💎 Hạng Kim Cương'
+};
+
+function enforceTierOverlayConfig(tier, requestedCfg, previousCfg) {
+  const rank = TIER_RANK[String(tier || 'BRONZE').toUpperCase()] || 1;
+  const base = db.normalizeOverlayConfig(previousCfg || db.DEFAULT_OVERLAY_CONFIG);
+  const req = db.normalizeOverlayConfig(requestedCfg || {});
+
+  const result = { ...base };
+
+  // Hạng Bạc trở lên (rank >= 2): Đổi số chạm (targetScore) & Bật/tắt ngày góc phải (showDateCorner)
+  if (rank >= 2) {
+    result.targetScore = req.targetScore;
+    result.showDateCorner = req.showDateCorner;
+  }
+
+  // Hạng Vàng trở lên (rank >= 3): Điều khiển chế độ chữ chạy (marqueeMode) & Chữ chạy tùy chỉnh (customMarqueeText)
+  if (rank >= 3) {
+    result.marqueeMode = req.marqueeMode;
+    result.customMarqueeText = req.customMarqueeText;
+  }
+
+  // Hạng Kim Cương (rank >= 4): Mở khóa tính năng Đánh theo C (cModeEnabled) & Overlay phụ bên phải
+  if (rank >= 4) {
+    result.cModeEnabled = req.cModeEnabled;
+    result.cTargetWins = req.cTargetWins;
+  } else {
+    result.cModeEnabled = false;
+  }
+
+  return result;
+}
+
 const CIV_MAP = {
   BABY: 'Baby', CHO: 'Choson', CAT: 'Cartha', CARTHA: 'Cartha', PHO: 'Phoenic',
   SHANG: 'Shang', YA: 'Yamato', SUM: 'Sumer', EGY: 'Egyp',
@@ -85,7 +129,6 @@ function formatVietnamDateOnly(ts) {
 function isAdminAuthorized(data) {
   if (!data || !data.isAdmin) return false;
   if (data.adminPassword && String(data.adminPassword).trim() === ADMIN_PASSWORD) return true;
-  // Backward compatibility if session isAdmin was already verified
   return Boolean(data.isAdmin && !data.adminPassword);
 }
 
@@ -148,6 +191,8 @@ async function validatePlayerAccount(name, password) {
     valid: true,
     canonicalName: existing.name,
     player: existing,
+    tier: existing.tier || 'BRONZE',
+    overlayConfig: existing.overlayConfig || db.DEFAULT_OVERLAY_CONFIG,
     daysLeft,
     activatedFormatted: formatVietnamDateOnly(existing.activatedAt),
     expiresFormatted: existing.expiresAt ? formatVietnamDateOnly(existing.expiresAt) : 'Vĩnh viễn'
@@ -182,6 +227,14 @@ async function getInitialDataPayload(streamerFilter = '') {
     currentMatch = matches.find(m => m.status === 'LIVE') || matches[0] || null;
   }
 
+  // Gắn kèm overlayConfig của Streamer nếu match chưa có
+  if (currentMatch) {
+    const owner = players.find(p => p.name.toLowerCase() === String(currentMatch.streamerName || '').toLowerCase());
+    currentMatch.overlayConfig = db.normalizeOverlayConfig(
+      currentMatch.overlayConfig || (owner && owner.overlayConfig) || db.DEFAULT_OVERLAY_CONFIG
+    );
+  }
+
   return {
     status: 'ok',
     databaseMode: db.isPostgresActive() ? 'neon_postgres' : 'local_json',
@@ -192,7 +245,9 @@ async function getInitialDataPayload(streamerFilter = '') {
   };
 }
 
-async function handleAutoAddGame(data, canonicalStreamerName) {
+async function handleAutoAddGame(data, authResult) {
+  const canonicalStreamerName = authResult.canonicalName;
+  const playerRecord = authResult.player;
   const rawRedCivs = Array.isArray(data.redCivs) ? data.redCivs : [];
   const rawBlueCivs = Array.isArray(data.blueCivs) ? data.blueCivs : [];
   const redPlayers = (Array.isArray(data.redPlayers) ? data.redPlayers : [])
@@ -220,6 +275,10 @@ async function handleAutoAddGame(data, canonicalStreamerName) {
   const blueColors = Array.isArray(data.blueColors) ? data.blueColors : [];
   const streamerName = canonicalStreamerName || data.streamerName || 'Auto Bot';
 
+  const effectiveOverlayCfg = data.overlayConfig
+    ? enforceTierOverlayConfig(playerRecord.tier, data.overlayConfig, playerRecord.overlayConfig)
+    : db.normalizeOverlayConfig(playerRecord.overlayConfig);
+
   const matches = await db.getMatches();
   let liveMatch = matches.find(
     item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === streamerName.toLowerCase()
@@ -236,6 +295,7 @@ async function handleAutoAddGame(data, canonicalStreamerName) {
       liveMatch.blueTeam = bluePlayers;
       liveMatch.redColors = redColors;
       liveMatch.blueColors = blueColors;
+      liveMatch.overlayConfig = effectiveOverlayCfg;
       previous.redColors = redColors;
       previous.blueColors = blueColors;
       liveMatch.lastHeartbeat = Date.now();
@@ -256,6 +316,7 @@ async function handleAutoAddGame(data, canonicalStreamerName) {
       blueTeam: bluePlayers,
       redColors,
       blueColors,
+      overlayConfig: effectiveOverlayCfg,
       updatedBy: streamerName,
       formattedTime: formatVietnamTime(),
       status: 'LIVE',
@@ -267,6 +328,7 @@ async function handleAutoAddGame(data, canonicalStreamerName) {
     liveMatch.blueTeam = bluePlayers;
     liveMatch.redColors = redColors;
     liveMatch.blueColors = blueColors;
+    liveMatch.overlayConfig = effectiveOverlayCfg;
     liveMatch.lastHeartbeat = Date.now();
   }
 
@@ -313,7 +375,7 @@ app.get('/api/stream', (req, res) => {
   });
 });
 
-// GET /api (backward compatible with ?action=getInitialData)
+// GET /api
 app.get('/api', async (req, res) => {
   try {
     const action = req.query.action || 'getInitialData';
@@ -329,7 +391,7 @@ app.get('/api', async (req, res) => {
   }
 });
 
-// POST /api (handles all actions from Web Dashboard and Desktop Client)
+// POST /api
 app.post('/api', async (req, res) => {
   try {
     const data = req.body || {};
@@ -340,6 +402,9 @@ app.post('/api', async (req, res) => {
       return res.json({
         status: auth.valid ? 'success' : 'error',
         playerName: auth.canonicalName || data.playerName,
+        tier: auth.tier || 'BRONZE',
+        tierNameVi: TIER_NAMES_VI[auth.tier || 'BRONZE'] || '🥉 Hạng Đồng',
+        overlayConfig: auth.overlayConfig || db.DEFAULT_OVERLAY_CONFIG,
         isActive: auth.player ? auth.player.isActive : false,
         activatedAt: auth.player ? auth.player.activatedAt : null,
         expiresAt: auth.player ? auth.player.expiresAt : null,
@@ -347,7 +412,7 @@ app.post('/api', async (req, res) => {
         activatedFormatted: auth.activatedFormatted || '',
         expiresFormatted: auth.expiresFormatted || '',
         message: auth.valid
-          ? `Đăng nhập thành công! (Hạn SD: ${auth.expiresFormatted}${auth.daysLeft !== null ? ` - Còn ${auth.daysLeft} ngày` : ''})`
+          ? `Đăng nhập thành công [${TIER_NAMES_VI[auth.tier] || auth.tier}]! (Hạn SD: ${auth.expiresFormatted})`
           : (auth.reason || 'Đăng nhập thất bại!')
       });
     }
@@ -365,12 +430,55 @@ app.post('/api', async (req, res) => {
       if (!auth.valid) {
         return res.json({ status: 'error', message: auth.reason || 'Tài khoản không hợp lệ!' });
       }
-      const result = await handleAutoAddGame(data, auth.canonicalName);
+      const result = await handleAutoAddGame(data, auth);
       return res.json({
         status: 'success',
         added: result.added,
         match: result.match,
         message: result.message
+      });
+    }
+
+    if (action === 'updateOverlayConfig') {
+      const auth = await validatePlayerAccount(data.streamerName, data.password);
+      if (!auth.valid && !isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: auth.reason || 'Xác thực thất bại!' });
+      }
+      const players = await db.getPlayers();
+      const targetName = auth.valid ? auth.canonicalName : String(data.streamerName || 'XO').trim();
+      const playerObj = players.find(p => p.name.toLowerCase() === targetName.toLowerCase());
+      const effectiveTier = isAdminAuthorized(data) ? 'DIAMOND' : (playerObj ? playerObj.tier : 'BRONZE');
+
+      const sanitizedCfg = enforceTierOverlayConfig(
+        effectiveTier,
+        data.overlayConfig,
+        playerObj ? playerObj.overlayConfig : db.DEFAULT_OVERLAY_CONFIG
+      );
+
+      if (playerObj) {
+        playerObj.overlayConfig = sanitizedCfg;
+        await db.upsertPlayer(playerObj);
+      }
+
+      const matches = await db.getMatches();
+      const liveMatch = matches.find(
+        m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === targetName.toLowerCase()
+      ) || matches.find(
+        m => String(m.streamerName || '').toLowerCase() === targetName.toLowerCase()
+      );
+
+      if (liveMatch) {
+        liveMatch.overlayConfig = sanitizedCfg;
+        liveMatch.lastHeartbeat = Date.now();
+        await db.saveMatch(liveMatch);
+      }
+
+      broadcastUpdate('overlay_config_updated', { streamerName: targetName, overlayConfig: sanitizedCfg });
+      return res.json({
+        status: 'success',
+        overlayConfig: sanitizedCfg,
+        match: liveMatch || null,
+        message: 'Đã đồng bộ Cấu Hình VIP Overlay lên Livestream!'
       });
     }
 
@@ -387,7 +495,13 @@ app.post('/api', async (req, res) => {
         match.lastHeartbeat = Date.now();
         await db.saveMatch(match);
       }
-      return res.json({ status: 'success', match: match || null, message: 'Heartbeat OK' });
+      return res.json({
+        status: 'success',
+        tier: auth.tier,
+        overlayConfig: auth.overlayConfig,
+        match: match || null,
+        message: 'Heartbeat OK'
+      });
     }
 
     if (action === 'setWinner') {
@@ -460,7 +574,7 @@ app.post('/api', async (req, res) => {
       return res.json({ status: 'success' });
     }
 
-    // ==================== ADMIN USER & SUBSCRIPTION MANAGEMENT ====================
+    // ==================== ADMIN USER, VIP TIER & SUBSCRIPTION MANAGEMENT ====================
     if (action === 'adminSavePlayer') {
       if (!isAdminAuthorized(data)) {
         return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền quản lý tài khoản!' });
@@ -483,15 +597,17 @@ app.post('/api', async (req, res) => {
       const saved = await db.upsertPlayer({
         name,
         password: String(pData.password || '123').trim(),
+        tier: String(pData.tier || 'BRONZE').toUpperCase(),
         isActive: pData.isActive !== undefined ? Boolean(pData.isActive) : true,
         activatedAt: pData.activatedAt ? Number(pData.activatedAt) : now,
         expiresAt,
         note: String(pData.note || '').trim(),
+        overlayConfig: pData.overlayConfig || db.DEFAULT_OVERLAY_CONFIG,
         createdAt: pData.createdAt ? Number(pData.createdAt) : now
       });
       const players = await db.getPlayers();
       broadcastUpdate('players_updated');
-      return res.json({ status: 'success', player: saved, players, message: `Đã lưu tài khoản "${saved.name}"!` });
+      return res.json({ status: 'success', player: saved, players, message: `Đã lưu tài khoản "${saved.name}" [${TIER_NAMES_VI[saved.tier]}]!` });
     }
 
     if (action === 'adminExtendPlayer') {
@@ -606,7 +722,7 @@ app.get('*', (req, res) => {
 
 db.initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`[*] TOOL BẢNG QUÂN AOE BY XO Server đang chạy tại: http://localhost:${PORT}`);
+    console.log(`[*] AOE COMMAND CENTER Server đang chạy tại: http://localhost:${PORT}`);
     console.log(`[*] Trang quản lý kèo: http://localhost:${PORT}`);
     console.log(`[*] Link OBS Overlay : http://localhost:${PORT}/overlay.html?streamer=XO`);
   });
