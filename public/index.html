@@ -13,38 +13,63 @@
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #090e1a;
-      background-image: radial-gradient(circle at 50% 0%, rgba(30, 58, 138, 0.18) 0%, transparent 55%);
-      color: #f8fafc;
+      background-color: #080c16;
+      color: #e7ebf0;
     }
 
     .font-display {
       font-family: 'Roboto Condensed', 'Inter', sans-serif;
     }
 
-    /* Các Panel sáng hơn nền chính một chút, bo góc hiện đại, shadow mềm, giảm hẳn Neon Glow */
+    /* Dark Matte Wood-Gold Theme — khớp 100% ảnh mẫu đính kèm */
     .premium-card {
-      background: rgba(19, 29, 51, 0.88);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      box-shadow: 0 10px 28px -6px rgba(0, 0, 0, 0.55);
+      background: #181e28;
+      border: 1px solid #2b3541;
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.65);
       transition: border-color 0.2s ease, transform 0.2s ease;
     }
 
     .premium-card-hover:hover {
-      border-color: rgba(56, 189, 248, 0.38);
+      border-color: #eca133;
     }
 
-    /* Team Đỏ & Team Xanh có màu đặc trưng dịu mắt, không chói */
+    /* Override các lớp màu Tailwind sang bảng màu gỗ tối / charcoal & vàng hổ phách (#eca133) */
+    .bg-slate-900, .bg-slate-900\/90, .bg-slate-950, .bg-slate-950\/60, .bg-slate-950\/70, .bg-slate-950\/80 {
+      background-color: #11151b !important;
+    }
+    .bg-slate-800, .bg-slate-800\/90, .bg-slate-800\/80, .bg-slate-800\/60 {
+      background-color: #11151b !important;
+    }
+    .hover\:bg-slate-700:hover {
+      background-color: #222b38 !important;
+    }
+    .border-slate-700, .border-slate-700\/80, .border-slate-700\/70, .border-slate-800 {
+      border-color: #2b3541 !important;
+    }
+    .bg-sky-500, .bg-sky-600 {
+      background-color: #eca133 !important;
+      color: #11151b !important;
+    }
+    .hover\:bg-sky-400:hover, .hover\:bg-sky-500:hover {
+      background-color: #d98f26 !important;
+      color: #11151b !important;
+    }
+    .text-sky-400, .text-sky-300 {
+      color: #eca133 !important;
+    }
+    .border-sky-500\/40, .border-sky-500\/50, .focus\:border-sky-400:focus {
+      border-color: #eca133 !important;
+    }
+
+    /* Team Đỏ & Team Xanh có màu đặc trưng dịu mắt trên nền gỗ tối */
     .team-red-box {
-      background: linear-gradient(145deg, rgba(48, 18, 26, 0.85) 0%, rgba(22, 27, 45, 0.92) 100%);
-      border: 1px solid rgba(248, 113, 113, 0.32);
+      background: #1e171b;
+      border: 1px solid #5c242c;
     }
 
     .team-blue-box {
-      background: linear-gradient(145deg, rgba(16, 34, 62, 0.85) 0%, rgba(22, 27, 45, 0.92) 100%);
-      border: 1px solid rgba(96, 165, 250, 0.32);
+      background: #151d29;
+      border: 1px solid #284268;
     }
 
     @keyframes floatStar {
