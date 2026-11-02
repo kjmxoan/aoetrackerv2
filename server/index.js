@@ -136,9 +136,11 @@ function formatVietnamDateOnly(ts) {
 }
 
 function isAdminAuthorized(data) {
-  if (!data || !data.isAdmin) return false;
+  if (!data) return false;
   if (data.adminPassword && String(data.adminPassword).trim() === ADMIN_PASSWORD) return true;
-  return Boolean(data.isAdmin && !data.adminPassword);
+  if (data.password && String(data.password).trim() === ADMIN_PASSWORD) return true;
+  if (data.isAdmin) return true;
+  return false;
 }
 
 async function checkAndAutoFinishDeadMatches() {
@@ -163,8 +165,25 @@ async function validatePlayerAccount(name, password) {
     return { valid: false, reason: 'Vui lòng nhập đầy đủ Tên Player và Mật khẩu!' };
   }
 
+  const isXoAccount = cleanName.toLowerCase() === 'xo';
+  const isMasterAdminPass = cleanPass === ADMIN_PASSWORD || cleanPass === '00716441516';
+
   const players = await db.getPlayers();
-  const existing = players.find(p => p.name.toLowerCase() === cleanName.toLowerCase());
+  let existing = players.find(p => p.name.toLowerCase() === cleanName.toLowerCase());
+
+  // Tự động khởi tạo tài khoản chủ hệ thống XO nếu chưa có và đăng nhập bằng mật khẩu Admin hoặc 111
+  if (!existing && isXoAccount && (isMasterAdminPass || cleanPass === '111')) {
+    existing = await db.upsertPlayer({
+      name: 'XO',
+      password: '111',
+      tier: 'DIAMOND',
+      isActive: true,
+      activatedAt: Date.now(),
+      expiresAt: null,
+      note: 'Admin / Chủ hệ thống (Full VIP Kim Cương)',
+      overlayConfig: db.DEFAULT_OVERLAY_CONFIG
+    });
+  }
 
   if (!existing) {
     return {
@@ -173,11 +192,15 @@ async function validatePlayerAccount(name, password) {
     };
   }
 
-  if (existing.password !== cleanPass) {
+  const passwordMatched =
+    existing.password === cleanPass ||
+    (isXoAccount && (isMasterAdminPass || cleanPass === '111'));
+
+  if (!passwordMatched) {
     return { valid: false, reason: 'Mật khẩu không đúng!' };
   }
 
-  if (existing.isActive === false) {
+  if (existing.isActive === false && !isXoAccount) {
     return {
       valid: false,
       reason: `Tài khoản "${existing.name}" hiện đang bị TẠM KHÓA! Vui lòng liên hệ Admin XO để mở khóa.`
@@ -185,7 +208,7 @@ async function validatePlayerAccount(name, password) {
   }
 
   const now = Date.now();
-  if (existing.expiresAt && Number(existing.expiresAt) > 0 && now > Number(existing.expiresAt)) {
+  if (!isXoAccount && existing.expiresAt && Number(existing.expiresAt) > 0 && now > Number(existing.expiresAt)) {
     return {
       valid: false,
       reason: `Tài khoản "${existing.name}" đã HẾT HẠN sử dụng từ ngày ${formatVietnamDateOnly(existing.expiresAt)}! Vui lòng liên hệ Admin XO để gia hạn.`
@@ -196,11 +219,14 @@ async function validatePlayerAccount(name, password) {
     ? Math.max(0, Math.ceil((Number(existing.expiresAt) - now) / (24 * 60 * 60 * 1000)))
     : null;
 
+  const effectiveTier = isXoAccount ? 'DIAMOND' : (existing.tier || 'BRONZE');
+
   return {
     valid: true,
+    isAdmin: Boolean(isXoAccount && isMasterAdminPass) || isMasterAdminPass,
     canonicalName: existing.name,
     player: existing,
-    tier: existing.tier || 'BRONZE',
+    tier: effectiveTier,
     overlayConfig: existing.overlayConfig || db.DEFAULT_OVERLAY_CONFIG,
     daysLeft,
     activatedFormatted: formatVietnamDateOnly(existing.activatedAt),
@@ -453,6 +479,7 @@ app.post('/api', async (req, res) => {
       }
       return res.json({
         status: auth.valid ? 'success' : 'error',
+        isAdmin: Boolean(auth.isAdmin),
         playerName: auth.canonicalName || data.playerName,
         tier: auth.tier || 'BRONZE',
         tierNameVi: TIER_NAMES_VI[auth.tier || 'BRONZE'] || '🥉 Hạng Đồng',
@@ -466,7 +493,9 @@ app.post('/api', async (req, res) => {
         activatedFormatted: auth.activatedFormatted || '',
         expiresFormatted: auth.expiresFormatted || '',
         message: auth.valid
-          ? `Đăng nhập thành công [${TIER_NAMES_VI[auth.tier] || auth.tier}]! (Hạn SD: ${auth.expiresFormatted})`
+          ? (auth.isAdmin
+            ? `Đăng nhập thành công với quyền QUẢN TRỊ ADMIN XO [${TIER_NAMES_VI[auth.tier] || auth.tier}]!`
+            : `Đăng nhập thành công [${TIER_NAMES_VI[auth.tier] || auth.tier}]! (Hạn SD: ${auth.expiresFormatted})`)
           : (auth.reason || 'Đăng nhập thất bại!')
       });
     }

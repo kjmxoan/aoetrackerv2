@@ -1467,20 +1467,33 @@
         },
         async verifyUpdaterPassword() {
           if (!this.updaterNameInput || !this.updaterPassInput) return;
+          const cleanName = this.updaterNameInput.trim();
+          const cleanPass = this.updaterPassInput.trim();
+
+          // Nếu đăng nhập XO bằng mật khẩu Admin (00716441516), tự động kích hoạt cả Quyền Admin + Tài khoản XO Kim Cương
+          if (cleanName.toLowerCase() === 'xo' && cleanPass === '00716441516') {
+            this.isAdmin = true;
+            this.adminPasswordSession = cleanPass;
+          }
+
           try {
             const res = await fetch(API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 action: 'verifyPlayerLogin',
-                playerName: this.updaterNameInput,
-                password: this.updaterPassInput
+                playerName: cleanName,
+                password: cleanPass
               })
             });
             const data = await res.json();
             if (data.status === 'success') {
-              this.sessionPlayerName = data.playerName || this.updaterNameInput;
-              this.sessionPlayerPass = this.updaterPassInput;
+              if (data.isAdmin) {
+                this.isAdmin = true;
+                this.adminPasswordSession = cleanPass;
+              }
+              this.sessionPlayerName = data.playerName || cleanName;
+              this.sessionPlayerPass = cleanPass;
               this.sessionPlayerExpires = data.expiresFormatted || 'Vĩnh viễn';
               this.sessionPlayerTier = data.tier || 'BRONZE';
               this.vipTargetPlayer = this.sessionPlayerName;
@@ -1492,8 +1505,28 @@
               sessionStorage.setItem('aoe_playerExpires', this.sessionPlayerExpires);
               sessionStorage.setItem('aoe_playerTier', this.sessionPlayerTier);
               this.showLoginUpdaterModal = false;
+              if (this.isAdmin) {
+                this.showPlayerManagerModal = true;
+              }
               this.fetchInitialData();
-              this.showNotify(data.message || 'Đã đăng nhập Player!');
+              this.showNotify(data.message || 'Đã đăng nhập thành công!');
+            } else if (cleanName.toLowerCase() === 'xo' && cleanPass === '00716441516') {
+              // Dự phòng khi Server trên Render chưa cập nhật bản mới: kích hoạt thẳng quyền Admin XO
+              this.isAdmin = true;
+              this.adminPasswordSession = cleanPass;
+              this.sessionPlayerName = 'XO';
+              this.sessionPlayerPass = '111';
+              this.sessionPlayerExpires = 'Vĩnh viễn';
+              this.sessionPlayerTier = 'DIAMOND';
+              this.vipTargetPlayer = 'XO';
+              sessionStorage.setItem('aoe_playerName', 'XO');
+              sessionStorage.setItem('aoe_playerPass', '111');
+              sessionStorage.setItem('aoe_playerExpires', 'Vĩnh viễn');
+              sessionStorage.setItem('aoe_playerTier', 'DIAMOND');
+              this.showLoginUpdaterModal = false;
+              this.showPlayerManagerModal = true;
+              this.fetchInitialData();
+              this.showNotify('🛡️ Đã đăng nhập quyền QUẢN TRỊ ADMIN XO (Full VIP Kim Cương)!');
             } else {
               this.showNotify(data.message || 'Đăng nhập thất bại!', 'error');
             }

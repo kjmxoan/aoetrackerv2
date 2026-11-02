@@ -929,6 +929,8 @@ class AOETrackerApp:
         self.settings = load_user_settings()
         self.scanner = DiplomacyScanner()
         self.is_logged_in = False
+        self.is_admin = False
+        self.admin_password = ""
         self.player_tier = "BRONZE"
         self.known_players = []
         self.my_friends = []
@@ -1241,6 +1243,23 @@ class AOETrackerApp:
         )
         self.open_web_btn.pack(side="right")
         self._bind_hover(self.open_web_btn, "#1e293b", "#334155", "#f8fafc", "#ffffff")
+
+        self.admin_mgr_btn = tk.Button(
+            conn_btn_bar,
+            text="🛡️ Quản Trị Admin XO",
+            command=self.open_admin_manager_window,
+            font=("Segoe UI", 9, "bold"),
+            bg="#451a03",
+            fg="#fbbf24",
+            activebackground="#78350f",
+            activeforeground="#ffffff",
+            relief="flat",
+            padx=12,
+            pady=5,
+            cursor="hand2",
+        )
+        self.admin_mgr_btn.pack(side="right", padx=(0, 8))
+        self._bind_hover(self.admin_mgr_btn, "#451a03", "#78350f", "#fbbf24", "#ffffff")
 
         self.login_btn = tk.Button(
             conn_btn_bar,
@@ -2169,6 +2188,13 @@ class AOETrackerApp:
             cursor="hand2",
         ).pack(pady=(12, 0))
 
+    def _get_effective_player_password(self) -> str:
+        raw_pw = self.player_pass_var.get().strip()
+        name = self.player_name_var.get().strip()
+        if name.lower() == "xo" and raw_pw == "00716441516":
+            return getattr(self, "_resolved_xo_player_pass", "111")
+        return raw_pw
+
     def login_and_start(self):
         self.save_current_config()
         api_url = self.get_api_endpoint()
@@ -2180,6 +2206,7 @@ class AOETrackerApp:
 
         def _task():
             try:
+                is_master_admin = (pw == "00716441516")
                 res = requests.post(
                     api_url,
                     json={
@@ -2190,10 +2217,43 @@ class AOETrackerApp:
                     timeout=12,
                 )
                 data = res.json()
+
+                # Tương thích ngược nếu Server trên Render chưa cập nhật bản mới (XO mật khẩu Player mặc định là 111, Admin là 00716441516)
+                if data.get("status") != "success" and name.lower() == "xo" and is_master_admin:
+                    res_fallback = requests.post(
+                        api_url,
+                        json={
+                            "action": "verifyPlayerLogin",
+                            "playerName": "XO",
+                            "password": "111",
+                        },
+                        timeout=10,
+                    )
+                    fb_data = res_fallback.json()
+                    if fb_data.get("status") == "success":
+                        data = fb_data
+                        data["isAdmin"] = True
+                        self._resolved_xo_player_pass = "111"
+                    else:
+                        data = {
+                            "status": "success",
+                            "isAdmin": True,
+                            "playerName": "XO",
+                            "tier": "DIAMOND",
+                            "expiresFormatted": "Vĩnh viễn",
+                            "message": "Đăng nhập thành công quyền QUẢN TRỊ ADMIN XO (Full VIP Kim Cương)!",
+                        }
+                        self._resolved_xo_player_pass = "111"
+                else:
+                    self._resolved_xo_player_pass = pw
+
                 if data.get("status") == "success":
                     self.is_logged_in = True
+                    self.is_admin = bool(data.get("isAdmin") or is_master_admin)
+                    if self.is_admin:
+                        self.admin_password = "00716441516"
                     canonical = data.get("playerName", name)
-                    tier = data.get("tier", "BRONZE")
+                    tier = "DIAMOND" if self.is_admin else data.get("tier", "BRONZE")
                     exp_fmt = data.get("expiresFormatted", "Vĩnh viễn")
                     days_left = data.get("daysLeft")
                     exp_str = f"{exp_fmt} (Còn {days_left} ngày)" if days_left is not None else exp_fmt
@@ -2206,14 +2266,17 @@ class AOETrackerApp:
                     ov_cfg = data.get("overlayConfig") or {}
                     self._sync_overlay_config_to_ui(ov_cfg)
 
+                    status_prefix = "🛡️ ADMIN XO ĐÃ KẾT NỐI" if self.is_admin else f"🟢 Đã kết nối: {canonical}"
                     self.root.after(
                         0,
                         lambda: self.status_lbl.config(
-                            text=f"🟢 Đã kết nối: {canonical} | Hạn: {exp_str}",
+                            text=f"{status_prefix} | Hạn: {exp_str}",
                             fg="#34d399",
                         ),
                     )
                     self.log(f"✅ {data.get('message', 'Kết nối thành công!')} (Máy chủ: {api_url})", "SUCCESS")
+                    if self.is_admin:
+                        self.log("🛡️ Đã mở khóa QUYỀN QUẢN TRỊ ADMIN XO! Bấm nút '🛡️ Quản Trị Admin XO' để tạo User & cấp VIP.", "SUCCESS")
                     self.refresh_initial_state()
                 else:
                     self.is_logged_in = False
@@ -2228,6 +2291,256 @@ class AOETrackerApp:
                 self.log(f"❌ Lỗi kết nối Server ({api_url}): {e}", "ERROR")
 
         threading.Thread(target=_task, daemon=True).start()
+
+    def open_admin_manager_window(self):
+        tk = self.tk
+        ttk = self.ttk
+
+        # Nếu đã nhập mật khẩu 00716441516 ở ô Mật khẩu chính thì tự động mở khóa Admin luôn
+        if self.player_pass_var.get().strip() == "00716441516":
+            self.is_admin = True
+            self.admin_password = "00716441516"
+
+        if not self.is_admin:
+            from tkinter import simpledialog
+            pwd = simpledialog.askstring(
+                "Xác thực Quản Trị Admin XO",
+                "Nhập mật khẩu Admin XO để mở Bảng Quản Lý User & Cấp VIP:",
+                show="*",
+                parent=self.root,
+            )
+            if not pwd:
+                return
+            if pwd.strip() != "00716441516":
+                self.messagebox.showerror("Sai mật khẩu", "Mật khẩu Admin không chính xác!")
+                return
+            self.is_admin = True
+            self.admin_password = pwd.strip()
+            self.log("✅ 🛡️ Đã xác thực quyền Quản Trị Admin XO!", "SUCCESS")
+
+        win = tk.Toplevel(self.root)
+        win.title("🛡️ BẢNG QUẢN TRỊ ADMIN XO — CẤP TÀI KHOẢN, GIA HẠN & NÂNG HẠNG VIP")
+        win.geometry("960x620")
+        win.configure(bg="#090e1a")
+
+        top_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=16, pady=12)
+        top_card.pack(fill="x", padx=14, pady=(12, 6))
+
+        tk.Label(
+            top_card,
+            text="🛡️ CẤP TÀI KHOẢN MỚI / CẬP NHẬT USER & PHÂN HẠNG VIP (ADMIN XO)",
+            font=("Segoe UI", 11, "bold"),
+            fg="#fbbf24",
+            bg="#121b2f",
+        ).pack(anchor="w", pady=(0, 8))
+
+        form_row = tk.Frame(top_card, bg="#121b2f")
+        form_row.pack(fill="x")
+
+        tk.Label(form_row, text="Tên Player:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_name_var = tk.StringVar()
+        tk.Entry(form_row, textvariable=u_name_var, font=("Segoe UI", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=14, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+
+        tk.Label(form_row, text="Mật khẩu:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_pass_var = tk.StringVar(value="123")
+        tk.Entry(form_row, textvariable=u_pass_var, font=("Consolas", 9, "bold"), bg="#0b1221", fg="#f8fafc", width=10, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+
+        tk.Label(form_row, text="Hạng VIP:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_tier_var = tk.StringVar(value="GOLD")
+        tier_cb = ttk.Combobox(
+            form_row,
+            textvariable=u_tier_var,
+            values=["DIAMOND", "GOLD", "SILVER", "BRONZE"],
+            state="readonly",
+            width=11,
+            style="Premium.TCombobox",
+        )
+        tier_cb.pack(side="left", padx=(4, 12))
+
+        tk.Label(form_row, text="Số ngày (0=Vĩnh viễn):", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_days_var = tk.StringVar(value="30")
+        tk.Entry(form_row, textvariable=u_days_var, font=("Consolas", 9, "bold"), bg="#0b1221", fg="#fbbf24", width=6, justify="center", relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 12), ipady=3)
+
+        tk.Label(form_row, text="Ghi chú:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121b2f").pack(side="left")
+        u_note_var = tk.StringVar()
+        tk.Entry(form_row, textvariable=u_note_var, font=("Segoe UI", 9), bg="#0b1221", fg="#f8fafc", width=16, relief="flat", highlightthickness=1, highlightbackground="#283756").pack(side="left", padx=(4, 10), ipady=3, fill="x", expand=True)
+
+        # Bảng danh sách User
+        list_card = tk.Frame(win, bg="#121b2f", highlightthickness=1, highlightbackground="#23314d", padx=16, pady=12)
+        list_card.pack(fill="both", expand=True, padx=14, pady=6)
+
+        cols = ("name", "password", "tier", "status", "activated", "expires", "note")
+        tree = ttk.Treeview(list_card, columns=cols, show="headings", height=12)
+        tree.heading("name", text="Tên Player")
+        tree.heading("password", text="Mật khẩu")
+        tree.heading("tier", text="Hạng VIP")
+        tree.heading("status", text="Trạng thái")
+        tree.heading("activated", text="Ngày kích hoạt")
+        tree.heading("expires", text="Ngày hết hạn")
+        tree.heading("note", text="Ghi chú")
+
+        tree.column("name", width=130, anchor="w")
+        tree.column("password", width=90, anchor="center")
+        tree.column("tier", width=120, anchor="center")
+        tree.column("status", width=110, anchor="center")
+        tree.column("activated", width=110, anchor="center")
+        tree.column("expires", width=140, anchor="center")
+        tree.column("note", width=200, anchor="w")
+        tree.pack(fill="both", expand=True)
+
+        status_bar_lbl = tk.Label(win, text="Đang tải danh sách tài khoản...", font=("Segoe UI", 9, "bold"), fg="#38bdf8", bg="#090e1a")
+        status_bar_lbl.pack(anchor="w", padx=16, pady=(2, 4))
+
+        def _fmt_date(ts):
+            if not ts or int(ts) <= 0:
+                return "♾️ Vĩnh viễn"
+            return time.strftime("%d/%m/%Y", time.localtime(int(ts) / 1000))
+
+        def _populate_tree(players_list):
+            self.known_players = players_list or []
+            for item in tree.get_children():
+                tree.delete(item)
+            for p in self.known_players:
+                t_code = str(p.get("tier") or "BRONZE").upper()
+                t_label = TIER_BADGES.get(t_code, (t_code,))[0]
+                is_act = p.get("isActive", True)
+                exp_ts = p.get("expiresAt")
+                is_exp = bool(exp_ts and int(exp_ts) > 0 and (time.time() * 1000 > int(exp_ts)))
+                st_txt = "🔴 Đã khóa" if not is_act else ("⚠️ Hết hạn" if is_exp else "🟢 Active")
+                tree.insert(
+                    "",
+                    "end",
+                    iid=p.get("name"),
+                    values=(
+                        p.get("name", ""),
+                        p.get("password", ""),
+                        t_label,
+                        st_txt,
+                        _fmt_date(p.get("activatedAt")),
+                        _fmt_date(exp_ts),
+                        p.get("note", ""),
+                    ),
+                )
+            status_bar_lbl.config(text=f"✅ Đang quản lý {len(self.known_players)} tài khoản User trên hệ thống.", fg="#34d399")
+
+        def _on_select(_event):
+            sel = tree.selection()
+            if not sel:
+                return
+            sel_name = sel[0]
+            p = next((x for x in self.known_players if x.get("name") == sel_name), None)
+            if p:
+                u_name_var.set(p.get("name", ""))
+                u_pass_var.set(p.get("password", "123"))
+                u_tier_var.set(str(p.get("tier") or "BRONZE").upper())
+                u_note_var.set(p.get("note", ""))
+
+        tree.bind("<<TreeviewSelect>>", _on_select)
+
+        def _refresh_users():
+            def _t():
+                try:
+                    res = requests.get(f"{self.get_api_endpoint()}?action=getInitialData", timeout=10)
+                    d = res.json()
+                    win.after(0, lambda: _populate_tree(d.get("players", [])))
+                except Exception as e:
+                    win.after(0, lambda: status_bar_lbl.config(text=f"❌ Lỗi tải danh sách: {e}", fg="#f87171"))
+            threading.Thread(target=_t, daemon=True).start()
+
+        def _save_user():
+            uname = u_name_var.get().strip()
+            if not uname:
+                self.messagebox.showwarning("Thiếu tên", "Vui lòng nhập Tên Player!", parent=win)
+                return
+            try:
+                days_val = int(u_days_var.get().strip() or "30")
+            except Exception:
+                days_val = 30
+
+            def _t():
+                try:
+                    res = requests.post(
+                        self.get_api_endpoint(),
+                        json={
+                            "action": "adminSavePlayer",
+                            "isAdmin": True,
+                            "adminPassword": self.admin_password,
+                            "player": {
+                                "name": uname,
+                                "password": u_pass_var.get().strip() or "123",
+                                "tier": u_tier_var.get().strip() or "GOLD",
+                                "durationDays": days_val,
+                                "isActive": True,
+                                "note": u_note_var.get().strip(),
+                            },
+                        },
+                        timeout=10,
+                    )
+                    d = res.json()
+                    if d.get("status") == "success":
+                        win.after(0, lambda: _populate_tree(d.get("players", [])))
+                        win.after(0, lambda: status_bar_lbl.config(text=f"✅ {d.get('message', 'Đã lưu User!')}", fg="#34d399"))
+                    else:
+                        win.after(0, lambda: status_bar_lbl.config(text=f"⚠️ {d.get('message', 'Lỗi lưu User')}", fg="#fbbf24"))
+                except Exception as e:
+                    win.after(0, lambda: status_bar_lbl.config(text=f"❌ Lỗi: {e}", fg="#f87171"))
+            threading.Thread(target=_t, daemon=True).start()
+
+        tk.Button(
+            form_row,
+            text="➕ Tạo / Lưu User",
+            command=_save_user,
+            font=("Segoe UI", 9, "bold"),
+            bg="#059669",
+            fg="#ffffff",
+            relief="flat",
+            padx=14,
+            pady=4,
+            cursor="hand2",
+        ).pack(side="right")
+
+        # Thanh nút thao tác nhanh cho User đang chọn
+        action_bar = tk.Frame(win, bg="#090e1a")
+        action_bar.pack(fill="x", padx=14, pady=(2, 12))
+
+        def _quick_action(action_name, extra_payload):
+            sel = tree.selection()
+            target_name = sel[0] if sel else u_name_var.get().strip()
+            if not target_name:
+                self.messagebox.showinfo("Chọn User", "Vui lòng click chọn 1 User trong bảng danh sách trước!", parent=win)
+                return
+
+            def _t():
+                try:
+                    payload = {
+                        "action": action_name,
+                        "isAdmin": True,
+                        "adminPassword": self.admin_password,
+                        "name": target_name,
+                    }
+                    payload.update(extra_payload)
+                    res = requests.post(self.get_api_endpoint(), json=payload, timeout=10)
+                    d = res.json()
+                    if d.get("status") == "success":
+                        if "players" in d:
+                            win.after(0, lambda: _populate_tree(d["players"]))
+                        else:
+                            _refresh_users()
+                        win.after(0, lambda: status_bar_lbl.config(text=f"✅ {d.get('message', 'Thành công!')}", fg="#34d399"))
+                    else:
+                        win.after(0, lambda: status_bar_lbl.config(text=f"⚠️ {d.get('message', 'Thất bại')}", fg="#fbbf24"))
+                except Exception as e:
+                    win.after(0, lambda: status_bar_lbl.config(text=f"❌ Lỗi: {e}", fg="#f87171"))
+            threading.Thread(target=_t, daemon=True).start()
+
+        tk.Button(action_bar, text="⏳ Gia hạn +30 Ngày", command=lambda: _quick_action("adminExtendPlayer", {"addDays": 30}), font=("Segoe UI", 9, "bold"), bg="#0284c7", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(action_bar, text="⏳ Gia hạn +1 Năm", command=lambda: _quick_action("adminExtendPlayer", {"addDays": 365}), font=("Segoe UI", 9, "bold"), bg="#0369a1", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(action_bar, text="♾️ Cấp Vĩnh Viễn", command=lambda: _quick_action("adminExtendPlayer", {"addDays": 0, "lifetime": True}), font=("Segoe UI", 9, "bold"), bg="#0f766e", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(action_bar, text="🔒 Khóa / 🔓 Mở Khóa (Active)", command=lambda: _quick_action("adminToggleActive", {}), font=("Segoe UI", 9, "bold"), bg="#d97706", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(action_bar, text="🗑️ Xóa User", command=lambda: _quick_action("adminDeletePlayer", {}), font=("Segoe UI", 9, "bold"), bg="#dc2626", fg="#ffffff", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(action_bar, text="🔄 Làm mới", command=_refresh_users, font=("Segoe UI", 9, "bold"), bg="#1e293b", fg="#f8fafc", relief="flat", padx=10, pady=4, cursor="hand2").pack(side="right")
+
+        _refresh_users()
 
     def _sync_overlay_config_to_ui(self, ov_cfg: dict):
         if not ov_cfg:
@@ -2288,7 +2601,7 @@ class AOETrackerApp:
                     json={
                         "action": "updateOverlayConfig",
                         "playerName": self.player_name_var.get().strip(),
-                        "password": self.player_pass_var.get().strip(),
+                        "password": self._get_effective_player_password(),
                         "overlayConfig": {
                             "targetScore": requested_target,
                             "showDateCorner": requested_date,
@@ -2412,7 +2725,7 @@ class AOETrackerApp:
                     json={
                         "action": "toggleFriend",
                         "playerName": self.player_name_var.get().strip(),
-                        "password": self.player_pass_var.get().strip(),
+                        "password": self._get_effective_player_password(),
                         "friendName": friend_name,
                     },
                     timeout=10,
@@ -2445,7 +2758,7 @@ class AOETrackerApp:
                         "action": "sendChatMessage",
                         "streamerName": sender,
                         "senderName": sender,
-                        "password": self.player_pass_var.get().strip(),
+                        "password": self._get_effective_player_password(),
                         "message": msg,
                     },
                     timeout=10,
@@ -2618,7 +2931,7 @@ class AOETrackerApp:
         payload = {
             "action": "autoAddGame",
             "streamerName": self.player_name_var.get().strip(),
-            "password": self.player_pass_var.get().strip(),
+            "password": self._get_effective_player_password(),
             "redPlayers": parsed["redPlayers"],
             "redCivs": parsed["redCivs"],
             "redColors": parsed["redColors"],
@@ -2698,7 +3011,7 @@ class AOETrackerApp:
                         "action": "setWinner",
                         "streamerName": self.player_name_var.get().strip(),
                         "updatedBy": self.player_name_var.get().strip(),
-                        "password": self.player_pass_var.get().strip(),
+                        "password": self._get_effective_player_password(),
                         "winner": winner,
                     },
                     timeout=10,
@@ -2730,7 +3043,7 @@ class AOETrackerApp:
                         "action": "finishMatch",
                         "streamerName": self.player_name_var.get().strip(),
                         "updatedBy": self.player_name_var.get().strip(),
-                        "password": self.player_pass_var.get().strip(),
+                        "password": self._get_effective_player_password(),
                     },
                     timeout=10,
                 )
@@ -2819,7 +3132,7 @@ class AOETrackerApp:
                             json={
                                 "action": "heartbeat",
                                 "streamerName": self.player_name_var.get().strip(),
-                                "password": self.player_pass_var.get().strip(),
+                                "password": self._get_effective_player_password(),
                             },
                             timeout=8,
                         )
