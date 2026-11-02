@@ -9,855 +9,893 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&family=Roboto+Condensed:wght@400;700;900&display=swap');
-
-    :root {
-      --bg-navy: #040814;
-      --bg-card: rgba(8, 18, 42, 0.82);
-      --neon-cyan: #00f2fe;
-      --neon-blue: #3b82f6;
-      --aoe-gold: #fbbf24;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto+Condensed:wght@700;900&display=swap');
 
     body {
-      font-family: 'Roboto Condensed', sans-serif;
-      background-color: #040814;
-      background-image:
-        radial-gradient(circle at 15% 15%, rgba(0, 242, 254, 0.08) 0%, transparent 35%),
-        radial-gradient(circle at 85% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 50% 90%, rgba(251, 191, 36, 0.05) 0%, transparent 40%),
-        linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
-      background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px;
-      color: #e2e8f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #090e1a;
+      background-image: radial-gradient(circle at 50% 0%, rgba(30, 58, 138, 0.18) 0%, transparent 55%);
+      color: #f8fafc;
     }
 
-    .font-cyber {
-      font-family: 'Orbitron', 'Roboto Condensed', sans-serif;
+    .font-display {
+      font-family: 'Roboto Condensed', 'Inter', sans-serif;
     }
 
-    .cyber-card {
-      background: linear-gradient(165deg, rgba(10, 22, 50, 0.88) 0%, rgba(5, 12, 28, 0.92) 100%);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(0, 242, 254, 0.28);
-      box-shadow:
-        0 10px 30px -5px rgba(0, 0, 0, 0.75),
-        0 0 18px rgba(0, 242, 254, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Các Panel sáng hơn nền chính một chút, bo góc hiện đại, shadow mềm, giảm hẳn Neon Glow */
+    .premium-card {
+      background: rgba(19, 29, 51, 0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 10px 28px -6px rgba(0, 0, 0, 0.55);
+      transition: border-color 0.2s ease, transform 0.2s ease;
     }
 
-    .cyber-card:hover {
-      border-color: rgba(0, 242, 254, 0.55);
-      box-shadow:
-        0 14px 35px -5px rgba(0, 0, 0, 0.85),
-        0 0 24px rgba(0, 242, 254, 0.18),
-        inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    .premium-card-hover:hover {
+      border-color: rgba(56, 189, 248, 0.38);
     }
 
-    .cyber-card-gold {
-      background: linear-gradient(165deg, rgba(15, 25, 52, 0.9) 0%, rgba(6, 13, 30, 0.95) 100%);
-      backdrop-filter: blur(14px);
-      border: 1px solid rgba(251, 191, 36, 0.4);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(251, 191, 36, 0.12);
+    /* Team Đỏ & Team Xanh có màu đặc trưng dịu mắt, không chói */
+    .team-red-box {
+      background: linear-gradient(145deg, rgba(48, 18, 26, 0.85) 0%, rgba(22, 27, 45, 0.92) 100%);
+      border: 1px solid rgba(248, 113, 113, 0.32);
     }
 
-    .team-red-card {
-      background: linear-gradient(135deg, rgba(69, 10, 10, 0.55) 0%, rgba(15, 23, 42, 0.9) 100%);
-      border: 1px solid rgba(239, 68, 68, 0.45);
-      box-shadow: 0 0 18px rgba(239, 68, 68, 0.15), inset 0 0 15px rgba(239, 68, 68, 0.08);
+    .team-blue-box {
+      background: linear-gradient(145deg, rgba(16, 34, 62, 0.85) 0%, rgba(22, 27, 45, 0.92) 100%);
+      border: 1px solid rgba(96, 165, 250, 0.32);
     }
 
-    .team-blue-card {
-      background: linear-gradient(225deg, rgba(12, 45, 90, 0.55) 0%, rgba(15, 23, 42, 0.9) 100%);
-      border: 1px solid rgba(56, 189, 248, 0.45);
-      box-shadow: 0 0 18px rgba(56, 189, 248, 0.15), inset 0 0 15px rgba(56, 189, 248, 0.08);
+    @keyframes floatStar {
+      0% { transform: translateY(20px) scale(0.5); opacity: 0; }
+      20% { opacity: 1; }
+      100% { transform: translateY(-150px) scale(1.4); opacity: 0; }
     }
-
-    @keyframes scanline {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(200%); }
+    .star-burst-item {
+      position: fixed;
+      pointer-events: none;
+      z-index: 200;
+      animation: floatStar 2.4s ease-out forwards;
     }
-    .scan-bar {
-      position: relative;
-      overflow: hidden;
-    }
-    .scan-bar::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 45%;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #00f2fe, #fbbf24, #00f2fe, transparent);
-      animation: scanline 3.8s infinite linear;
-    }
-
-    @keyframes pulse-cute { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
-    .animate-cute { animation: pulse-cute 2.2s infinite ease-in-out; }
   </style>
 </head>
-<body class="min-h-screen selection:bg-cyan-500 selection:text-slate-950">
-  <div id="app" class="max-w-7xl mx-auto px-4 py-5 flex flex-col min-h-screen justify-between">
+<body class="min-h-screen selection:bg-sky-500 selection:text-slate-950">
+  <div id="app" class="max-w-7xl mx-auto px-5 py-6 flex flex-col min-h-screen justify-between">
     <div>
+      <!-- HIỆU ỨNG SAO BAY TOÀN MÀN HÌNH KHI CÓ NGƯỜI TẶNG SAO -->
+      <span v-for="st in starBurstParticles" :key="st.id"
+            class="star-burst-item text-2xl"
+            :style="{ left: st.left + '%', bottom: '18%', animationDelay: st.delay + 's' }">
+        {{ st.icon }}
+      </span>
+
+      <!-- BANNER THÔNG BÁO KHI CÓ NGƯỜI TẶNG SAO -->
+      <div v-if="activeStarBanner"
+           class="fixed top-5 left-1/2 -translate-x-1/2 z-[180] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 px-6 py-3 rounded-2xl shadow-2xl border-2 border-white/80 flex items-center gap-3 animate-bounce">
+        <span class="text-2xl">🌟</span>
+        <div>
+          <div class="text-sm font-black">
+            {{ activeStarBanner.senderName }} vừa tặng +{{ activeStarBanner.starCount }} ⭐ cho {{ activeStarBanner.streamerName }}!
+          </div>
+          <div class="text-xs font-semibold text-slate-900">"{{ activeStarBanner.message }}"</div>
+        </div>
+      </div>
+
       <!-- NOTIFICATION ALERT -->
       <div v-if="notification"
-           :class="notification.type === 'error' ? 'bg-red-950/95 border-red-500 text-red-100 shadow-red-500/20' : 'bg-cyan-950/95 border-cyan-400 text-cyan-100 shadow-cyan-500/20'"
-           class="fixed top-4 right-4 z-[150] max-w-md p-4 rounded-xl border shadow-2xl flex justify-between items-center text-xs backdrop-blur-md">
+           :class="notification.type === 'error' ? 'bg-red-950/95 border-red-500/60 text-red-100' : 'bg-slate-900/95 border-sky-500/50 text-slate-100'"
+           class="fixed top-5 right-5 z-[160] max-w-md px-4 py-3.5 rounded-xl border shadow-2xl flex justify-between items-center text-sm">
         <span class="flex items-center gap-2.5">
-          <i :class="notification.type === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-circle-check text-cyan-400'" class="fa-solid text-base"></i>
-          <b>{{ notification.message }}</b>
+          <i :class="notification.type === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-circle-check text-emerald-400'" class="fa-solid text-base"></i>
+          <span class="font-medium">{{ notification.message }}</span>
         </span>
-        <button @click="notification = null" class="text-slate-400 hover:text-white ml-3 text-base">&times;</button>
+        <button @click="notification = null" class="text-slate-400 hover:text-white ml-4 text-lg">&times;</button>
       </div>
 
-      <!-- TOP HUD STATUS & RIGHT CORNER DATE BAR -->
-      <div class="flex flex-wrap justify-between items-center text-[11px] px-3 py-1.5 mb-2 rounded-lg bg-[#060f24]/90 border border-cyan-500/25">
-        <div class="flex items-center gap-3">
-          <span class="flex items-center gap-1.5 text-cyan-400 font-bold tracking-wider uppercase">
-            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-            <span class="w-2 h-2 rounded-full bg-cyan-400 -ml-3.5"></span>
-            HUD SYSTEM ONLINE
-          </span>
-          <span class="text-slate-600">|</span>
-          <span class="text-slate-400">SERVER: <b class="text-emerald-400 font-mono">CONNECTED ({{ databaseMode === 'neon_postgres' ? 'NEON CLOUD' : 'LOCAL DB' }})</b></span>
-          <span v-if="liveMatchesCount > 0" class="bg-red-600/20 border border-red-500/50 text-red-300 px-2 py-0.5 rounded font-bold animate-pulse">
-            🔴 {{ liveMatchesCount }} KÈO ĐANG LIVE
-          </span>
-        </div>
-        <!-- GÓC PHẢI HIỂN THỊ NGÀY & GIỜ THỰC TẾ -->
-        <div class="flex items-center gap-3 font-mono">
-          <span class="text-amber-400 font-bold flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded">
-            <i class="fa-regular fa-calendar-check"></i>
-            <span>{{ currentDateTimeText }}</span>
-          </span>
-        </div>
-      </div>
-
-      <!-- HEADER: AOE COMMAND CENTER -->
-      <header class="cyber-card scan-bar p-4 rounded-2xl mb-5 flex flex-col lg:flex-row justify-between items-center gap-4">
-        <div class="flex items-center gap-3.5 cursor-pointer group" @click="goHome">
-          <div class="relative w-13 h-13 flex items-center justify-center bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-900 text-white p-3 rounded-xl shadow-lg shadow-cyan-500/30 border border-cyan-300/60 group-hover:scale-105 transition">
-            <span class="text-2xl filter drop-shadow">⚔️</span>
-            <span class="absolute -bottom-1 -right-1 text-xs bg-amber-500 text-slate-950 font-black px-1 rounded border border-slate-900">🛡️</span>
+      <!-- 1. HEADER: AOE COMMAND CENTER (PREMIUM GAMING DASHBOARD) -->
+      <header class="premium-card p-5 rounded-2xl mb-6 flex flex-col lg:flex-row justify-between items-center gap-5">
+        <div class="flex items-center gap-4 cursor-pointer" @click="goHome">
+          <div class="w-14 h-14 flex items-center justify-center bg-slate-800/90 border border-amber-500/40 rounded-2xl shadow-md">
+            <span class="text-2xl">⚔️🛡️</span>
           </div>
           <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-[10px] font-cyber tracking-widest bg-cyan-500/15 text-cyan-300 border border-cyan-400/40 px-2 py-0.5 rounded uppercase">
-                AOE COMMAND CENTER
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">AOE COMMAND CENTER</span>
+              <span class="text-xs text-slate-500">&bull;</span>
+              <span class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Hệ thống trực tuyến
               </span>
-              <span class="text-[10px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded font-bold">
-                {{ appVersion }}
+              <span v-if="liveMatchesCount > 0" class="bg-red-500/20 border border-red-500/40 text-red-300 text-xs px-2.5 py-0.5 rounded-full font-semibold">
+                🔴 {{ liveMatchesCount }} kèo đang Live
               </span>
             </div>
-            <h1 class="text-xl md:text-2xl font-black tracking-wider uppercase bg-gradient-to-r from-amber-300 via-yellow-400 to-cyan-300 bg-clip-text text-transparent mt-0.5">
+            <h1 class="font-display text-2xl font-black text-slate-100 tracking-wide uppercase mt-0.5">
               TOOL BẢNG QUÂN AOE BY XO
             </h1>
-            <p class="text-xs text-slate-400">Hệ Thống Nhận Diện Diplomacy Tự Động &bull; Điều Khiển Kèo Đấu &bull; OBS Cyber HUD Overlay</p>
+            <p class="text-sm text-slate-400 mt-0.5">
+              Quản lý kèo đấu Esports, tự động quét Diplomacy, kết nối bạn bè & OBS Livestream Overlay
+            </p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 flex-wrap justify-center z-10">
-          <button @click="showDonateModal = true"
-                  class="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs shadow-lg shadow-pink-500/20 animate-cute border border-pink-300/40 flex items-center gap-1.5 transition">
-            <span>🧋</span>
-            <span>Donate Admin</span>
-          </button>
-
-          <button @click="showObsGuideModal = true"
-                  class="bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 font-bold px-3.5 py-1.5 rounded-xl text-xs shadow border border-cyan-400/50 transition flex items-center gap-1.5">
-            <i class="fa-solid fa-tv text-cyan-400"></i>
-            <span>Hướng Dẫn Gán OBS</span>
-          </button>
-
-          <button @click="goHome"
-                  :class="currentTab === 'matches' ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-black shadow-lg shadow-cyan-500/25' : 'bg-slate-900/90 text-slate-300 hover:text-cyan-300 border border-slate-700/80'"
-                  class="px-3.5 py-1.5 rounded-xl text-xs transition">
-            <i class="fa-solid fa-satellite-dish mr-1"></i> Sảnh Kèo Đấu
-          </button>
-
-          <button @click="openAnalytics"
-                  :class="currentTab === 'analytics' ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black shadow-lg shadow-amber-500/25' : 'bg-slate-900/90 text-slate-300 hover:text-amber-300 border border-slate-700/80'"
-                  class="px-3.5 py-1.5 rounded-xl text-xs transition">
-            <i class="fa-solid fa-chart-pie mr-1"></i> Thống Kê Quân
-          </button>
-
-          <!-- PLAYER SESSION BADGE -->
-          <div v-if="sessionPlayerName" class="flex items-center gap-2 bg-[#07142e] border border-cyan-400/50 px-3 py-1 rounded-xl shadow-inner">
-            <span class="text-xs text-cyan-300 font-bold flex items-center gap-1">
-              <i class="fa-solid fa-user-astronaut"></i> {{ sessionPlayerName }}
-            </span>
-            <span :class="getTierBadgeClass(sessionPlayerTier)" class="text-[10px] px-2 py-0.5 rounded font-black uppercase">
-              {{ getTierLabel(sessionPlayerTier) }}
-            </span>
-            <button @click="showVipControlPanel = !showVipControlPanel"
-                    class="text-[11px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded transition"
-                    title="Mở Bảng Điều Khiển VIP & Cài Đặt Overlay">
-              <i class="fa-solid fa-sliders mr-1"></i>VIP Panel
-            </button>
-            <button @click="copyOverlayLink(sessionPlayerName)"
-                    class="text-[11px] bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded"
-                    title="Copy Link OBS Overlay">
-              <i class="fa-solid fa-copy mr-1"></i>Link OBS
-            </button>
-            <button @click="logoutPlayer" class="text-xs text-red-400 hover:text-red-300 ml-1" title="Đăng xuất">
-              <i class="fa-solid fa-right-from-bracket"></i>
-            </button>
+        <!-- Góc phải Header: Ngày giờ + Các nút điều hướng rõ ràng, độ tương phản cao -->
+        <div class="flex flex-col items-end gap-2.5 w-full lg:w-auto">
+          <div class="flex items-center gap-3 text-xs text-slate-300 bg-slate-900/90 border border-slate-700/80 px-3.5 py-1.5 rounded-xl">
+            <i class="fa-regular fa-calendar text-sky-400"></i>
+            <span class="font-mono font-semibold text-slate-200">{{ currentDateTimeText }}</span>
           </div>
 
-          <button v-else @click="openLoginUpdaterModal"
-                  class="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black px-3.5 py-1.5 rounded-xl text-xs shadow-lg shadow-amber-500/20 transition">
-            <i class="fa-solid fa-key mr-1"></i> Đăng Nhập Player
-          </button>
-
-          <!-- ADMIN SESSION BADGE -->
-          <button v-if="!isAdmin" @click="openAdminModal"
-                  class="bg-slate-900/90 hover:bg-slate-800 text-amber-400 border border-amber-500/40 px-3 py-1.5 rounded-xl text-xs transition">
-            <i class="fa-solid fa-shield-halved mr-1"></i> Admin XO
-          </button>
-          <div v-else class="flex items-center gap-2 bg-emerald-950/80 border border-emerald-400/60 px-3 py-1 rounded-xl">
-            <span class="text-xs text-emerald-300 font-bold"><i class="fa-solid fa-user-shield"></i> Admin XO</span>
-            <button @click="showPlayerManagerModal = true"
-                    class="text-[11px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-2.5 py-0.5 rounded shadow">
-              <i class="fa-solid fa-users-gear mr-1"></i>Quản Lý User & Hạng VIP
+          <div class="flex items-center gap-2.5 flex-wrap justify-end">
+            <button @click="goHome"
+                    :class="currentTab === 'matches' ? 'bg-sky-500 text-slate-950 font-bold shadow-md' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'"
+                    class="px-4 py-2 rounded-xl text-sm transition">
+              <i class="fa-solid fa-trophy mr-1.5"></i>Sảnh Kèo Đấu
             </button>
-            <button @click="logoutAdmin" class="text-xs text-red-400 hover:text-red-300 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button>
+
+            <button @click="openAnalytics"
+                    :class="currentTab === 'analytics' ? 'bg-sky-500 text-slate-950 font-bold shadow-md' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'"
+                    class="px-4 py-2 rounded-xl text-sm transition">
+              <i class="fa-solid fa-chart-column mr-1.5"></i>Thống Kê Quân
+            </button>
+
+            <button @click="showObsGuideModal = true"
+                    class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 px-3.5 py-2 rounded-xl text-sm font-medium transition">
+              <i class="fa-solid fa-tv text-sky-400 mr-1.5"></i>Hướng Dẫn OBS
+            </button>
+
+            <button @click="showDonateModal = true"
+                    class="bg-rose-600/90 hover:bg-rose-500 text-white px-3.5 py-2 rounded-xl text-sm font-semibold transition">
+              🧋 Donate
+            </button>
+
+            <!-- Thông tin tài khoản Player đang đăng nhập -->
+            <div v-if="sessionPlayerName" class="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3.5 py-1.5 rounded-xl">
+              <span class="text-sm font-bold text-slate-100">{{ sessionPlayerName }}</span>
+              <span :class="getTierBadgeClass(currentActiveTier)" class="text-xs px-2 py-0.5 rounded-md font-bold">
+                {{ getTierLabel(currentActiveTier) }}
+              </span>
+              <button @click="showVipControlPanel = !showVipControlPanel"
+                      class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg transition">
+                <i class="fa-solid fa-sliders mr-1"></i>Cấu hình VIP
+              </button>
+              <button @click="logoutPlayer" class="text-sm text-slate-400 hover:text-red-400 ml-1" title="Đăng xuất">
+                <i class="fa-solid fa-right-from-bracket"></i>
+              </button>
+            </div>
+
+            <button v-else @click="openLoginUpdaterModal"
+                    class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm shadow transition">
+              <i class="fa-solid fa-user mr-1.5"></i>Đăng Nhập Player
+            </button>
+
+            <!-- Admin -->
+            <button v-if="!isAdmin" @click="openAdminModal"
+                    class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-3 py-2 rounded-xl text-sm transition">
+              <i class="fa-solid fa-shield-halved"></i>
+            </button>
+            <div v-else class="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/50 px-3 py-1.5 rounded-xl">
+              <button @click="showPlayerManagerModal = true"
+                      class="text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1 rounded-lg">
+                <i class="fa-solid fa-users-gear mr-1"></i>Quản Lý User & VIP
+              </button>
+              <button @click="logoutAdmin" class="text-sm text-red-400 hover:text-red-300 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
           </div>
         </div>
       </header>
 
-      <!-- VIP OVERLAY COMMAND CENTER PANEL (HIỂN THỊ KHI PLAYER ĐĂNG NHẬP HOẶC BẤM NÚT VIP PANEL) -->
-      <div v-if="(sessionPlayerName || isAdmin) && showVipControlPanel" class="cyber-card-gold p-4 rounded-2xl mb-5 space-y-3">
-        <div class="flex flex-col md:flex-row justify-between md:items-center gap-2 border-b border-amber-500/25 pb-2.5">
-          <div class="flex items-center gap-2.5 flex-wrap">
-            <span class="bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg text-xs flex items-center gap-1">
-              <i class="fa-solid fa-crown"></i> VIP COMMAND PANEL
-            </span>
-            <h2 class="text-sm font-black text-amber-300 uppercase tracking-wide">
-              Tùy Chỉnh Giao Diện OBS Overlay & Chế Độ Đấu Theo C (Séc)
+      <!-- 2. KHU VỰC CẤU HÌNH VIP OVERLAY (ĐƠN GIẢN HÓA, GỌN GÀNG, DỄ THAO TÁC) -->
+      <div v-if="(sessionPlayerName || isAdmin) && showVipControlPanel" class="premium-card p-5 rounded-2xl mb-6">
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-slate-700/70 pb-3.5 mb-4">
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="text-base font-bold text-sky-400 uppercase tracking-wide flex items-center gap-2">
+              <i class="fa-solid fa-crown text-amber-400"></i>
+              <span>Cấu Hình VIP OBS Overlay</span>
             </h2>
-            <span :class="getTierBadgeClass(currentActiveTier)" class="text-[11px] px-2.5 py-0.5 rounded-full font-black">
-              Hạng hiện tại: {{ getTierLabel(currentActiveTier) }}
+            <span :class="getTierBadgeClass(currentActiveTier)" class="text-xs px-2.5 py-0.5 rounded-md font-bold">
+              {{ getTierLabel(currentActiveTier) }}
             </span>
           </div>
-          <div class="flex items-center gap-2 text-[11px]">
-            <span class="text-slate-400">Áp dụng cho Streamer:</span>
-            <input v-if="isAdmin" v-model="vipTargetPlayer" class="bg-slate-900 border border-amber-500/40 px-2 py-1 rounded text-amber-300 font-bold w-28 text-xs" placeholder="Tên Player...">
-            <span v-else class="text-cyan-300 font-bold font-mono bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-500/30">{{ sessionPlayerName }}</span>
-            <button @click="showVipControlPanel = false" class="text-slate-400 hover:text-white ml-2"><i class="fa-solid fa-xmark"></i></button>
+          <div class="flex items-center gap-3 text-sm">
+            <span class="text-slate-400">Streamer áp dụng:</span>
+            <input v-if="isAdmin" v-model="vipTargetPlayer" class="bg-slate-900 border border-slate-700 px-3 py-1 rounded-lg text-slate-100 font-semibold w-32 text-sm">
+            <span v-else class="text-slate-100 font-bold bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">{{ sessionPlayerName }}</span>
+            <button @click="showVipControlPanel = false" class="text-slate-400 hover:text-white text-base ml-1">&times;</button>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-          <!-- CARD 1: HẠNG BẠC (SILVER) - CHẠM BAO NHIÊU & NGÀY GÓC PHẢI -->
-          <div class="bg-[#060f24]/90 border border-slate-700/80 p-3 rounded-xl space-y-2 relative">
-            <div class="flex justify-between items-center">
-              <span class="font-bold text-slate-200 flex items-center gap-1"><i class="fa-solid fa-bullseye text-cyan-400"></i> Cài Đặt Kèo & Ngày</span>
-              <span class="text-[10px] bg-slate-700 text-slate-200 px-2 py-0.5 rounded font-bold">🥈 Hạng Bạc+</span>
-            </div>
-            <div>
-              <label class="text-[11px] text-slate-400 block mb-1">Kèo Đấu Chạm Bao Nhiêu (CHẠM X):</label>
-              <input type="number" min="1" max="999" v-model.number="overlayConfigForm.targetScore"
-                     :disabled="getTierRank(currentActiveTier) < 1 && !isAdmin"
-                     class="w-full bg-slate-950 border border-cyan-500/40 rounded-lg px-2.5 py-1.5 text-amber-300 font-black font-mono text-sm">
-            </div>
-            <label class="flex items-center justify-between cursor-pointer pt-1">
-              <span class="text-[11px] text-slate-300">Hiển thị Ngày ở góc phải Overlay:</span>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <!-- Trường 1: Kèo chạm bao nhiêu -->
+          <div>
+            <label class="text-xs font-semibold text-slate-300 block mb-1.5">
+              Kèo đấu chạm bao nhiêu <span class="text-slate-400">(🥈 Bạc+)</span>
+            </label>
+            <input type="number" min="1" max="999" v-model.number="overlayConfigForm.targetScore"
+                   :disabled="getTierRank(currentActiveTier) < 1 && !isAdmin"
+                   class="w-full bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3.5 py-2 text-slate-100 font-bold text-sm outline-none">
+          </div>
+
+          <!-- Trường 2: Chế độ dòng chữ chạy -->
+          <div>
+            <label class="text-xs font-semibold text-slate-300 block mb-1.5">
+              Chế độ dòng chữ chạy <span class="text-slate-400">(🥇 Vàng+)</span>
+            </label>
+            <select v-model="overlayConfigForm.marqueeMode"
+                    :disabled="getTierRank(currentActiveTier) < 2 && !isAdmin"
+                    class="w-full bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3 py-2 text-sm text-slate-100 font-medium outline-none">
+              <option value="ALL">Tổng Cung-Chém + Từng người</option>
+              <option value="TOTAL_ONLY">Chỉ hiện Tổng Cung - Chém</option>
+              <option value="PER_PLAYER">Chỉ hiện Cung - Chém từng người</option>
+              <option value="CUSTOM">Chạy dòng chữ tùy chỉnh</option>
+              <option value="OFF">Tắt dòng chữ chạy</option>
+            </select>
+          </div>
+
+          <!-- Trường 3: Nội dung chữ chạy tùy chỉnh -->
+          <div class="md:col-span-2">
+            <label class="text-xs font-semibold text-slate-300 block mb-1.5">
+              Nội dung chữ chạy tùy chỉnh <span class="text-slate-400">(Khi chọn chế độ tùy chỉnh)</span>
+            </label>
+            <input type="text" v-model="overlayConfigForm.customMarqueeText"
+                   :disabled="getTierRank(currentActiveTier) < 2 && !isAdmin"
+                   placeholder="Nhập dòng chữ bất kỳ bạn muốn chạy trên OBS..."
+                   class="w-full bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3.5 py-2 text-sm text-slate-100 outline-none">
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mt-4 pt-3.5 border-t border-slate-800">
+          <div class="flex items-center gap-6 flex-wrap text-sm">
+            <label class="flex items-center gap-2 cursor-pointer text-slate-200">
               <input type="checkbox" v-model="overlayConfigForm.showDateCorner"
                      :disabled="getTierRank(currentActiveTier) < 1 && !isAdmin"
-                     class="w-4 h-4 accent-cyan-400 rounded">
+                     class="w-4 h-4 accent-sky-400 rounded">
+              <span>Hiển thị ngày ở góc phải Overlay <span class="text-xs text-slate-400">(🥈 Bạc+)</span></span>
             </label>
-            <div v-if="getTierRank(currentActiveTier) < 1 && !isAdmin" class="text-[10px] text-amber-400 bg-amber-950/60 border border-amber-600/40 p-1.5 rounded text-center">
-              🔒 Nâng cấp <b>Hạng Bạc</b> để mở khóa
-            </div>
+
+            <label class="flex items-center gap-2 cursor-pointer text-slate-200">
+              <input type="checkbox" v-model="overlayConfigForm.cModeEnabled"
+                     :disabled="getTierRank(currentActiveTier) < 3 && !isAdmin"
+                     class="w-4 h-4 accent-amber-400 rounded">
+              <span>Bật chế độ <b>Đánh theo 'C'</b> — Hiện Overlay phụ Séc 1, Séc 2, Séc 3 bên phải (Chạm 3 = 1 C) <span class="text-xs text-amber-400 font-semibold">(💎 Kim Cương)</span></span>
+            </label>
           </div>
 
-          <!-- CARD 2: HẠNG VÀNG (GOLD) - CHẾ ĐỘ CHỮ CHẠY (MARQUEE) -->
-          <div class="bg-[#060f24]/90 border border-amber-500/30 p-3 rounded-xl space-y-2 md:col-span-2">
-            <div class="flex justify-between items-center">
-              <span class="font-bold text-amber-300 flex items-center gap-1.5"><i class="fa-solid fa-scroll"></i> Dòng Chữ Chạy Trên Overlay (Marquee)</span>
-              <span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold">🥇 Hạng Vàng+</span>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              <div>
-                <label class="text-[11px] text-slate-400 block mb-1">Chế độ hiển thị dòng chữ chạy:</label>
-                <select v-model="overlayConfigForm.marqueeMode"
-                        :disabled="getTierRank(currentActiveTier) < 2 && !isAdmin"
-                        class="w-full bg-slate-950 border border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold">
-                  <option value="ALL">🔥 Hiện Tổng Cung-Chém + Từng Người</option>
-                  <option value="TOTAL_ONLY">🏹 Chỉ Hiện Tổng Cung - Chém</option>
-                  <option value="PER_PLAYER">👤 Chỉ Hiện Số Cung - Chém Từng Người</option>
-                  <option value="CUSTOM">✨ Chạy Dòng Chữ Tùy Chỉnh Bất Kỳ</option>
-                  <option value="OFF">🚫 Tắt Dòng Chữ Chạy</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-[11px] text-slate-400 block mb-1">Nội dung chữ chạy tùy chỉnh (Nếu chọn Tùy chỉnh):</label>
-                <input type="text" v-model="overlayConfigForm.customMarqueeText"
-                       :disabled="(getTierRank(currentActiveTier) < 2 && !isAdmin)"
-                       placeholder="VD: Kèo giao hữu siêu kinh điển - Donate Momo 098..."
-                       class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-amber-300">
-              </div>
-            </div>
-            <div v-if="getTierRank(currentActiveTier) < 2 && !isAdmin" class="text-[10px] text-amber-400 bg-amber-950/60 border border-amber-600/40 p-1.5 rounded text-center">
-              🔒 Nâng cấp <b>Hạng Vàng (GOLD)</b> để tùy chỉnh bật/tắt & thay đổi nội dung dòng chữ chạy
-            </div>
-          </div>
-
-          <!-- CARD 3: HẠNG KIM CƯƠNG (DIAMOND) - ĐÁNH THEO C (OVERLAY PHỤ BÊN PHẢI) -->
-          <div class="bg-[#060f24]/90 border border-cyan-400/40 p-3 rounded-xl space-y-2 flex flex-col justify-between">
-            <div class="space-y-2">
-              <div class="flex justify-between items-center">
-                <span class="font-bold text-cyan-300 flex items-center gap-1"><i class="fa-solid fa-gem"></i> Đánh Theo 'C' (Séc)</span>
-                <span class="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 px-2 py-0.5 rounded font-bold">💎 Kim Cương</span>
-              </div>
-              <label class="flex items-center justify-between cursor-pointer bg-cyan-950/40 border border-cyan-500/30 p-2 rounded-lg">
-                <div>
-                  <span class="text-xs font-bold text-white block">Bật Overlay Phụ Đánh 'C'</span>
-                  <span class="text-[10px] text-cyan-300">Thắng {{ overlayConfigForm.cTargetWins || 3 }} trận = Thắng 1 C (Séc)</span>
-                </div>
-                <input type="checkbox" v-model="overlayConfigForm.cModeEnabled"
-                       :disabled="getTierRank(currentActiveTier) < 3 && !isAdmin"
-                       class="w-5 h-5 accent-cyan-400 rounded">
-              </label>
-              <div v-if="getTierRank(currentActiveTier) < 3 && !isAdmin" class="text-[10px] text-cyan-300 bg-cyan-950/70 border border-cyan-500/40 p-1.5 rounded text-center">
-                🔒 Nâng cấp <b>Hạng Kim Cương (DIAMOND)</b> để hiển thị bảng C (Séc 1, Séc 2, Séc 3) bên phải Overlay
-              </div>
-            </div>
-
-            <button @click="saveVipOverlayConfig"
-                    class="w-full py-2 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-cyan-500/25 transition uppercase tracking-wide">
-              <i class="fa-solid fa-bolt mr-1"></i> Lưu & Đồng Bộ Lên OBS Ngay
-            </button>
-          </div>
+          <button @click="saveVipOverlayConfig"
+                  class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-5 py-2 rounded-xl text-sm shadow transition shrink-0">
+            <i class="fa-solid fa-check mr-1.5"></i>Lưu & Đồng Bộ Lên OBS
+          </button>
         </div>
       </div>
 
-      <!-- THANH HƯỚNG DẪN NHANH OBS NGAY TRÊN DASHBOARD -->
-      <div class="cyber-card px-4 py-2.5 rounded-xl mb-5 flex flex-col md:flex-row justify-between items-center gap-3 bg-[#07122b]/90">
-        <div class="flex items-center gap-2.5 text-xs flex-wrap">
-          <span class="bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-2.5 py-0.5 rounded-md font-bold flex items-center gap-1">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> GÁN OBS NHANH:
+      <!-- THANH COPY NHANH LINK OBS BẢNG QUÂN & LINK OBS KHUNG CHAT -->
+      <div class="premium-card px-5 py-3.5 rounded-2xl mb-6 flex flex-col lg:flex-row justify-between items-center gap-3">
+        <div class="flex items-center gap-3 text-sm flex-wrap">
+          <span class="text-sky-400 font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-video"></i> Link Gán OBS Livestream:
           </span>
-          <span class="text-slate-300">Mở <b>OBS Studio</b> &rarr; Nguồn (Sources) bấm <b>[+]</b> &rarr; Chọn <b>Browser</b> &rarr; Dán Link (Rộng <b>980</b>, Cao <b>600</b>):</span>
-          <code class="bg-slate-950 text-emerald-300 border border-slate-700 px-2.5 py-0.5 rounded font-mono text-[11px]">{{ currentObsPreviewUrl }}</code>
+          <span class="text-slate-300">Chiều rộng khuyên dùng: <b>980 x 600</b> (Bảng quân) &bull; <b>380 x 450</b> (Khung chat)</span>
         </div>
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center gap-2.5 flex-wrap">
           <button @click="copyOverlayLink(sessionPlayerName || 'XO')"
-                  class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black px-3 py-1 rounded-lg text-xs transition shadow">
-            <i class="fa-solid fa-copy mr-1"></i> Copy Link OBS
+                  class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs transition shadow">
+            <i class="fa-solid fa-copy mr-1.5"></i>Copy Link OBS Bảng Quân
           </button>
-          <button @click="showObsGuideModal = true"
-                  class="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 px-2.5 py-1 rounded-lg text-xs transition">
-            Chi tiết
+          <button @click="copyChatOverlayLink(sessionPlayerName || 'XO')"
+                  class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs transition shadow">
+            <i class="fa-solid fa-comments mr-1.5"></i>Copy Link OBS Khung Chat
           </button>
         </div>
       </div>
 
-      <!-- TAB 1: DANH SÁCH KÈO ĐẤU (CYBER COMMAND CARDS) -->
-      <div v-if="currentTab === 'matches'" class="space-y-4">
-        <div class="flex justify-between items-center cyber-card p-3 rounded-xl flex-wrap gap-2">
-          <div class="flex gap-2 flex-wrap">
-            <button @click="filterStatus = 'ALL'"
-                    :class="filterStatus === 'ALL' ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-black shadow' : 'bg-slate-900/90 text-slate-400 border border-slate-800'"
-                    class="px-3.5 py-1.5 rounded-lg text-xs transition">
-              TẤT CẢ KÈO ({{ matches.length }})
-            </button>
-            <button @click="filterStatus = 'LIVE'"
-                    :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-black shadow shadow-red-600/30' : 'bg-slate-900/90 text-slate-400 border border-slate-800'"
-                    class="px-3.5 py-1.5 rounded-lg text-xs transition">
-              🔴 ĐANG TRỰC TIẾP ({{ liveMatchesCount }})
-            </button>
-            <button @click="filterStatus = 'FINISHED'"
-                    :class="filterStatus === 'FINISHED' ? 'bg-slate-700 text-white font-bold' : 'bg-slate-900/90 text-slate-400 border border-slate-800'"
-                    class="px-3.5 py-1.5 rounded-lg text-xs transition">
-              🏁 ĐÃ KẾT THÚC
-            </button>
-          </div>
-          <div class="flex items-center gap-3">
-            <button v-if="sessionPlayerName || isAdmin" @click="showVipControlPanel = !showVipControlPanel"
-                    class="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
-              <i class="fa-solid fa-crown"></i> Tùy Chỉnh VIP & Đánh Theo C
-            </button>
-            <button @click="fetchInitialData" class="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 bg-cyan-950/50 border border-cyan-500/30 px-2.5 py-1 rounded-lg">
-              <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i> Làm mới
-            </button>
-          </div>
-        </div>
+      <!-- BỐ CỤC CHÍNH: CỘT TRÁI (KÈO ĐẤU / CHI TIẾT) + CỘT PHẢI (BẠN BÈ LIVE & KHUNG CHAT TẶNG SAO) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- CỘT CHÍNH (8 CỘT TRÊN MÀN HÌNH LỚN) -->
+        <div class="lg:col-span-8 space-y-5">
 
-        <div v-if="filteredMatches.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div v-for="match in filteredMatches" :key="match.id" @click="selectMatch(match)"
-               class="cyber-card p-4 rounded-2xl cursor-pointer relative group">
-            <!-- Header Card -->
-            <div class="flex justify-between items-center mb-3 flex-wrap gap-1.5">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-cyber font-black px-2.5 py-0.5 rounded-md text-[11px] bg-amber-500/15 text-amber-300 border border-amber-400/40">
-                  ⚔️ {{ match.mode }}
-                </span>
-                <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-[10px] px-2.5 py-0.5 rounded-md font-black animate-pulse shadow shadow-red-500/40">
-                  🔴 LIVE BATTLE
-                </span>
-                <span v-else class="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-md font-bold">
-                  🏁 KẾT THÚC
-                </span>
-                <span v-if="match.streamerName" class="text-[11px] bg-cyan-950/90 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-md font-mono font-bold">
-                  🎮 MÁY {{ match.streamerName }}
-                </span>
-                <span v-if="match.overlayConfig && match.overlayConfig.cModeEnabled"
-                      class="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded-md">
-                  🏆 ĐÁNH THEO C
-                </span>
-              </div>
-
-              <div class="flex items-center gap-1.5">
-                <button @click.stop="copyOverlayLink(match.streamerName)"
-                        class="text-[11px] bg-cyan-950 hover:bg-cyan-800 text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/40 transition"
-                        title="Copy Link OBS Overlay">
-                  <i class="fa-solid fa-tv"></i> OBS
+          <!-- TAB 1: DANH SÁCH KÈO ĐẤU -->
+          <div v-if="currentTab === 'matches'" class="space-y-4">
+            <div class="flex justify-between items-center premium-card px-4 py-3 rounded-xl flex-wrap gap-3">
+              <div class="flex gap-2 flex-wrap">
+                <button @click="filterStatus = 'ALL'"
+                        :class="filterStatus === 'ALL' ? 'bg-sky-500 text-slate-950 font-bold' : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'"
+                        class="px-3.5 py-1.5 rounded-lg text-sm transition">
+                  Tất cả ({{ matches.length }})
                 </button>
-                <button @click.stop="copyMatchLink(match.id)"
-                        class="text-[11px] bg-slate-900 hover:bg-slate-800 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30 transition"
-                        title="Copy Link Kèo">
-                  <i class="fa-solid fa-link"></i>
+                <button @click="filterStatus = 'LIVE'"
+                        :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-bold' : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'"
+                        class="px-3.5 py-1.5 rounded-lg text-sm transition">
+                  🔴 Đang Live ({{ liveMatchesCount }})
                 </button>
-                <span class="text-[11px] text-slate-400 font-mono">{{ match.formattedTime }}</span>
-                <button v-if="isAdmin" @click.stop="deleteSingleMatch(match.id)"
-                        class="bg-red-600/90 hover:bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded border border-red-400">
-                  <i class="fa-solid fa-trash-can"></i>
+                <button @click="filterStatus = 'FINISHED'"
+                        :class="filterStatus === 'FINISHED' ? 'bg-slate-700 text-white font-bold' : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'"
+                        class="px-3.5 py-1.5 rounded-lg text-sm transition">
+                  🏁 Đã kết thúc
                 </button>
               </div>
-            </div>
-
-            <!-- VERSUS BATTLE CARDS (RED VS BLUE) -->
-            <div class="grid grid-cols-11 gap-2 items-center mb-2.5">
-              <div class="col-span-4 team-red-card p-2.5 rounded-xl text-right">
-                <div class="text-[10px] font-cyber font-bold text-red-400 uppercase tracking-wider">🔴 TEAM ĐỎ</div>
-                <div class="text-xs font-bold text-white truncate mt-0.5">{{ (match.redTeam || []).join(', ') }}</div>
-              </div>
-
-              <div class="col-span-3 bg-[#040917] border border-cyan-500/30 rounded-xl py-2 px-1 text-center shadow-inner">
-                <div class="text-[9px] font-bold text-amber-400 uppercase tracking-wider">
-                  CHẠM {{ (match.overlayConfig && match.overlayConfig.targetScore) || 100 }}
-                </div>
-                <div class="font-cyber font-black text-lg leading-tight mt-0.5">
-                  <span class="text-red-400">{{ getMatchScore(match).red }}</span>
-                  <span class="text-slate-600 mx-1">:</span>
-                  <span class="text-cyan-400">{{ getMatchScore(match).blue }}</span>
-                </div>
-              </div>
-
-              <div class="col-span-4 team-blue-card p-2.5 rounded-xl text-left">
-                <div class="text-[10px] font-cyber font-bold text-cyan-400 uppercase tracking-wider">🔵 TEAM XANH</div>
-                <div class="text-xs font-bold text-white truncate mt-0.5">{{ (match.blueTeam || []).join(', ') }}</div>
-              </div>
-            </div>
-
-            <!-- C-MODE SÉC SUMMARY IF ENABLED -->
-            <div v-if="match.overlayConfig && match.overlayConfig.cModeEnabled"
-                 class="flex items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1 mb-2 text-[11px]">
-              <span class="font-bold text-amber-300">
-                🏆 TỈ SỐ C: <b class="text-white">{{ getMatchCModeData(match).redCWins }} - {{ getMatchCModeData(match).blueCWins }}</b>
-              </span>
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span v-for="s in getMatchCModeData(match).sets" :key="s.setNumber"
-                      class="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-700 font-mono text-[10px]">
-                  C{{ s.setNumber }}: <b class="text-red-400">{{ s.red }}</b>-<b class="text-cyan-400">{{ s.blue }}</b>
-                </span>
-              </div>
-            </div>
-
-            <div class="flex justify-between items-center text-[11px] text-slate-400 border-t border-cyan-500/15 pt-2">
-              <div>Tổng số trận: <span class="font-bold text-white">{{ (match.games || []).length }}</span></div>
-              <div v-if="showCivStats">
-                Tổng Cung - Chém:
-                <span class="text-cyan-300 font-bold">{{ getMatchCivStats(match).cung }} Cung</span> -
-                <span class="text-amber-300 font-bold">{{ getMatchCivStats(match).chem }} Chém</span>
-              </div>
-              <div class="text-cyan-300/80"><i class="fa-solid fa-satellite-dish mr-1"></i>{{ match.updatedBy }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="cyber-card text-center py-12 rounded-2xl text-slate-400 text-sm">
-          <i class="fa-solid fa-radar text-3xl text-cyan-400 mb-2 block animate-pulse"></i>
-          Chưa có kèo đấu nào ở trạng thái này. Hãy mở <b>AOE COMMAND CENTER (bangquanaoe.exe)</b> và bấm <b>Diplomacy</b> trong game!
-        </div>
-      </div>
-
-      <!-- TAB 2: CHI TIẾT KÈO ĐẤU (BATTLE CONTROL ARENA) -->
-      <div v-if="currentTab === 'detail' && selectedMatch" class="space-y-4">
-        <div class="flex justify-between items-center flex-wrap gap-2">
-          <button @click="goHome" class="bg-slate-900 hover:bg-slate-800 border border-cyan-500/30 text-cyan-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
-            <i class="fa-solid fa-arrow-left"></i> Quay Lại Sảnh Kèo Đấu
-          </button>
-          <div class="flex items-center gap-2 text-xs flex-wrap">
-            <button v-if="canModify(selectedMatch)" @click="showVipControlPanel = !showVipControlPanel"
-                    class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 px-3 py-1.5 rounded-xl font-bold transition">
-              <i class="fa-solid fa-crown mr-1"></i>Cài Đặt VIP & Chế Độ C
-            </button>
-            <button @click="copyOverlayLink(selectedMatch.streamerName)"
-                    class="bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/50 px-3 py-1.5 rounded-xl font-bold transition">
-              <i class="fa-solid fa-tv mr-1"></i>Copy Link OBS Overlay
-            </button>
-            <button @click="copyMatchLink(selectedMatch.id)"
-                    class="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 px-3 py-1.5 rounded-xl font-bold transition">
-              <i class="fa-solid fa-share-nodes mr-1"></i>Sao Chép Link Kèo
-            </button>
-            <button v-if="isAdmin" @click="deleteSingleMatch(selectedMatch.id)"
-                    class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded-xl">
-              <i class="fa-solid fa-trash-can mr-1"></i>Xóa Kèo
-            </button>
-          </div>
-        </div>
-
-        <!-- BATTLE ARENA HEADER: RED LEGION VS BLUE VANGUARD -->
-        <div class="cyber-card p-5 rounded-2xl">
-          <div class="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-cyan-500/20 pb-3 mb-4">
-            <div class="flex items-center gap-2.5 flex-wrap">
-              <span class="font-cyber text-base font-black text-amber-400 bg-amber-500/10 border border-amber-500/40 px-3 py-1 rounded-lg">
-                ⚔️ BATTLE {{ selectedMatch.mode }}
-              </span>
-              <span v-if="selectedMatch.status === 'LIVE'" class="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-black animate-pulse">
-                🔴 LIVE TRỰC TIẾP
-              </span>
-              <span v-else class="bg-slate-800 text-slate-300 text-xs px-2.5 py-1 rounded-lg font-bold">
-                🏁 ĐÃ KẾT THÚC
-              </span>
-              <span v-if="selectedMatch.streamerName" class="text-xs bg-cyan-950 text-cyan-300 border border-cyan-500/40 px-3 py-1 rounded-lg font-mono font-bold">
-                🎮 MÁY {{ selectedMatch.streamerName }}
-              </span>
-              <span class="text-xs text-slate-400 font-mono">
-                <i class="fa-regular fa-clock mr-1"></i>{{ selectedMatch.formattedTime }}
-              </span>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <button v-if="selectedMatch.status === 'LIVE' && canModify(selectedMatch)"
-                      @click="finishMatch"
-                      class="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black px-4 py-2 rounded-xl shadow-lg text-xs uppercase tracking-wide">
-                🏁 Kết Thúc Kèo Đấu
+              <button @click="fetchInitialData" class="text-sm text-slate-300 hover:text-sky-400 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80">
+                <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i> Làm mới
               </button>
             </div>
-          </div>
 
-          <!-- 2 VERSUS CARDS: TEAM ĐỎ vs TEAM XANH -->
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-            <!-- TEAM ĐỎ CARD -->
-            <div class="lg:col-span-4 team-red-card p-4 rounded-2xl flex flex-col justify-between">
-              <div>
-                <div class="flex justify-between items-center border-b border-red-500/30 pb-2 mb-2.5">
-                  <span class="font-cyber font-black text-red-400 text-sm tracking-wider uppercase">🔴 RED LEGION (TEAM ĐỎ)</span>
-                  <span class="text-[11px] bg-red-950/90 text-red-300 border border-red-500/40 px-2 py-0.5 rounded font-bold">Đội Chủ Nhà</span>
-                </div>
-                <div class="space-y-1.5">
-                  <div v-for="(player, pi) in (selectedMatch.redTeam || [])" :key="'r-'+pi"
-                       class="flex items-center justify-between bg-slate-950/75 px-3 py-1.5 rounded-lg border border-red-500/20">
-                    <span class="font-bold text-sm" :style="{ color: getPlayerColorHex(selectedMatch.redColors, pi, '#f87171') }">
-                      ● {{ player }}
+            <div v-if="filteredMatches.length > 0" class="space-y-4">
+              <div v-for="match in filteredMatches" :key="match.id" @click="selectMatch(match)"
+                   class="premium-card premium-card-hover p-5 rounded-2xl cursor-pointer">
+                <!-- Dòng thông tin trên cùng của Card -->
+                <div class="flex justify-between items-center mb-3.5 flex-wrap gap-2">
+                  <div class="flex items-center gap-2.5 flex-wrap">
+                    <span class="font-bold px-2.5 py-1 rounded-lg text-xs bg-slate-800 text-sky-400 border border-slate-700">
+                      Kèo {{ match.mode }}
                     </span>
-                    <span class="text-[11px] font-mono text-slate-400">Slot {{ pi + 1 }}</span>
+                    <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-bold animate-pulse">
+                      🔴 Đang Live
+                    </span>
+                    <span v-else class="bg-slate-800 text-slate-400 text-xs px-2.5 py-1 rounded-lg font-medium">
+                      🏁 Đã kết thúc
+                    </span>
+                    <span v-if="match.streamerName" class="text-xs bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-lg font-semibold">
+                      🎮 Máy {{ match.streamerName }}
+                    </span>
+                    <span v-if="match.starsCount > 0" class="text-xs bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold">
+                      ⭐ {{ match.starsCount }} Sao
+                    </span>
                   </div>
+
+                  <div class="flex items-center gap-2">
+                    <button @click.stop="sendQuickStar(match, 1)"
+                            class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-lg shadow transition"
+                            title="Tặng Sao cổ vũ người chơi">
+                      🌟 Tặng Sao
+                    </button>
+                    <button @click.stop="copyOverlayLink(match.streamerName)"
+                            class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+                      <i class="fa-solid fa-tv mr-1 text-sky-400"></i>Link OBS
+                    </button>
+                    <span class="text-xs text-slate-400">{{ match.formattedTime }}</span>
+                    <button v-if="isAdmin" @click.stop="deleteSingleMatch(match.id)"
+                            class="bg-red-600/90 hover:bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 2 Đội Đỏ & Xanh + Tỉ số trung tâm rõ ràng, dễ nhìn -->
+                <div class="grid grid-cols-1 md:grid-cols-11 gap-3 items-center mb-3">
+                  <div class="md:col-span-4 team-red-box p-3.5 rounded-xl text-right">
+                    <div class="text-xs font-bold text-red-400 mb-1">🔴 Team Đỏ</div>
+                    <div class="text-base font-bold text-slate-100 truncate">{{ (match.redTeam || []).join(', ') }}</div>
+                  </div>
+
+                  <div class="md:col-span-3 bg-slate-950/90 border border-slate-700/80 rounded-xl py-2.5 px-3 text-center">
+                    <div class="text-[11px] font-semibold text-slate-400">
+                      Chạm {{ (match.overlayConfig && match.overlayConfig.targetScore) || 100 }}
+                    </div>
+                    <div class="font-display font-black text-3xl leading-tight mt-0.5">
+                      <span class="text-red-400">{{ getMatchScore(match).red }}</span>
+                      <span class="text-slate-500 mx-1.5">-</span>
+                      <span class="text-sky-400">{{ getMatchScore(match).blue }}</span>
+                    </div>
+                  </div>
+
+                  <div class="md:col-span-4 team-blue-box p-3.5 rounded-xl text-left">
+                    <div class="text-xs font-bold text-sky-400 mb-1">🔵 Team Xanh</div>
+                    <div class="text-base font-bold text-slate-100 truncate">{{ (match.blueTeam || []).join(', ') }}</div>
+                  </div>
+                </div>
+
+                <!-- Hiển thị kết quả C nếu bật Đánh theo C -->
+                <div v-if="match.overlayConfig && match.overlayConfig.cModeEnabled"
+                     class="flex items-center justify-between bg-slate-900/90 border border-amber-500/30 rounded-xl px-3.5 py-2 mb-3 text-xs">
+                  <span class="font-bold text-amber-300">
+                    🏆 Tỉ số C: <b class="text-white">{{ getMatchCModeData(match).redCWins }} - {{ getMatchCModeData(match).blueCWins }}</b>
+                  </span>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span v-for="s in getMatchCModeData(match).sets" :key="s.setNumber"
+                          class="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-700 font-semibold">
+                      Séc {{ s.setNumber }}: <b class="text-red-400">{{ s.red }}</b>-<b class="text-sky-400">{{ s.blue }}</b>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-400 border-t border-slate-800 pt-2.5">
+                  <div>Số trận đã đấu: <b class="text-slate-200">{{ (match.games || []).length }} trận</b></div>
+                  <div v-if="showCivStats">
+                    Tổng Cung - Chém:
+                    <b class="text-sky-300">{{ getMatchCivStats(match).cung }} Cung</b> &bull;
+                    <b class="text-amber-300">{{ getMatchCivStats(match).chem }} Chém</b>
+                  </div>
+                  <div>Bình luận: <b class="text-slate-200">{{ (match.chatMessages || []).length }}</b></div>
                 </div>
               </div>
             </div>
 
-            <!-- CENTER SCOREBOARD & C-MODE BREAKDOWN -->
-            <div class="lg:col-span-4 bg-[#040917] border border-cyan-400/40 rounded-2xl p-4 flex flex-col justify-center items-center text-center shadow-2xl">
-              <div class="text-[11px] font-cyber font-bold text-amber-400 bg-amber-500/15 border border-amber-500/40 px-3 py-0.5 rounded-full uppercase tracking-widest mb-1">
-                CHẠM {{ (selectedMatch.overlayConfig && selectedMatch.overlayConfig.targetScore) || 100 }}
+            <div v-else class="premium-card text-center py-12 rounded-2xl text-slate-400 text-base">
+              Chưa có kèo đấu nào. Hãy mở <b>TOOL BẢNG QUÂN AOE BY XO</b> và ấn <b>Diplomacy (F2)</b> trong game!
+            </div>
+          </div>
+
+          <!-- TAB 2: CHI TIẾT KÈO ĐẤU (BATTLE CONTROL) -->
+          <div v-if="currentTab === 'detail' && selectedMatch" class="space-y-5">
+            <div class="flex justify-between items-center flex-wrap gap-3">
+              <button @click="goHome"
+                      class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition">
+                <i class="fa-solid fa-arrow-left text-sky-400"></i> Quay lại danh sách kèo
+              </button>
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <button @click="sendQuickStar(selectedMatch, 10)"
+                        class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm shadow transition">
+                  🌟 Tặng 10 Sao Cổ Vũ
+                </button>
+                <button @click="copyOverlayLink(selectedMatch.streamerName)"
+                        class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 px-3.5 py-2 rounded-xl text-sm font-medium transition">
+                  <i class="fa-solid fa-tv text-sky-400 mr-1.5"></i>Link OBS Bảng Quân
+                </button>
+                <button @click="copyChatOverlayLink(selectedMatch.streamerName)"
+                        class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 px-3.5 py-2 rounded-xl text-sm font-medium transition">
+                  <i class="fa-solid fa-comments text-amber-400 mr-1.5"></i>Link OBS Khung Chat
+                </button>
+                <button v-if="selectedMatch.status === 'LIVE' && canModify(selectedMatch)"
+                        @click="finishMatch"
+                        class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-sm shadow transition">
+                  🏁 Kết Thúc Kèo
+                </button>
               </div>
-              <div class="font-cyber font-black text-4xl md:text-5xl tracking-wider my-1">
-                <span class="text-red-500 drop-shadow-[0_0_12px_rgba(239,68,68,0.6)]">{{ activeMatchScore.red }}</span>
-                <span class="text-slate-600 mx-2">-</span>
-                <span class="text-cyan-400 drop-shadow-[0_0_12px_rgba(0,242,254,0.6)]">{{ activeMatchScore.blue }}</span>
-              </div>
-              <div v-if="showCivStats" class="text-xs text-slate-300 mt-1 bg-slate-900/90 px-3 py-1 rounded-lg border border-slate-800">
-                Tổng Cung - Chém:
-                <b class="text-cyan-300">{{ activeMatchCivStats.cung }} Cung</b> &bull;
-                <b class="text-amber-300">{{ activeMatchCivStats.chem }} Chém</b>
+            </div>
+
+            <!-- BẢNG TỈ SỐ TRUNG TÂM & ĐỘI HÌNH 2 TEAM -->
+            <div class="premium-card p-6 rounded-2xl">
+              <div class="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-4 mb-5">
+                <div class="flex items-center gap-3 flex-wrap">
+                  <span class="text-base font-bold text-sky-400 uppercase">Kèo Đấu {{ selectedMatch.mode }}</span>
+                  <span v-if="selectedMatch.status === 'LIVE'" class="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-bold">
+                    🔴 Đang Live
+                  </span>
+                  <span v-else class="bg-slate-800 text-slate-300 text-xs px-2.5 py-1 rounded-lg font-medium">
+                    🏁 Đã kết thúc
+                  </span>
+                  <span class="text-sm text-slate-300">Streamer: <b class="text-white">{{ selectedMatch.streamerName }}</b></span>
+                </div>
+                <div class="text-sm text-amber-300 font-bold">
+                  ⭐ Đã nhận {{ selectedMatch.starsCount || 0 }} Sao trong kèo này
+                </div>
               </div>
 
-              <!-- HIỂN THỊ BẢNG SÉC / C NẾU BẬT CHẾ ĐỘ ĐÁNH THEO C -->
-              <div v-if="selectedMatch.overlayConfig && selectedMatch.overlayConfig.cModeEnabled"
-                   class="w-full mt-3 pt-2.5 border-t border-cyan-500/25">
-                <div class="flex justify-between items-center text-[11px] mb-1.5">
-                  <span class="font-bold text-amber-300 uppercase">⚡ KẾT QUẢ C (Chạm {{ selectedMatch.overlayConfig.cTargetWins || 3 }}/C):</span>
-                  <span class="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded text-[11px]">
-                    C: {{ getMatchCModeData(selectedMatch).redCWins }} - {{ getMatchCModeData(selectedMatch).blueCWins }}
-                  </span>
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                <!-- Team Đỏ -->
+                <div class="md:col-span-4 team-red-box p-4 rounded-2xl">
+                  <div class="text-xs font-bold text-red-400 uppercase tracking-wider border-b border-red-500/20 pb-2 mb-3">
+                    🔴 Team Đỏ (Chủ nhà)
+                  </div>
+                  <div class="space-y-2">
+                    <div v-for="(player, pi) in (selectedMatch.redTeam || [])" :key="'r-'+pi"
+                         class="flex items-center justify-between bg-slate-950/60 px-3.5 py-2 rounded-xl border border-slate-800">
+                      <span class="font-bold text-base" :style="{ color: getPlayerColorHex(selectedMatch.redColors, pi, '#fca5a5') }">
+                        ● {{ player }}
+                      </span>
+                      <span class="text-xs text-slate-400">Slot {{ pi + 1 }}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="grid grid-cols-3 gap-1.5">
-                  <div v-for="s in getMatchCModeData(selectedMatch).sets" :key="s.setNumber"
-                       class="bg-slate-900/90 border border-cyan-500/30 rounded-lg p-1.5 text-center">
-                    <div class="text-[10px] text-slate-400 font-bold">SÉC {{ s.setNumber }} (C{{ s.setNumber }})</div>
-                    <div class="font-cyber font-black text-sm">
-                      <span class="text-red-400">{{ s.red }}</span> - <span class="text-cyan-400">{{ s.blue }}</span>
+
+                <!-- Tỉ số nổi bật ở trung tâm -->
+                <div class="md:col-span-4 bg-slate-950/90 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-center items-center text-center">
+                  <div class="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1 rounded-full mb-2">
+                    Chạm {{ (selectedMatch.overlayConfig && selectedMatch.overlayConfig.targetScore) || 100 }}
+                  </div>
+                  <div class="font-display font-black text-5xl tracking-tight my-1">
+                    <span class="text-red-400">{{ activeMatchScore.red }}</span>
+                    <span class="text-slate-600 mx-2">-</span>
+                    <span class="text-sky-400">{{ activeMatchScore.blue }}</span>
+                  </div>
+                  <div v-if="showCivStats" class="text-xs text-slate-300 mt-2">
+                    Tổng Cung - Chém:
+                    <b class="text-sky-300">{{ activeMatchCivStats.cung }} Cung</b> &bull;
+                    <b class="text-amber-300">{{ activeMatchCivStats.chem }} Chém</b>
+                  </div>
+
+                  <!-- Kết quả C (Séc) nếu bật -->
+                  <div v-if="selectedMatch.overlayConfig && selectedMatch.overlayConfig.cModeEnabled"
+                       class="w-full mt-4 pt-3 border-t border-slate-800">
+                    <div class="text-xs font-bold text-amber-300 mb-2">
+                      🏆 Tỉ số C: {{ getMatchCModeData(selectedMatch).redCWins }} - {{ getMatchCModeData(selectedMatch).blueCWins }}
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                      <div v-for="s in getMatchCModeData(selectedMatch).sets" :key="s.setNumber"
+                           class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center">
+                        <div class="text-[11px] text-slate-400">Séc {{ s.setNumber }}</div>
+                        <div class="font-bold text-sm">
+                          <span class="text-red-400">{{ s.red }}</span> - <span class="text-sky-400">{{ s.blue }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Team Xanh -->
+                <div class="md:col-span-4 team-blue-box p-4 rounded-2xl">
+                  <div class="text-xs font-bold text-sky-400 uppercase tracking-wider border-b border-sky-500/20 pb-2 mb-3">
+                    🔵 Team Xanh (Đội khách)
+                  </div>
+                  <div class="space-y-2">
+                    <div v-for="(player, pi) in (selectedMatch.blueTeam || [])" :key="'b-'+pi"
+                         class="flex items-center justify-between bg-slate-950/60 px-3.5 py-2 rounded-xl border border-slate-800">
+                      <span class="font-bold text-base" :style="{ color: getPlayerColorHex(selectedMatch.blueColors, pi, '#93c5fd') }">
+                        ● {{ player }}
+                      </span>
+                      <span class="text-xs text-slate-400">Slot {{ pi + 1 }}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- TEAM XANH CARD -->
-            <div class="lg:col-span-4 team-blue-card p-4 rounded-2xl flex flex-col justify-between">
+            <!-- LỊCH SỬ TỪNG TRẬN ĐẤU -->
+            <div class="premium-card p-5 rounded-2xl">
+              <h3 class="text-base font-bold text-sky-400 mb-4 border-b border-slate-800 pb-2.5 uppercase">
+                Chi Tiết Từng Trận Đấu ({{ (selectedMatch.games || []).length }} trận)
+              </h3>
+
+              <div v-if="selectedMatch.games && selectedMatch.games.length > 0" class="space-y-4">
+                <div v-for="(g, idx) in selectedMatch.games" :key="idx" class="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+                  <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3 flex-wrap gap-2">
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                      <span class="font-bold text-sm text-amber-400 bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">
+                        Trận #{{ idx + 1 }}
+                      </span>
+                      <button @click="setWinner(idx, 'RED')"
+                              :class="g.winner === 'RED' ? 'bg-red-600 text-white font-bold ring-2 ring-red-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+                              class="px-3.5 py-1.5 rounded-lg text-xs transition">
+                        🔴 Team Đỏ Thắng
+                      </button>
+                      <button @click="setWinner(idx, 'BLUE')"
+                              :class="g.winner === 'BLUE' ? 'bg-blue-600 text-white font-bold ring-2 ring-sky-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
+                              class="px-3.5 py-1.5 rounded-lg text-xs transition">
+                        🔵 Team Xanh Thắng
+                      </button>
+                      <span v-if="g.winner === 'PENDING'" class="text-amber-300 font-semibold bg-amber-950/60 px-2.5 py-1 rounded-lg text-xs">
+                        ⏳ Đang thi đấu
+                      </span>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                      <span v-if="showCivStats" class="text-xs text-slate-300">
+                        Cung - Chém: <b class="text-sky-300">{{ getGameCivStats(g).cung }} Cung</b> - <b class="text-amber-300">{{ getGameCivStats(g).chem }} Chém</b>
+                      </span>
+                      <button v-if="canModify(selectedMatch)" @click="deleteGameFromMatch(idx)"
+                              class="text-xs bg-red-950 hover:bg-red-800 text-red-300 border border-red-800 px-2.5 py-1 rounded-lg">
+                        Xóa trận
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="team-red-box p-3 rounded-xl space-y-2">
+                      <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gr-'+pi" class="flex items-center justify-between text-sm">
+                        <span class="font-bold truncate" :style="{ color: getPlayerColorHex(g.redColors || selectedMatch.redColors, pi, '#fca5a5') }">
+                          ● {{ selectedMatch.redTeam[pi] || ('Player ' + (pi + 1)) }}
+                        </span>
+                        <span :class="getCivTypeClass(g.redCivs[pi])" class="px-3 py-0.5 rounded-md text-xs font-bold min-w-[80px] text-center">
+                          {{ g.redCivs[pi] || '---' }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="team-blue-box p-3 rounded-xl space-y-2">
+                      <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gb-'+pi" class="flex items-center justify-between text-sm">
+                        <span class="font-bold truncate" :style="{ color: getPlayerColorHex(g.blueColors || selectedMatch.blueColors, pi, '#93c5fd') }">
+                          ● {{ selectedMatch.blueTeam[pi] || ('Player ' + (pi + 1)) }}
+                        </span>
+                        <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-3 py-0.5 rounded-md text-xs font-bold min-w-[80px] text-center">
+                          {{ g.blueCivs[pi] || '---' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: DASHBOARD THỐNG KÊ -->
+          <div v-if="currentTab === 'analytics'" class="space-y-6">
+            <div class="premium-card p-5 rounded-2xl">
+              <h2 class="text-base font-bold text-sky-400 uppercase mb-1">Thống Kê Tỷ Lệ Quân (Civilization Insight)</h2>
+              <p class="text-sm text-slate-400">Tổng hợp từ toàn bộ các trận đấu đã diễn ra trên hệ thống.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="premium-card p-5 rounded-2xl">
+                <h3 class="text-sm font-bold text-slate-200 mb-3 text-center">📊 Các Loại Quân Xuất Hiện Nhiều Nhất</h3>
+                <canvas id="civChart" class="max-h-64"></canvas>
+              </div>
+              <div class="premium-card p-5 rounded-2xl">
+                <h3 class="text-sm font-bold text-slate-200 mb-3 text-center">🏹 Tỷ Lệ Quân Cung vs Quân Chém</h3>
+                <canvas id="civTypeChart" class="max-h-64"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CỘT PHẢI (4 CỘT): KẾT BẠN & TRẠNG THÁI LIVE + KHUNG CHAT BÌNH LUẬN & TẶNG SAO -->
+        <div class="lg:col-span-4 space-y-5">
+
+          <!-- CARD 1: KẾT BẠN & THEO DÕI BẠN BÈ ĐANG LIVE -->
+          <div class="premium-card p-5 rounded-2xl space-y-3.5">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
+              <h3 class="text-sm font-bold text-sky-400 uppercase flex items-center gap-2">
+                <i class="fa-solid fa-user-group"></i>
+                <span>Bạn Bè & Trạng Thái Live</span>
+              </h3>
+              <span class="text-xs text-slate-400">{{ myFriendsList.length }} bạn bè</span>
+            </div>
+
+            <!-- Ô tìm/thêm bạn bè nhanh -->
+            <div class="flex gap-2">
+              <select v-model="selectedFriendToAdd"
+                      class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none">
+                <option value="">+ Chọn người chơi để kết bạn...</option>
+                <option v-for="p in availablePlayersToFriend" :key="p.name" :value="p.name">
+                  {{ p.name }} {{ p.isLive ? '(🔴 Đang Live)' : (p.isOnline ? '(🟢 Online)' : '') }}
+                </option>
+              </select>
+              <button @click="toggleFriend(selectedFriendToAdd)"
+                      class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs transition shrink-0">
+                Kết bạn
+              </button>
+            </div>
+
+            <!-- Danh sách bạn bè và trạng thái Live / Online -->
+            <div v-if="myFriendsList.length > 0" class="space-y-2 max-h-52 overflow-y-auto pr-1">
+              <div v-for="f in myFriendsList" :key="f.name"
+                   class="flex items-center justify-between bg-slate-900/90 border border-slate-800 px-3 py-2 rounded-xl text-sm">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0"
+                        :class="f.isLive ? 'bg-red-500 animate-ping' : (f.isOnline ? 'bg-emerald-400' : 'bg-slate-600')"></span>
+                  <div class="truncate">
+                    <div class="font-bold text-slate-100 text-sm flex items-center gap-1.5">
+                      <span>{{ f.name }}</span>
+                      <span v-if="f.isLive" class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
+                        LIVE {{ f.liveMatchMode || '' }}
+                      </span>
+                      <span v-else-if="f.isOnline" class="text-[11px] text-emerald-400 font-medium">Online</span>
+                      <span v-else class="text-[11px] text-slate-500">Offline</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button v-if="f.isLive && f.liveMatchId"
+                          @click="watchFriendLive(f)"
+                          class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg transition">
+                    Xem Live
+                  </button>
+                  <button @click="toggleFriend(f.name)"
+                          class="text-slate-500 hover:text-red-400 text-xs px-1.5 py-1"
+                          title="Hủy kết bạn">
+                    <i class="fa-solid fa-user-minus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-xs text-slate-400 bg-slate-900/60 rounded-xl p-3 text-center">
+              <span v-if="sessionPlayerName">Bạn chưa thêm bạn bè nào. Hãy chọn người chơi ở trên để theo dõi khi bạn bè lên sóng Live!</span>
+              <span v-else>Hãy <b>Đăng nhập Player</b> để kết bạn và theo dõi trạng thái Live của bạn bè.</span>
+            </div>
+          </div>
+
+          <!-- CARD 2: KHUNG CHAT BÌNH LUẬN TRẬN ĐẤU & TẶNG SAO CỔ VŨ -->
+          <div class="premium-card p-5 rounded-2xl flex flex-col">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
               <div>
-                <div class="flex justify-between items-center border-b border-cyan-500/30 pb-2 mb-2.5">
-                  <span class="font-cyber font-black text-cyan-300 text-sm tracking-wider uppercase">🔵 BLUE VANGUARD (TEAM XANH)</span>
-                  <span class="text-[11px] bg-cyan-950/90 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded font-bold">Đội Khách</span>
-                </div>
-                <div class="space-y-1.5">
-                  <div v-for="(player, pi) in (selectedMatch.blueTeam || [])" :key="'b-'+pi"
-                       class="flex items-center justify-between bg-slate-950/75 px-3 py-1.5 rounded-lg border border-cyan-500/20">
-                    <span class="font-bold text-sm" :style="{ color: getPlayerColorHex(selectedMatch.blueColors, pi, '#38bdf8') }">
-                      ● {{ player }}
-                    </span>
-                    <span class="text-[11px] font-mono text-slate-400">Slot {{ pi + 1 }}</span>
-                  </div>
-                </div>
+                <h3 class="text-sm font-bold text-sky-400 uppercase flex items-center gap-2">
+                  <i class="fa-solid fa-comments"></i>
+                  <span>Bình Luận Trận Đấu</span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">
+                  Đang xem: <b class="text-slate-200">Máy {{ activeChatStreamer }}</b>
+                </p>
               </div>
+              <button @click="copyChatOverlayLink(activeChatStreamer)"
+                      class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-2.5 py-1.5 rounded-lg font-semibold transition"
+                      title="Copy Link OBS của riêng Khung Chat này để dán vào OBS">
+                <i class="fa-solid fa-tv mr-1"></i>Link OBS Chat
+              </button>
             </div>
-          </div>
-        </div>
 
-        <!-- DANH SÁCH TỪNG TRẬN ĐẤU -->
-        <div class="cyber-card p-4 rounded-2xl">
-          <h3 class="text-sm font-cyber font-bold text-cyan-300 mb-3 border-b border-cyan-500/20 pb-2 uppercase tracking-wider">
-            <i class="fa-solid fa-list-ol mr-1.5 text-amber-400"></i>Lịch Sử Từng Trận Đấu ({{ (selectedMatch.games || []).length }} trận)
-          </h3>
-
-          <div v-if="selectedMatch.games && selectedMatch.games.length > 0" class="space-y-3">
-            <div v-for="(g, idx) in selectedMatch.games" :key="idx" class="bg-[#050b1a] p-3.5 rounded-xl border border-cyan-500/25 text-xs">
-              <div class="flex justify-between items-center border-b border-slate-800 pb-2.5 mb-3 flex-wrap gap-2">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="font-cyber font-black text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                    TRẬN #{{ idx + 1 }}
-                  </span>
-                  <button @click="setWinner(idx, 'RED')"
-                          :class="g.winner === 'RED' ? 'bg-red-600 text-white font-black ring-2 ring-red-400 shadow-lg shadow-red-600/30' : 'bg-slate-900 text-slate-400 hover:text-red-300 border border-slate-700'"
-                          class="px-3 py-1 rounded-lg text-[11px] transition">
-                    🔴 Team Đỏ Thắng
-                  </button>
-                  <button @click="setWinner(idx, 'BLUE')"
-                          :class="g.winner === 'BLUE' ? 'bg-blue-600 text-white font-black ring-2 ring-cyan-400 shadow-lg shadow-blue-600/30' : 'bg-slate-900 text-slate-400 hover:text-cyan-300 border border-slate-700'"
-                          class="px-3 py-1 rounded-lg text-[11px] transition">
-                    🔵 Team Xanh Thắng
-                  </button>
-                  <span v-if="g.winner === 'PENDING'" class="text-amber-300 font-bold bg-amber-950/70 border border-amber-500/40 px-2.5 py-0.5 rounded-lg text-[11px] animate-pulse">
-                    ⏳ Đang thi đấu
-                  </span>
-                </div>
-
-                <div class="flex items-center gap-3">
-                  <span v-if="showCivStats" class="text-[11px] text-slate-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
-                    Cung - Chém: <b class="text-cyan-300">{{ getGameCivStats(g).cung }} Cung</b> - <b class="text-amber-300">{{ getGameCivStats(g).chem }} Chém</b>
-                  </span>
-                  <button v-if="canModify(selectedMatch)" @click="deleteGameFromMatch(idx)"
-                          class="text-[11px] bg-red-950/80 hover:bg-red-800 text-red-300 border border-red-700/50 px-2.5 py-1 rounded-lg transition">
-                    <i class="fa-solid fa-trash-can mr-1"></i>Xóa
-                  </button>
-                </div>
+            <!-- Thanh nút Tặng Sao nhanh (Star Gift Effect) -->
+            <div class="bg-slate-900/90 border border-amber-500/30 rounded-xl p-2.5 mb-3">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-xs font-bold text-amber-300 flex items-center gap-1">
+                  <span>🌟</span> Tặng Sao cổ vũ (Hiện hiệu ứng trên Live):
+                </span>
               </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <!-- TEAM ĐỎ CIVS -->
-                <div class="team-red-card p-2.5 rounded-xl space-y-1.5">
-                  <div class="text-[10px] font-cyber font-bold text-red-300 uppercase border-b border-red-500/20 pb-1">🔴 Quân Team Đỏ</div>
-                  <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gr-'+pi" class="flex items-center justify-between text-xs py-0.5">
-                    <span class="font-bold truncate" :style="{ color: getPlayerColorHex(g.redColors || selectedMatch.redColors, pi, '#fca5a5') }">
-                      ● {{ selectedMatch.redTeam[pi] || ('Player ' + (pi + 1)) }}
-                    </span>
-                    <span :class="getCivTypeClass(g.redCivs[pi])" class="px-2.5 py-0.5 rounded-md text-[11px] font-black min-w-[75px] text-center">
-                      {{ g.redCivs[pi] || '---' }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- TEAM XANH CIVS -->
-                <div class="team-blue-card p-2.5 rounded-xl space-y-1.5">
-                  <div class="text-[10px] font-cyber font-bold text-cyan-300 uppercase border-b border-cyan-500/20 pb-1">🔵 Quân Team Xanh</div>
-                  <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gb-'+pi" class="flex items-center justify-between text-xs py-0.5">
-                    <span class="font-bold truncate" :style="{ color: getPlayerColorHex(g.blueColors || selectedMatch.blueColors, pi, '#93c5fd') }">
-                      ● {{ selectedMatch.blueTeam[pi] || ('Player ' + (pi + 1)) }}
-                    </span>
-                    <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-2.5 py-0.5 rounded-md text-[11px] font-black min-w-[75px] text-center">
-                      {{ g.blueCivs[pi] || '---' }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TAB 3: DASHBOARD THỐNG KÊ (ANALYTICS) -->
-      <div v-if="currentTab === 'analytics'" class="space-y-6">
-        <div class="cyber-card p-4 rounded-2xl">
-          <h2 class="text-base font-cyber font-bold text-cyan-300 mb-1 uppercase">
-            <i class="fa-solid fa-chart-line mr-2 text-amber-400"></i>Thống Kê Meta Game & Tỷ Lệ Quân (Civ Insight)
-          </h2>
-          <p class="text-xs text-slate-400">Phân tích dữ liệu tự động từ toàn bộ lịch sử các trận đấu đã quét.</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="cyber-card p-4 rounded-2xl">
-            <h3 class="text-xs font-bold text-cyan-300 mb-3 text-center uppercase">📊 Top Loại Quân Xuất Hiện Nhiều Nhất</h3>
-            <canvas id="civChart" class="max-h-64"></canvas>
-          </div>
-
-          <div class="cyber-card p-4 rounded-2xl">
-            <h3 class="text-xs font-bold text-amber-300 mb-3 text-center uppercase">🏹 Tỉ Lệ Quân Cung vs Quân Chém</h3>
-            <canvas id="civTypeChart" class="max-h-64"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- MODAL HƯỚNG DẪN GÁN LINK OBS HIỂN THỊ LIVESTREAM -->
-      <div v-if="showObsGuideModal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[130]">
-        <div class="cyber-card rounded-2xl max-w-xl w-full p-6 space-y-4 relative max-h-[92vh] overflow-y-auto">
-          <button @click="showObsGuideModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">&times;</button>
-          <div class="flex items-center gap-3 border-b border-cyan-500/30 pb-3">
-            <div class="bg-cyan-500 text-slate-950 p-2.5 rounded-xl font-black"><i class="fa-solid fa-tv text-lg"></i></div>
-            <div>
-              <h3 class="text-base font-cyber font-black text-cyan-300 uppercase">Hướng Dẫn Gán Bảng Quân Vào OBS Studio</h3>
-              <p class="text-xs text-slate-400">Hiển thị Bảng Quân, Chữ Chạy & Bảng Séc (C) tự động lên Livestream</p>
-            </div>
-          </div>
-
-          <div class="space-y-3 text-xs text-slate-200">
-            <div class="bg-slate-950/90 border border-cyan-500/40 p-3.5 rounded-xl space-y-2">
-              <div class="font-bold text-amber-400 flex items-center gap-1.5">
-                <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-black text-[10px]">BƯỚC 1</span>
-                <span>Sao chép đường dẫn (Link) OBS Overlay của bạn:</span>
-              </div>
-              <div class="flex gap-2 items-center">
-                <input type="text" readonly :value="currentObsPreviewUrl" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-[11px] text-emerald-300">
-                <button @click="copyOverlayLink(sessionPlayerName || 'XO')" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black px-3 py-2 rounded-lg shrink-0">
-                  <i class="fa-solid fa-copy mr-1"></i> Copy Link
+              <div class="grid grid-cols-4 gap-1.5">
+                <button @click="sendStarGift(1)"
+                        class="bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-lg text-xs transition">
+                  ⭐ +1
+                </button>
+                <button @click="sendStarGift(10)"
+                        class="bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-lg text-xs transition">
+                  🌟 +10
+                </button>
+                <button @click="sendStarGift(50)"
+                        class="bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-lg text-xs transition">
+                  ✨ +50
+                </button>
+                <button @click="sendStarGift(100)"
+                        class="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black py-1.5 rounded-lg text-xs shadow transition">
+                  🔥 +100
                 </button>
               </div>
-              <p class="text-[11px] text-slate-400">💡 Thay chữ <b class="text-amber-300">XO</b> ở cuối link bằng đúng <b>Tên Player</b> bạn đăng nhập trên Tool.</p>
             </div>
 
-            <div class="bg-slate-950/90 border border-slate-800 p-3.5 rounded-xl space-y-1.5">
-              <div class="font-bold text-amber-400 flex items-center gap-1.5">
-                <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-black text-[10px]">BƯỚC 2</span>
-                <span>Thêm nguồn Browser (Trình duyệt) trong OBS Studio:</span>
+            <!-- Danh sách tin nhắn bình luận -->
+            <div ref="webChatBox" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 h-72 overflow-y-auto space-y-2.5 mb-3">
+              <div v-if="activeChatMessages.length === 0" class="text-center py-10 text-xs text-slate-500">
+                Chưa có bình luận nào. Hãy gửi bình luận đầu tiên hoặc ấn Tặng Sao cổ vũ!
               </div>
-              <ul class="list-disc list-inside space-y-1 text-slate-300 pl-1">
-                <li>Mở phần mềm <b>OBS Studio</b>.</li>
-                <li>Tại cột <b>Sources (Nguồn)</b>, bấm vào dấu <b>[+] (Thêm)</b> &rarr; Chọn <b>🌐 Browser (Trình duyệt)</b> &rarr; Bấm <b>OK</b>.</li>
-              </ul>
+
+              <div v-for="m in activeChatMessages" :key="m.id"
+                   class="rounded-xl px-3 py-2 text-xs leading-relaxed"
+                   :class="m.type === 'STAR'
+                     ? 'bg-amber-500/15 border border-amber-400/40 text-amber-100'
+                     : 'bg-slate-900 border border-slate-800 text-slate-100'">
+                <div class="flex justify-between items-center mb-0.5">
+                  <span class="font-bold" :class="m.type === 'STAR' ? 'text-amber-300' : 'text-sky-300'">
+                    <span v-if="m.type === 'STAR'">🌟 </span>{{ m.senderName }}
+                  </span>
+                  <span class="text-[10px] text-slate-500 font-mono">{{ m.timeText }}</span>
+                </div>
+                <div class="text-slate-200 break-words">{{ m.text }}</div>
+              </div>
             </div>
 
-            <div class="bg-slate-950/90 border border-slate-800 p-3.5 rounded-xl space-y-2">
-              <div class="font-bold text-amber-400 flex items-center gap-1.5">
-                <span class="bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full font-black text-[10px]">BƯỚC 3</span>
-                <span>Dán Link và thiết lập kích thước chuẩn:</span>
+            <!-- Form gửi bình luận -->
+            <div class="space-y-2">
+              <div v-if="!sessionPlayerName" class="flex items-center gap-2">
+                <span class="text-xs text-slate-400 shrink-0">Tên bạn:</span>
+                <input type="text" v-model="guestChatName" placeholder="Nhập tên hiển thị..."
+                       class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-100 outline-none">
               </div>
-              <div class="grid grid-cols-3 gap-2 bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-[11px]">
-                <div class="text-slate-400">Ô <b>URL</b>:</div>
-                <div class="col-span-2 text-emerald-400 font-mono break-all">{{ currentObsPreviewUrl }}</div>
-                <div class="text-slate-400">Ô <b>Width (Chiều rộng)</b>:</div>
-                <div class="col-span-2 text-amber-300 font-mono font-bold">980 (Để hiển thị đủ cả Overlay phụ Đánh theo C bên phải)</div>
-                <div class="text-slate-400">Ô <b>Height (Chiều cao)</b>:</div>
-                <div class="col-span-2 text-amber-300 font-mono font-bold">600</div>
+              <div class="flex gap-2">
+                <input type="text" v-model="chatInputText" @keyup.enter="submitChatMessage"
+                       placeholder="Nhập bình luận về trận đấu..."
+                       class="flex-1 bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3.5 py-2 text-sm text-slate-100 outline-none">
+                <button @click="submitChatMessage"
+                        class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition shrink-0">
+                  Gửi
+                </button>
               </div>
             </div>
           </div>
 
-          <button @click="showObsGuideModal = false" class="w-full py-2.5 bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-black rounded-xl text-xs uppercase">
-            Đã Hiểu, Đóng Hướng Dẫn
+        </div>
+      </div>
+
+      <!-- MODAL HƯỚNG DẪN GÁN LINK OBS (BẢNG QUÂN & KHUNG CHAT) -->
+      <div v-if="showObsGuideModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[150]">
+        <div class="premium-card rounded-2xl max-w-xl w-full p-6 space-y-4 relative max-h-[92vh] overflow-y-auto">
+          <button @click="showObsGuideModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">&times;</button>
+          <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+            <div class="bg-sky-500 text-slate-950 p-2.5 rounded-xl font-bold"><i class="fa-solid fa-tv text-lg"></i></div>
+            <div>
+              <h3 class="text-base font-bold text-slate-100 uppercase">Hướng Dẫn Gán Bảng Quân & Khung Chat Vào OBS</h3>
+              <p class="text-xs text-slate-400">Hiển thị Bảng Quân, Hiệu ứng Tặng Sao & Bình luận trực tiếp lên Livestream</p>
+            </div>
+          </div>
+
+          <div class="space-y-3.5 text-sm text-slate-200">
+            <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-xl space-y-2">
+              <div class="font-bold text-sky-400">1. Link OBS Bảng Quân + Hiệu ứng Tặng Sao (Rộng 980 x Cao 600):</div>
+              <div class="flex gap-2 items-center">
+                <input type="text" readonly :value="currentObsPreviewUrl" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-xs text-emerald-300">
+                <button @click="copyOverlayLink(sessionPlayerName || 'XO')" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs shrink-0">
+                  Copy Link
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-xl space-y-2">
+              <div class="font-bold text-amber-400">2. Link OBS Khung Chat Bình Luận Trực Tiếp (Rộng 380 x Cao 450):</div>
+              <div class="flex gap-2 items-center">
+                <input type="text" readonly :value="currentChatObsPreviewUrl" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-xs text-amber-300">
+                <button @click="copyChatOverlayLink(sessionPlayerName || 'XO')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs shrink-0">
+                  Copy Link Chat
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-xl space-y-1.5 text-xs text-slate-300">
+              <div class="font-bold text-slate-100 text-sm mb-1">Các bước thêm vào OBS Studio:</div>
+              <p>&bull; Mở <b>OBS Studio</b> &rarr; Tại khung <b>Sources (Nguồn)</b> bấm dấu <b>[+]</b> &rarr; Chọn <b>Browser (Trình duyệt)</b>.</p>
+              <p>&bull; Dán đường dẫn ở trên vào ô <b>URL</b>, nhập <b>Width / Height</b> tương ứng rồi bấm <b>OK</b>.</p>
+            </div>
+          </div>
+
+          <button @click="showObsGuideModal = false" class="w-full py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl text-sm">
+            Đã hiểu, đóng hướng dẫn
           </button>
         </div>
       </div>
 
       <!-- MODAL QR DONATE -->
-      <div v-if="showDonateModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[130]">
-        <div class="cyber-card rounded-2xl max-w-sm w-full p-6 text-center space-y-4 relative">
-          <button @click="showDonateModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg transition">&times;</button>
-          <h3 class="text-base font-bold text-pink-400 flex items-center justify-center gap-2">
-            <span>🧋</span> Gửi Admin Ly Nước Mát
-          </h3>
-          <div class="bg-white p-3 rounded-2xl inline-block shadow-lg my-1">
+      <div v-if="showDonateModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[150]">
+        <div class="premium-card rounded-2xl max-w-sm w-full p-6 text-center space-y-4 relative">
+          <button @click="showDonateModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">&times;</button>
+          <h3 class="text-base font-bold text-rose-400">🧋 Gửi Admin Ly Nước Mát</h3>
+          <div class="bg-white p-3 rounded-2xl inline-block shadow-lg">
             <img src="https://img.vietqr.io/image/VPB-0868549555-compact2.png?accountName=NGUYEN%20TUAN%20ANH&addInfo=AOE%20Tracker%20Donate"
                  alt="VietQR Donate VPBank"
                  class="w-56 h-56 mx-auto object-contain">
           </div>
           <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-1 text-xs">
             <div class="text-amber-400 font-bold">VPBank (Ngân Hàng TMCP Việt Nam Thịnh Vượng)</div>
-            <div class="text-slate-300">STK: <b class="text-white font-mono text-sm tracking-wider">0868549555</b></div>
+            <div class="text-slate-300">STK: <b class="text-white font-mono text-sm">0868549555</b></div>
             <div class="text-slate-300">Chủ tài khoản: <b class="text-white uppercase">NGUYỄN TUẤN ANH</b></div>
           </div>
-          <button @click="showDonateModal = false" class="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold rounded-xl text-xs">
-            Cảm ơn bạn nhiều lắm! ✨
+          <button @click="showDonateModal = false" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-sm">
+            Đóng
           </button>
         </div>
       </div>
 
-      <!-- MODAL LOGIN PLAYER WEB -->
-      <div v-if="showLoginUpdaterModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-[130]">
-        <div class="cyber-card rounded-2xl max-w-sm w-full p-5 space-y-3">
-          <h3 class="text-sm font-cyber font-bold text-cyan-300 text-center uppercase">⚡ Đăng Nhập Commander (Player)</h3>
-          <p class="text-[11px] text-slate-400 text-center">Đăng nhập tài khoản để điều khiển tỉ số & tùy chỉnh tính năng VIP Overlay.</p>
+      <!-- MODAL ĐĂNG NHẬP PLAYER -->
+      <div v-if="showLoginUpdaterModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[150]">
+        <div class="premium-card rounded-2xl max-w-sm w-full p-6 space-y-4">
+          <h3 class="text-base font-bold text-slate-100 text-center">Đăng Nhập Tài Khoản Player</h3>
           <div>
-            <label class="text-[11px] text-slate-400 block mb-1">Tên Player:</label>
-            <input list="players-list" v-model="updaterNameInput" placeholder="Ví dụ: XO..." class="bg-slate-950 border border-cyan-500/40 p-2.5 rounded-lg text-xs w-full text-white font-bold">
+            <label class="text-xs text-slate-400 block mb-1">Tên Player:</label>
+            <input list="players-list" v-model="updaterNameInput" placeholder="Ví dụ: XO..." class="bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-sm w-full text-white font-semibold outline-none">
             <datalist id="players-list">
               <option v-for="p in players" :value="p.name" :key="p.name">{{ p.name }}</option>
             </datalist>
           </div>
           <div>
-            <label class="text-[11px] text-slate-400 block mb-1">Mật khẩu:</label>
-            <input type="password" v-model="updaterPassInput" @keyup.enter="verifyUpdaterPassword" placeholder="Nhập mật khẩu..." class="bg-slate-950 border border-cyan-500/40 p-2.5 rounded-lg text-xs w-full text-white">
+            <label class="text-xs text-slate-400 block mb-1">Mật khẩu:</label>
+            <input type="password" v-model="updaterPassInput" @keyup.enter="verifyUpdaterPassword" placeholder="Nhập mật khẩu..." class="bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-sm w-full text-white outline-none">
           </div>
-          <div class="flex gap-2 pt-1">
-            <button @click="showLoginUpdaterModal = false" class="w-full py-2 bg-slate-800 rounded-lg text-xs">Hủy</button>
-            <button @click="verifyUpdaterPassword" class="w-full py-2 bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 font-black rounded-lg text-xs">Đăng Nhập</button>
+          <div class="flex gap-2.5 pt-1">
+            <button @click="showLoginUpdaterModal = false" class="w-full py-2 bg-slate-800 rounded-xl text-sm">Hủy</button>
+            <button @click="verifyUpdaterPassword" class="w-full py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-xl text-sm">Đăng Nhập</button>
           </div>
         </div>
       </div>
 
       <!-- MODAL ADMIN LOGIN -->
-      <div v-if="showAdminModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-[130]">
-        <div class="cyber-card rounded-2xl max-w-sm w-full p-5 space-y-3 text-center">
-          <h3 class="text-sm font-cyber font-bold text-amber-400 uppercase">🛡️ Đăng Nhập Quyền Quản Trị (Admin XO)</h3>
-          <input type="password" v-model="adminPasswordInput" @keyup.enter="loginAdmin" placeholder="Nhập mật khẩu Admin..." class="bg-slate-950 border border-amber-500/40 p-2.5 rounded-lg text-xs w-full text-center text-white">
-          <div class="flex gap-2">
-            <button @click="showAdminModal = false" class="w-full py-2 bg-slate-800 rounded-lg text-xs">Hủy</button>
-            <button @click="loginAdmin" class="w-full py-2 bg-amber-500 text-slate-950 font-black rounded-lg text-xs">Xác Thực</button>
+      <div v-if="showAdminModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[150]">
+        <div class="premium-card rounded-2xl max-w-sm w-full p-6 space-y-4 text-center">
+          <h3 class="text-base font-bold text-amber-400">Đăng Nhập Quyền Quản Trị (Admin XO)</h3>
+          <input type="password" v-model="adminPasswordInput" @keyup.enter="loginAdmin" placeholder="Nhập mật khẩu Admin..." class="bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-sm w-full text-center text-white outline-none">
+          <div class="flex gap-2.5">
+            <button @click="showAdminModal = false" class="w-full py-2 bg-slate-800 rounded-xl text-sm">Hủy</button>
+            <button @click="loginAdmin" class="w-full py-2 bg-amber-500 text-slate-950 font-bold rounded-xl text-sm">Xác Thực</button>
           </div>
         </div>
       </div>
 
-      <!-- MODAL QUẢN TRỊ USER, PHÂN HẠNG VIP (KIM CƯƠNG - VÀNG - BẠC - ĐỒNG) & GIA HẠN -->
-      <div v-if="showPlayerManagerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[140]">
-        <div class="cyber-card rounded-2xl max-w-5xl w-full p-5 space-y-4 max-h-[92vh] flex flex-col">
-          <div class="flex justify-between items-center border-b border-cyan-500/30 pb-3">
+      <!-- MODAL QUẢN TRỊ USER & PHÂN HẠNG VIP -->
+      <div v-if="showPlayerManagerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-[160]">
+        <div class="premium-card rounded-2xl max-w-5xl w-full p-6 space-y-4 max-h-[92vh] flex flex-col">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
             <div>
-              <h3 class="text-base font-cyber font-black text-cyan-300 uppercase flex items-center gap-2">
+              <h3 class="text-base font-bold text-sky-400 uppercase flex items-center gap-2">
                 <i class="fa-solid fa-users-gear text-amber-400"></i>
-                <span>Quản Trị Tài Khoản User, Hạng VIP (Kim Cương / Vàng / Bạc / Đồng) & Gia Hạn</span>
+                <span>Quản Trị Tài Khoản User, Hạng VIP & Gia Hạn</span>
               </h3>
-              <p class="text-xs text-slate-400">Cấp tài khoản mới, nâng cấp hạng VIP để mở khóa tính năng nâng cao (Đánh theo C, Chữ chạy, Ngày góc phải) & gia hạn thu phí</p>
+              <p class="text-xs text-slate-400">Cấp tài khoản mới, phân hạng VIP (Kim Cương / Vàng / Bạc / Đồng) và quản lý thời hạn</p>
             </div>
             <button @click="showPlayerManagerModal = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
           </div>
 
-          <!-- Form cấp tạo tài khoản mới kèm chọn Hạng VIP -->
-          <div class="bg-slate-950/90 border border-cyan-500/30 p-3.5 rounded-xl space-y-2.5">
-            <div class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-              <i class="fa-solid fa-user-plus text-amber-400"></i>
-              <span>Cấp Tạo Tài Khoản Mới & Phân Hạng VIP:</span>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-2">
-              <input type="text" v-model="newPlayerForm.name" placeholder="Tên Player (VD: ChimSe)..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-white font-bold">
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-2.5">
+            <div class="text-xs font-bold text-slate-200">Cấp Tạo Tài Khoản Mới & Phân Hạng VIP:</div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+              <input type="text" v-model="newPlayerForm.name" placeholder="Tên Player..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-white font-bold">
               <input type="text" v-model="newPlayerForm.password" placeholder="Mật khẩu..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-amber-300 font-mono">
-              <select v-model="newPlayerForm.tier" class="md:col-span-2 bg-slate-900 border border-amber-500/50 p-2 rounded-lg text-xs text-amber-300 font-black">
+              <select v-model="newPlayerForm.tier" class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-amber-300 font-bold">
                 <option value="DIAMOND">💎 Kim Cương (Full + Đánh C)</option>
                 <option value="GOLD">🥇 Vàng (Tùy chỉnh Chữ chạy)</option>
-                <option value="SILVER">🥈 Bạc (Chạm X + Ngày góc phải)</option>
+                <option value="SILVER">🥈 Bạc (Chạm X + Ngày)</option>
                 <option value="BRONZE">🥉 Đồng (Cơ bản)</option>
               </select>
               <select v-model="newPlayerForm.durationDays" class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-emerald-300 font-bold">
@@ -867,83 +905,65 @@
                 <option :value="365">Gói 1 Năm (365 ngày)</option>
                 <option :value="0">♾️ Vĩnh viễn</option>
               </select>
-              <input type="text" v-model="newPlayerForm.note" placeholder="Ghi chú (Zalo/SĐT)..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-slate-300">
-              <button @click="createNewPlayerAdmin" class="md:col-span-2 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 rounded-lg text-xs font-black py-2 shadow transition">
-                <i class="fa-solid fa-plus mr-1"></i> Cấp Tài Khoản
+              <input type="text" v-model="newPlayerForm.note" placeholder="Ghi chú..." class="md:col-span-2 bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs text-slate-200">
+              <button @click="createNewPlayerAdmin" class="md:col-span-2 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg text-xs font-bold py-2">
+                + Cấp Tài Khoản
               </button>
             </div>
           </div>
 
-          <!-- Bảng danh sách User hiện có -->
           <div class="flex-1 overflow-y-auto border border-slate-800 rounded-xl bg-slate-950/90">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
-                <tr class="bg-slate-900 text-slate-300 border-b border-slate-800 text-[11px] uppercase">
+                <tr class="bg-slate-900 text-slate-300 border-b border-slate-800 uppercase">
                   <th class="py-2.5 px-3">Player & Ghi chú</th>
                   <th class="py-2.5 px-3">Mật khẩu</th>
-                  <th class="py-2.5 px-3">Hạng Tài Khoản (VIP Tier)</th>
+                  <th class="py-2.5 px-3">Hạng VIP</th>
                   <th class="py-2.5 px-3 text-center">Trạng thái</th>
-                  <th class="py-2.5 px-3">Ngày Hết Hạn</th>
-                  <th class="py-2.5 px-3 text-right">Gia hạn nhanh / Thao tác</th>
+                  <th class="py-2.5 px-3">Hạn sử dụng</th>
+                  <th class="py-2.5 px-3 text-right">Gia hạn / Thao tác</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-800/70">
-                <tr v-for="(p, idx) in players" :key="p.name" class="hover:bg-slate-900/60 transition">
+                <tr v-for="p in players" :key="p.name" class="hover:bg-slate-900/60">
                   <td class="py-2.5 px-3">
                     <div class="font-bold text-white text-sm flex items-center gap-1.5">
                       <span>{{ p.name }}</span>
-                      <button @click="copyOverlayLink(p.name)" class="text-[10px] bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/40 px-1.5 py-0.5 rounded font-normal">
-                        <i class="fa-solid fa-tv"></i> OBS
-                      </button>
+                      <span v-if="p.isLive" class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded">LIVE</span>
                     </div>
-                    <div class="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-                      <span>{{ p.note || 'Chưa có ghi chú' }}</span>
-                      <button @click="editPlayerNote(p)" class="text-amber-400 hover:underline text-[10px]"><i class="fa-solid fa-pen"></i></button>
-                    </div>
+                    <div class="text-[11px] text-slate-400">{{ p.note || 'Chưa có ghi chú' }}</div>
                   </td>
-
                   <td class="py-2.5 px-3">
                     <span class="font-mono text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{{ p.password }}</span>
-                    <button @click="editPlayerPass(p)" class="ml-1.5 text-[10px] text-slate-400 hover:text-amber-400">
-                      <i class="fa-solid fa-key"></i>
-                    </button>
                   </td>
-
                   <td class="py-2.5 px-3">
                     <select :value="p.tier || 'BRONZE'" @change="changePlayerTier(p, $event.target.value)"
-                            :class="getTierBadgeClass(p.tier || 'BRONZE')"
-                            class="px-2.5 py-1 rounded-lg text-[11px] font-black cursor-pointer bg-slate-900 border">
-                      <option value="DIAMOND" class="bg-slate-900 text-cyan-300">💎 KIM CƯƠNG</option>
-                      <option value="GOLD" class="bg-slate-900 text-amber-300">🥇 VÀNG</option>
-                      <option value="SILVER" class="bg-slate-900 text-slate-200">🥈 BẠC</option>
-                      <option value="BRONZE" class="bg-slate-900 text-orange-300">🥉 ĐỒNG</option>
+                            class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 border border-slate-700 text-slate-100">
+                      <option value="DIAMOND">💎 Kim Cương</option>
+                      <option value="GOLD">🥇 Vàng</option>
+                      <option value="SILVER">🥈 Bạc</option>
+                      <option value="BRONZE">🥉 Đồng</option>
                     </select>
                   </td>
-
                   <td class="py-2.5 px-3 text-center">
                     <button @click="togglePlayerActive(p)"
                             :class="getPlayerStatusBadge(p).class"
-                            class="px-2.5 py-1 rounded-full text-[10px] font-bold transition">
+                            class="px-2.5 py-1 rounded-full text-[11px] font-bold">
                       {{ getPlayerStatusBadge(p).label }}
                     </button>
                   </td>
-
                   <td class="py-2.5 px-3">
-                    <div class="font-mono font-bold text-[11px]" :class="isPlayerExpired(p) ? 'text-red-400' : 'text-emerald-300'">
+                    <div class="font-mono font-bold" :class="isPlayerExpired(p) ? 'text-red-400' : 'text-emerald-300'">
                       {{ p.expiresAt ? formatDateVN(p.expiresAt) : '♾️ Vĩnh viễn' }}
                     </div>
-                    <div class="text-[10px]" :class="isPlayerExpired(p) ? 'text-red-400 font-bold' : 'text-slate-400'">
-                      {{ getRemainingDaysText(p) }}
-                    </div>
+                    <div class="text-[11px] text-slate-400">{{ getRemainingDaysText(p) }}</div>
                   </td>
-
                   <td class="py-2.5 px-3 text-right">
-                    <div class="flex items-center justify-end gap-1 flex-wrap">
-                      <button @click="extendPlayerDays(p, 7)" class="bg-slate-800 hover:bg-emerald-700 text-emerald-300 px-2 py-1 rounded text-[10px] font-bold">+7N</button>
-                      <button @click="extendPlayerDays(p, 30)" class="bg-emerald-950 hover:bg-emerald-600 text-emerald-300 px-2 py-1 rounded text-[10px] font-bold">+30N</button>
-                      <button @click="extendPlayerDays(p, 365)" class="bg-amber-950 hover:bg-amber-600 text-amber-300 px-2 py-1 rounded text-[10px] font-bold">+1 Năm</button>
-                      <button @click="extendPlayerDays(p, 0, true)" class="bg-cyan-950 hover:bg-cyan-600 text-cyan-300 px-2 py-1 rounded text-[10px] font-bold">Vĩnh viễn</button>
-                      <button @click="deletePlayerAdmin(p)" class="bg-red-950 hover:bg-red-600 text-red-300 px-2 py-1 rounded text-[10px] font-bold">
+                    <div class="flex items-center justify-end gap-1.5">
+                      <button @click="extendPlayerDays(p, 30)" class="bg-emerald-950 hover:bg-emerald-600 text-emerald-300 hover:text-white px-2.5 py-1 rounded text-xs font-bold">+30N</button>
+                      <button @click="extendPlayerDays(p, 365)" class="bg-amber-950 hover:bg-amber-600 text-amber-300 hover:text-slate-950 px-2.5 py-1 rounded text-xs font-bold">+1 Năm</button>
+                      <button @click="extendPlayerDays(p, 0, true)" class="bg-sky-950 hover:bg-sky-600 text-sky-300 hover:text-white px-2.5 py-1 rounded text-xs font-bold">Vĩnh viễn</button>
+                      <button @click="deletePlayerAdmin(p)" class="bg-red-950 hover:bg-red-600 text-red-300 hover:text-white px-2.5 py-1 rounded text-xs font-bold">
                         <i class="fa-solid fa-trash"></i>
                       </button>
                     </div>
@@ -953,21 +973,20 @@
             </table>
           </div>
 
-          <button @click="showPlayerManagerModal = false" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold">Đóng Bảng Quản Trị</button>
+          <button @click="showPlayerManagerModal = false" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold">Đóng Bảng Quản Trị</button>
         </div>
       </div>
+
     </div>
 
-    <!-- FOOTER HIỂN THỊ VERSION BUILD -->
-    <footer class="mt-8 pt-4 border-t border-cyan-500/20 text-center text-[11px] text-slate-400 flex justify-center items-center gap-2 flex-wrap">
-      <span class="font-cyber text-cyan-300 font-bold">⚔️ AOE COMMAND CENTER — TOOL BẢNG QUÂN AOE BY XO</span>
+    <!-- FOOTER -->
+    <footer class="mt-10 pt-4 border-t border-slate-800/80 text-center text-xs text-slate-400 flex justify-center items-center gap-3 flex-wrap">
+      <span class="font-bold text-slate-300">⚔️ AOE COMMAND CENTER — TOOL BẢNG QUÂN AOE BY XO</span>
       <span>&bull;</span>
-      <span class="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold">
-        {{ appVersion }}
-      </span>
+      <span class="text-amber-400 font-semibold">{{ appVersion }}</span>
       <span>&bull;</span>
-      <span :class="databaseMode === 'neon_postgres' ? 'text-emerald-400' : 'text-amber-400'" class="font-mono">
-        DB: {{ databaseMode === 'neon_postgres' ? 'Neon PostgreSQL' : 'Local Storage' }}
+      <span :class="databaseMode === 'neon_postgres' ? 'text-emerald-400' : 'text-amber-400'">
+        Database: {{ databaseMode === 'neon_postgres' ? 'Neon PostgreSQL' : 'Local Storage' }}
       </span>
     </footer>
   </div>
@@ -989,7 +1008,7 @@
       data() {
         const localCivStats = localStorage.getItem('aoe_showCivStats');
         return {
-          appVersion: 'v5.0 Cyber HUD (By XO)',
+          appVersion: 'v5.2 Premium Esports Edition (By XO)',
           databaseMode: 'neon_postgres',
           currentDateTimeText: '',
           currentTab: 'matches',
@@ -998,7 +1017,7 @@
           notification: null,
           showDonateModal: false,
           showObsGuideModal: false,
-          showVipControlPanel: true,
+          showVipControlPanel: false,
           isAdmin: false,
           showAdminModal: false,
           adminPasswordInput: '',
@@ -1019,6 +1038,13 @@
             cModeEnabled: false,
             cTargetWins: 3
           },
+          selectedFriendToAdd: '',
+          guestChatName: localStorage.getItem('aoe_guestChatName') || '',
+          chatInputText: '',
+          recentChat: [],
+          activeStarBanner: null,
+          starBurstParticles: [],
+          starBannerTimer: null,
           showLoginUpdaterModal: false,
           updaterNameInput: '',
           updaterPassInput: '',
@@ -1047,13 +1073,45 @@
           const name = this.sessionPlayerName || 'XO';
           return `${window.location.origin}/overlay.html?streamer=${encodeURIComponent(name)}`;
         },
-        activePlayersCount() {
-          return this.players.filter(p => p.isActive !== false && !this.isPlayerExpired(p)).length;
+        currentChatObsPreviewUrl() {
+          const name = this.sessionPlayerName || 'XO';
+          return `${window.location.origin}/chat-overlay.html?streamer=${encodeURIComponent(name)}`;
         },
         currentActiveTier() {
           if (this.isAdmin) return 'DIAMOND';
           const found = this.players.find(p => p.name.toLowerCase() === (this.sessionPlayerName || '').toLowerCase());
           return found ? (found.tier || 'BRONZE') : (this.sessionPlayerTier || 'BRONZE');
+        },
+        myPlayerObj() {
+          if (!this.sessionPlayerName) return null;
+          return this.players.find(p => p.name.toLowerCase() === this.sessionPlayerName.toLowerCase()) || null;
+        },
+        myFriendsList() {
+          if (!this.myPlayerObj || !Array.isArray(this.myPlayerObj.friends)) return [];
+          return this.myPlayerObj.friends
+            .map(fname => this.players.find(p => p.name.toLowerCase() === String(fname).toLowerCase()))
+            .filter(Boolean)
+            .sort((a, b) => (Number(b.isLive) - Number(a.isLive)) || (Number(b.isOnline) - Number(a.isOnline)));
+        },
+        availablePlayersToFriend() {
+          const myName = (this.sessionPlayerName || '').toLowerCase();
+          const currentFriendNames = (this.myPlayerObj && Array.isArray(this.myPlayerObj.friends))
+            ? this.myPlayerObj.friends.map(f => f.toLowerCase())
+            : [];
+          return this.players.filter(p => p.name.toLowerCase() !== myName && !currentFriendNames.includes(p.name.toLowerCase()));
+        },
+        activeChatMatch() {
+          if (this.selectedMatch) return this.selectedMatch;
+          return this.matches.find(m => m.status === 'LIVE') || this.matches[0] || null;
+        },
+        activeChatStreamer() {
+          return (this.activeChatMatch && this.activeChatMatch.streamerName) || this.sessionPlayerName || 'XO';
+        },
+        activeChatMessages() {
+          if (this.activeChatMatch && Array.isArray(this.activeChatMatch.chatMessages) && this.activeChatMatch.chatMessages.length > 0) {
+            return this.activeChatMatch.chatMessages;
+          }
+          return this.recentChat;
         }
       },
       methods: {
@@ -1077,10 +1135,144 @@
         },
         getTierBadgeClass(tier) {
           const t = String(tier || 'BRONZE').toUpperCase();
-          if (t === 'DIAMOND') return 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/60';
-          if (t === 'GOLD') return 'bg-amber-500/20 text-amber-300 border border-amber-400/60';
-          if (t === 'SILVER') return 'bg-slate-600/30 text-slate-200 border border-slate-400/60';
-          return 'bg-orange-950/60 text-orange-300 border border-orange-600/50';
+          if (t === 'DIAMOND') return 'bg-sky-500/20 text-sky-300 border border-sky-400/50';
+          if (t === 'GOLD') return 'bg-amber-500/20 text-amber-300 border border-amber-400/50';
+          if (t === 'SILVER') return 'bg-slate-600/30 text-slate-200 border border-slate-400/50';
+          return 'bg-orange-950/60 text-orange-300 border border-orange-600/40';
+        },
+        triggerStarBurstUI(gift) {
+          if (!gift) return;
+          const icons = ['⭐', '🌟', '✨', '💫', '🔥'];
+          this.starBurstParticles = Array.from({ length: 16 }, (_, idx) => ({
+            id: Date.now() + '_' + idx,
+            left: 15 + Math.floor(Math.random() * 70),
+            delay: (Math.random() * 0.5).toFixed(2),
+            icon: icons[idx % icons.length]
+          }));
+          this.activeStarBanner = gift;
+          if (this.starBannerTimer) clearTimeout(this.starBannerTimer);
+          this.starBannerTimer = setTimeout(() => {
+            this.activeStarBanner = null;
+            this.starBurstParticles = [];
+          }, 4800);
+        },
+        async toggleFriend(friendName) {
+          if (!this.sessionPlayerName) {
+            this.openLoginUpdaterModal();
+            return;
+          }
+          if (!friendName) return;
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'toggleFriend',
+                playerName: this.sessionPlayerName,
+                password: this.sessionPlayerPass,
+                friendName
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.players = data.players || this.players;
+              this.selectedFriendToAdd = '';
+              this.showNotify(data.message);
+            } else {
+              this.showNotify(data.message || 'Không thể kết bạn!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối Server!', 'error');
+          }
+        },
+        watchFriendLive(friendObj) {
+          if (!friendObj || !friendObj.liveMatchId) return;
+          const m = this.matches.find(item => item.id === friendObj.liveMatchId);
+          if (m) {
+            this.selectMatch(m);
+            this.showNotify(`Đang xem trực tiếp kèo đấu của ${friendObj.name}!`);
+          }
+        },
+        async submitChatMessage() {
+          const txt = (this.chatInputText || '').trim();
+          if (!txt) return;
+          const sender = this.sessionPlayerName || (this.guestChatName || '').trim() || 'Khán giả';
+          if (!this.sessionPlayerName && this.guestChatName) {
+            localStorage.setItem('aoe_guestChatName', this.guestChatName.trim());
+          }
+          this.chatInputText = '';
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'sendChatMessage',
+                matchId: this.activeChatMatch ? this.activeChatMatch.id : null,
+                streamerName: this.activeChatStreamer,
+                senderName: sender,
+                senderTier: this.sessionPlayerName ? this.currentActiveTier : 'VIEWER',
+                text: txt
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success' && data.chat) {
+              this.scrollToBottomChat();
+            }
+          } catch (e) {
+            this.showNotify('Không thể gửi bình luận!', 'error');
+          }
+        },
+        async sendStarGift(starCount = 1) {
+          const sender = this.sessionPlayerName || (this.guestChatName || '').trim() || 'Fan AOE';
+          const customMsg = (this.chatInputText || '').trim() || 'Đánh hay quá! Tặng sao cổ vũ!';
+          if (this.chatInputText) this.chatInputText = '';
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'sendStarGift',
+                matchId: this.activeChatMatch ? this.activeChatMatch.id : null,
+                streamerName: this.activeChatStreamer,
+                senderName: sender,
+                starCount,
+                message: customMsg
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.showNotify(data.message);
+            }
+          } catch (e) {
+            this.showNotify('Không thể gửi tặng sao!', 'error');
+          }
+        },
+        async sendQuickStar(match, starCount = 1) {
+          const sender = this.sessionPlayerName || (this.guestChatName || '').trim() || 'Fan AOE';
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'sendStarGift',
+                matchId: match ? match.id : null,
+                streamerName: match ? match.streamerName : 'XO',
+                senderName: sender,
+                starCount,
+                message: 'Đánh quá đỉnh! Tặng Sao cổ vũ!'
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.showNotify(data.message);
+            }
+          } catch (e) {}
+        },
+        scrollToBottomChat() {
+          this.$nextTick(() => {
+            const el = this.$refs.webChatBox;
+            if (el) el.scrollTop = el.scrollHeight;
+          });
         },
         getMatchCModeData(match) {
           if (!match) return { sets: [], redCWins: 0, blueCWins: 0 };
@@ -1116,6 +1308,7 @@
               body: JSON.stringify({
                 action: 'updateOverlayConfig',
                 playerName: targetName,
+                streamerName: targetName,
                 password: this.sessionPlayerPass,
                 isAdmin: this.isAdmin,
                 adminPassword: this.adminPasswordSession,
@@ -1149,7 +1342,7 @@
             const data = await res.json();
             if (data.status === 'success') {
               this.players = data.players || this.players;
-              this.showNotify(`Đã nâng cấp "${p.name}" lên hạng ${this.getTierLabel(newTier)}!`);
+              this.showNotify(`Đã cập nhật "${p.name}" lên hạng ${this.getTierLabel(newTier)}!`);
             }
           } catch (e) {
             this.showNotify('Lỗi cập nhật hạng VIP!', 'error');
@@ -1173,8 +1366,8 @@
         },
         getRemainingDaysText(p) {
           if (!p) return '';
-          if (p.isActive === false) return 'Đang tạm khóa bởi Admin';
-          if (!p.expiresAt || Number(p.expiresAt) <= 0) return 'Gói không giới hạn';
+          if (p.isActive === false) return 'Đang tạm khóa';
+          if (!p.expiresAt || Number(p.expiresAt) <= 0) return 'Không giới hạn';
           const diff = Number(p.expiresAt) - Date.now();
           if (diff <= 0) {
             const overdue = Math.ceil(Math.abs(diff) / (24 * 60 * 60 * 1000));
@@ -1185,12 +1378,12 @@
         },
         getPlayerStatusBadge(p) {
           if (p.isActive === false) {
-            return { label: '🔴 ĐÃ KHÓA', class: 'bg-red-950 text-red-300 border border-red-700/60' };
+            return { label: '🔴 Đã khóa', class: 'bg-red-950 text-red-300 border border-red-700/60' };
           }
           if (this.isPlayerExpired(p)) {
-            return { label: '⚠️ HẾT HẠN', class: 'bg-amber-950 text-amber-300 border border-amber-700/60' };
+            return { label: '⚠️ Hết hạn', class: 'bg-amber-950 text-amber-300 border border-amber-700/60' };
           }
-          return { label: '🟢 ACTIVE', class: 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' };
+          return { label: '🟢 Active', class: 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' };
         },
         canModify(match) {
           if (!match) return false;
@@ -1206,17 +1399,18 @@
           this.selectedMatch = null;
           window.history.pushState({}, '', window.location.pathname);
         },
-        copyMatchLink(matchId) {
-          const url = `${window.location.origin}${window.location.pathname}?matchId=${matchId}`;
-          navigator.clipboard.writeText(url).then(() => {
-            this.showNotify('Đã sao chép đường dẫn trực tiếp kèo đấu!');
-          });
-        },
         copyOverlayLink(streamerName) {
           const name = streamerName || this.sessionPlayerName || 'XO';
           const url = `${window.location.origin}/overlay.html?streamer=${encodeURIComponent(name)}`;
           navigator.clipboard.writeText(url).then(() => {
-            this.showNotify(`Đã copy link OBS Overlay của ${name}: ${url}`);
+            this.showNotify(`Đã copy Link OBS Bảng Quân của ${name}: ${url}`);
+          });
+        },
+        copyChatOverlayLink(streamerName) {
+          const name = streamerName || this.sessionPlayerName || 'XO';
+          const url = `${window.location.origin}/chat-overlay.html?streamer=${encodeURIComponent(name)}`;
+          navigator.clipboard.writeText(url).then(() => {
+            this.showNotify(`Đã copy Link OBS Khung Chat của ${name}: ${url}`);
           });
         },
         selectMatch(match) {
@@ -1226,6 +1420,7 @@
           }
           this.currentTab = 'detail';
           window.history.pushState({}, '', `?matchId=${match.id}`);
+          this.scrollToBottomChat();
         },
         checkUrlForMatch() {
           const params = new URLSearchParams(window.location.search);
@@ -1297,7 +1492,6 @@
               sessionStorage.setItem('aoe_playerExpires', this.sessionPlayerExpires);
               sessionStorage.setItem('aoe_playerTier', this.sessionPlayerTier);
               this.showLoginUpdaterModal = false;
-              this.showVipControlPanel = true;
               this.fetchInitialData();
               this.showNotify(data.message || 'Đã đăng nhập Player!');
             } else {
@@ -1353,11 +1547,8 @@
           }
         },
         async finishMatch() {
-          if (!this.canModify(this.selectedMatch)) {
-            this.showNotify('Bạn không có quyền kết thúc kèo này!', 'error');
-            return;
-          }
-          if (confirm('Xác nhận KẾT THÚC kèo đấu chung cuộc này?')) {
+          if (!this.canModify(this.selectedMatch)) return;
+          if (confirm('Xác nhận KẾT THÚC kèo đấu này?')) {
             try {
               const res = await fetch(API_URL, {
                 method: 'POST',
@@ -1375,12 +1566,8 @@
               if (data.status === 'success') {
                 this.selectedMatch.status = 'FINISHED';
                 this.showNotify('Đã kết thúc kèo đấu!');
-              } else {
-                this.showNotify(data.message, 'error');
               }
-            } catch (e) {
-              this.showNotify('Lỗi kết nối!', 'error');
-            }
+            } catch (e) {}
           }
         },
         async deleteGameFromMatch(gameIndex) {
@@ -1405,23 +1592,19 @@
         async deleteSingleMatch(matchId) {
           if (!this.isAdmin) return;
           if (confirm('Xác nhận XÓA VĨNH VIỄN kèo đấu này?')) {
-            try {
-              await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  action: 'deleteMatches',
-                  matchIds: [matchId],
-                  isAdmin: this.isAdmin,
-                  adminPassword: this.adminPasswordSession
-                })
-              });
-              this.matches = this.matches.filter(m => m.id !== matchId);
-              if (this.selectedMatch && this.selectedMatch.id === matchId) this.goHome();
-              this.showNotify('Đã xóa kèo thành công!');
-            } catch (e) {
-              this.showNotify('Lỗi khi xóa!', 'error');
-            }
+            await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'deleteMatches',
+                matchIds: [matchId],
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession
+              })
+            });
+            this.matches = this.matches.filter(m => m.id !== matchId);
+            if (this.selectedMatch && this.selectedMatch.id === matchId) this.goHome();
+            this.showNotify('Đã xóa kèo thành công!');
           }
         },
         async fetchInitialData() {
@@ -1436,13 +1619,14 @@
                 const me = this.players.find(p => p.name.toLowerCase() === this.sessionPlayerName.toLowerCase());
                 if (me) {
                   this.sessionPlayerTier = me.tier || 'BRONZE';
-                  if (me.overlayConfig) {
+                  if (me.overlayConfig && !this.showVipControlPanel) {
                     this.overlayConfigForm = { ...this.overlayConfigForm, ...me.overlayConfig };
                   }
                 }
               }
             }
             if (data.matches) this.matches = data.matches;
+            if (Array.isArray(data.recentChat)) this.recentChat = data.recentChat;
             if (data.settings && data.settings.showCivStats !== undefined) {
               this.showCivStats = Boolean(data.settings.showCivStats);
             }
@@ -1454,7 +1638,6 @@
               if (updated) this.selectedMatch = updated;
             }
           } catch (e) {
-            // ignore
           } finally {
             this.isLoading = false;
           }
@@ -1464,119 +1647,65 @@
             this.showNotify('Vui lòng nhập Tên Player!', 'error');
             return;
           }
-          try {
-            const res = await fetch(API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'adminSavePlayer',
-                isAdmin: this.isAdmin,
-                adminPassword: this.adminPasswordSession,
-                player: {
-                  name: this.newPlayerForm.name.trim(),
-                  password: (this.newPlayerForm.password || '123').trim(),
-                  tier: this.newPlayerForm.tier || 'GOLD',
-                  durationDays: this.newPlayerForm.durationDays,
-                  isActive: true,
-                  note: (this.newPlayerForm.note || '').trim()
-                }
-              })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-              this.players = data.players || this.players;
-              this.newPlayerForm = { name: '', password: '123', tier: 'GOLD', durationDays: 30, note: '' };
-              this.showNotify(data.message || 'Đã cấp tài khoản thành công!');
-            } else {
-              this.showNotify(data.message || 'Lỗi tạo tài khoản!', 'error');
-            }
-          } catch (e) {
-            this.showNotify('Lỗi kết nối Server!', 'error');
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'adminSavePlayer',
+              isAdmin: this.isAdmin,
+              adminPassword: this.adminPasswordSession,
+              player: {
+                name: this.newPlayerForm.name.trim(),
+                password: (this.newPlayerForm.password || '123').trim(),
+                tier: this.newPlayerForm.tier || 'GOLD',
+                durationDays: this.newPlayerForm.durationDays,
+                isActive: true,
+                note: (this.newPlayerForm.note || '').trim()
+              }
+            })
+          });
+          const data = await res.json();
+          if (data.status === 'success') {
+            this.players = data.players || this.players;
+            this.newPlayerForm = { name: '', password: '123', tier: 'GOLD', durationDays: 30, note: '' };
+            this.showNotify(data.message);
           }
         },
         async togglePlayerActive(p) {
-          try {
-            const res = await fetch(API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'adminToggleActive',
-                isAdmin: this.isAdmin,
-                adminPassword: this.adminPasswordSession,
-                name: p.name,
-                isActive: !p.isActive
-              })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-              this.players = data.players || this.players;
-              this.showNotify(data.message);
-            }
-          } catch (e) {
-            this.showNotify('Lỗi cập nhật trạng thái!', 'error');
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'adminToggleActive',
+              isAdmin: this.isAdmin,
+              adminPassword: this.adminPasswordSession,
+              name: p.name,
+              isActive: !p.isActive
+            })
+          });
+          const data = await res.json();
+          if (data.status === 'success') {
+            this.players = data.players || this.players;
+            this.showNotify(data.message);
           }
         },
         async extendPlayerDays(p, addDays, lifetime = false) {
-          try {
-            const res = await fetch(API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'adminExtendPlayer',
-                isAdmin: this.isAdmin,
-                adminPassword: this.adminPasswordSession,
-                name: p.name,
-                addDays,
-                lifetime
-              })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-              this.players = data.players || this.players;
-              this.showNotify(data.message);
-            }
-          } catch (e) {
-            this.showNotify('Lỗi khi gia hạn!', 'error');
-          }
-        },
-        async editPlayerPass(p) {
-          const newPass = prompt('Nhập mật khẩu mới cho ' + p.name + ':', p.password);
-          if (newPass !== null && newPass.trim()) {
-            const res = await fetch(API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'adminSavePlayer',
-                isAdmin: this.isAdmin,
-                adminPassword: this.adminPasswordSession,
-                player: { ...p, password: newPass.trim() }
-              })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-              this.players = data.players || this.players;
-              this.showNotify(`Đã đổi mật khẩu cho "${p.name}"!`);
-            }
-          }
-        },
-        async editPlayerNote(p) {
-          const newNote = prompt('Nhập ghi chú cho ' + p.name + ':', p.note || '');
-          if (newNote !== null) {
-            const res = await fetch(API_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'adminSavePlayer',
-                isAdmin: this.isAdmin,
-                adminPassword: this.adminPasswordSession,
-                player: { ...p, note: newNote.trim() }
-              })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-              this.players = data.players || this.players;
-              this.showNotify(`Đã cập nhật ghi chú cho "${p.name}"!`);
-            }
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'adminExtendPlayer',
+              isAdmin: this.isAdmin,
+              adminPassword: this.adminPasswordSession,
+              name: p.name,
+              addDays,
+              lifetime
+            })
+          });
+          const data = await res.json();
+          if (data.status === 'success') {
+            this.players = data.players || this.players;
+            this.showNotify(data.message);
           }
         },
         async deletePlayerAdmin(p) {
@@ -1594,7 +1723,7 @@
             const data = await res.json();
             if (data.status === 'success') {
               this.players = data.players || this.players;
-              this.showNotify(data.message || 'Đã xóa tài khoản!');
+              this.showNotify(data.message);
             }
           }
         },
@@ -1602,8 +1731,8 @@
         getCivTypeClass(civName) {
           const t = this.getCivType(civName);
           return t === 'cung'
-            ? 'bg-cyan-950 text-cyan-300 border border-cyan-600/60'
-            : (t === 'chém' ? 'bg-amber-950 text-amber-300 border border-amber-600/60' : 'bg-slate-800 text-slate-400');
+            ? 'bg-sky-950 text-sky-300 border border-sky-700/60'
+            : (t === 'chém' ? 'bg-amber-950 text-amber-300 border border-amber-700/60' : 'bg-slate-800 text-slate-400');
         },
         getMatchScore(match) {
           let red = 0, blue = 0;
@@ -1663,7 +1792,7 @@
             type: 'bar',
             data: {
               labels: Object.keys(civCounts),
-              datasets: [{ label: 'Số lần chọn', data: Object.values(civCounts), backgroundColor: '#00f2fe' }]
+              datasets: [{ label: 'Số lần chọn', data: Object.values(civCounts), backgroundColor: '#38bdf8' }]
             },
             options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
           });
@@ -1673,14 +1802,24 @@
             type: 'doughnut',
             data: {
               labels: ['Cung', 'Chém'],
-              datasets: [{ data: [cungCount, chemCount], backgroundColor: ['#00f2fe', '#fbbf24'] }]
+              datasets: [{ data: [cungCount, chemCount], backgroundColor: ['#38bdf8', '#fbbf24'] }]
             }
           });
         },
         connectRealtimeStream() {
           try {
             const es = new EventSource('/api/stream');
-            es.onmessage = () => {
+            es.onmessage = (ev) => {
+              try {
+                const payload = JSON.parse(ev.data);
+                if (payload.type === 'star_gifted' && payload.gift) {
+                  this.triggerStarBurstUI(payload.gift);
+                }
+                if (payload.type === 'chat_message' || payload.type === 'star_gifted') {
+                  this.fetchInitialData().then(() => this.scrollToBottomChat());
+                  return;
+                }
+              } catch (err) {}
               this.fetchInitialData();
             };
           } catch (e) {}

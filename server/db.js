@@ -22,7 +22,7 @@ const VALID_TIERS = ['BRONZE', 'SILVER', 'GOLD', 'DIAMOND'];
 
 const DEFAULT_OVERLAY_CONFIG = {
   targetScore: 100,
-  marqueeMode: 'ALL', // 'ALL' | 'TOTAL_ONLY' | 'CUSTOM' | 'OFF'
+  marqueeMode: 'ALL', // 'ALL' | 'TOTAL_ONLY' | 'PER_PLAYER' | 'CUSTOM' | 'OFF'
   customMarqueeText: '',
   showDateCorner: true,
   cModeEnabled: false,
@@ -40,6 +40,9 @@ const DEFAULT_STATE = {
       expiresAt: null,
       note: 'Admin / Chủ hệ thống (Full VIP Kim Cương)',
       overlayConfig: { ...DEFAULT_OVERLAY_CONFIG },
+      friends: [],
+      starsReceived: 0,
+      lastSeenAt: Date.now(),
       createdAt: Date.now()
     }
   ],
@@ -53,7 +56,7 @@ function normalizeOverlayConfig(rawCfg) {
   const cfg = rawCfg && typeof rawCfg === 'object' ? rawCfg : {};
   return {
     targetScore: cfg.targetScore !== undefined && cfg.targetScore !== '' ? Number(cfg.targetScore) : 100,
-    marqueeMode: ['ALL', 'TOTAL_ONLY', 'CUSTOM', 'OFF'].includes(cfg.marqueeMode) ? cfg.marqueeMode : 'ALL',
+    marqueeMode: ['ALL', 'TOTAL_ONLY', 'PER_PLAYER', 'CUSTOM', 'OFF'].includes(cfg.marqueeMode) ? cfg.marqueeMode : 'ALL',
     customMarqueeText: String(cfg.customMarqueeText || '').trim(),
     showDateCorner: cfg.showDateCorner !== undefined ? Boolean(cfg.showDateCorner) : true,
     cModeEnabled: cfg.cModeEnabled !== undefined ? Boolean(cfg.cModeEnabled) : false,
@@ -77,6 +80,22 @@ function normalizePlayerRecord(raw) {
     }
   }
 
+  let rawSocial = raw.socialData || raw.social_data || {};
+  if (typeof rawSocial === 'string') {
+    try {
+      rawSocial = JSON.parse(rawSocial);
+    } catch (e) {
+      rawSocial = {};
+    }
+  }
+
+  const friendsRaw = Array.isArray(raw.friends)
+    ? raw.friends
+    : (Array.isArray(rawSocial.friends) ? rawSocial.friends : []);
+  const friends = Array.from(new Set(friendsRaw.map(f => String(f || '').trim()).filter(Boolean)));
+  const starsReceived = Number(raw.starsReceived ?? rawSocial.starsReceived ?? 0) || 0;
+  const lastSeenAt = Number(raw.lastSeenAt ?? rawSocial.lastSeenAt ?? raw.createdAt ?? raw.created_at ?? 0) || 0;
+
   return {
     name,
     password: String(raw.password !== undefined && raw.password !== null ? raw.password : '123').trim(),
@@ -90,6 +109,9 @@ function normalizePlayerRecord(raw) {
         : null),
     note: String(raw.note || '').trim(),
     overlayConfig: normalizeOverlayConfig(rawOverlay),
+    friends,
+    starsReceived,
+    lastSeenAt,
     createdAt: Number(raw.createdAt || raw.created_at || now)
   };
 }
@@ -135,6 +157,7 @@ async function initDb() {
         expires_at BIGINT NULL,
         note TEXT DEFAULT '',
         overlay_config JSONB DEFAULT '{}'::jsonb,
+        social_data JSONB DEFAULT '{}'::jsonb,
         created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
       );
 
@@ -144,6 +167,7 @@ async function initDb() {
       ALTER TABLE players ADD COLUMN IF NOT EXISTS expires_at BIGINT NULL;
       ALTER TABLE players ADD COLUMN IF NOT EXISTS note TEXT DEFAULT '';
       ALTER TABLE players ADD COLUMN IF NOT EXISTS overlay_config JSONB DEFAULT '{}'::jsonb;
+      ALTER TABLE players ADD COLUMN IF NOT EXISTS social_data JSONB DEFAULT '{}'::jsonb;
       ALTER TABLE players ADD COLUMN IF NOT EXISTS created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 
       CREATE TABLE IF NOT EXISTS matches (
@@ -169,13 +193,12 @@ async function initDb() {
     if (playerCount[0].cnt === 0) {
       const now = Date.now();
       await pool.query(
-        `INSERT INTO players (name, password, tier, is_active, activated_at, expires_at, note, overlay_config, created_at)
-         VALUES ($1, $2, 'DIAMOND', TRUE, $3, NULL, $4, $5::jsonb, $3)
+        `INSERT INTO players (name, password, tier, is_active, activated_at, expires_at, note, overlay_config, social_data, created_at)
+         VALUES ($1, $2, 'DIAMOND', TRUE, $3, NULL, $4, $5::jsonb, $6::jsonb, $3)
          ON CONFLICT (name) DO NOTHING`,
-        ['XO', '111', now, 'Admin / Chủ hệ thống (VIP Kim Cương)', JSON.stringify(DEFAULT_OVERLAY_CONFIG)]
+        ['XO', '111', now, 'Admin / Chủ hệ thống (VIP Kim Cương)', JSON.stringify(DEFAULT_OVERLAY_CONFIG), JSON.stringify({ friends: [], starsReceived: 0, lastSeenAt: now })]
       );
     } else {
-      // Đảm bảo tài khoản XO luôn là hạng DIAMOND
       await pool.query(`UPDATE players SET tier = 'DIAMOND' WHERE LOWER(name) = 'xo' AND (tier IS NULL OR tier = 'BRONZE')`);
     }
 
@@ -196,7 +219,7 @@ async function getPlayers() {
     return (readLocalState().players || []).map(normalizePlayerRecord);
   }
   const { rows } = await pool.query(
-    `SELECT name, password, tier, is_active, activated_at, expires_at, note, overlay_config, created_at
+    `SELECT name, password, tier, is_active, activated_at, expires_at, note, overlay_config, social_data, created_at
      FROM players
      ORDER BY created_at ASC, name ASC`
   );
@@ -220,9 +243,14 @@ async function savePlayers(players) {
     await client.query('BEGIN');
     await client.query('DELETE FROM players');
     for (const p of cleanPlayers) {
+      const socialJson = JSON.stringify({
+        friends: p.friends || [],
+        starsReceived: p.starsReceived || 0,
+        lastSeenAt: p.lastSeenAt || 0
+      });
       await client.query(
-        `INSERT INTO players (name, password, tier, is_active, activated_at, expires_at, note, overlay_config, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+        `INSERT INTO players (name, password, tier, is_active, activated_at, expires_at, note, overlay_config, social_data, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)
          ON CONFLICT (name) DO UPDATE SET
            password = EXCLUDED.password,
            tier = EXCLUDED.tier,
@@ -230,8 +258,9 @@ async function savePlayers(players) {
            activated_at = EXCLUDED.activated_at,
            expires_at = EXCLUDED.expires_at,
            note = EXCLUDED.note,
-           overlay_config = EXCLUDED.overlay_config`,
-        [p.name, p.password, p.tier, p.isActive, p.activatedAt, p.expiresAt, p.note, JSON.stringify(p.overlayConfig), p.createdAt]
+           overlay_config = EXCLUDED.overlay_config,
+           social_data = EXCLUDED.social_data`,
+        [p.name, p.password, p.tier, p.isActive, p.activatedAt, p.expiresAt, p.note, JSON.stringify(p.overlayConfig), socialJson, p.createdAt]
       );
     }
     await client.query('COMMIT');
@@ -262,9 +291,15 @@ async function upsertPlayer(playerObj) {
     return p;
   }
 
+  const socialJson = JSON.stringify({
+    friends: p.friends || [],
+    starsReceived: p.starsReceived || 0,
+    lastSeenAt: p.lastSeenAt || 0
+  });
+
   await pool.query(
-    `INSERT INTO players (name, password, tier, is_active, activated_at, expires_at, note, overlay_config, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+    `INSERT INTO players (name, password, tier, is_active, activated_at, expires_at, note, overlay_config, social_data, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)
      ON CONFLICT (name) DO UPDATE SET
        password = EXCLUDED.password,
        tier = EXCLUDED.tier,
@@ -272,8 +307,9 @@ async function upsertPlayer(playerObj) {
        activated_at = EXCLUDED.activated_at,
        expires_at = EXCLUDED.expires_at,
        note = EXCLUDED.note,
-       overlay_config = EXCLUDED.overlay_config`,
-    [p.name, p.password, p.tier, p.isActive, p.activatedAt, p.expiresAt, p.note, JSON.stringify(p.overlayConfig), p.createdAt]
+       overlay_config = EXCLUDED.overlay_config,
+       social_data = EXCLUDED.social_data`,
+    [p.name, p.password, p.tier, p.isActive, p.activatedAt, p.expiresAt, p.note, JSON.stringify(p.overlayConfig), socialJson, p.createdAt]
   );
   return p;
 }
