@@ -1,0 +1,464 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const db = require('./db');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '00716441516';
+
+app.use(cors());
+app.use(express.json({ limit: '2mb' }));
+app.use(express.text({ type: ['text/plain', 'text/*'], limit: '2mb' }));
+
+// Parse text/plain JSON bodies for backward compatibility
+app.use((req, res, next) => {
+  if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+    try {
+      req.body = JSON.parse(req.body);
+    } catch (e) {
+      // ignore parse error
+    }
+  }
+  next();
+});
+
+// Server-Sent Events (SSE) clients for instant OBS Overlay & Web updates
+const sseClients = new Set();
+
+function broadcastUpdate(eventType = 'update', payload = {}) {
+  const msg = `data: ${JSON.stringify({ type: eventType, timestamp: Date.now(), ...payload })}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(msg);
+    } catch (e) {
+      sseClients.delete(client);
+    }
+  }
+}
+
+const CIV_MAP = {
+  BABY: 'Baby', CHO: 'Choson', CAT: 'Cartha', CARTHA: 'Cartha', PHO: 'Phoenic',
+  SHANG: 'Shang', YA: 'Yamato', SUM: 'Sumer', EGY: 'Egyp',
+  EGYPT: 'Egyp', PAL: 'Palmyran', GREEK: 'Greek', MAC: 'Mace',
+  MIN: 'Minoan', PER: 'Persian', ROM: 'Roman', ASSY: 'Assy', HIT: 'Hittite'
+};
+
+function parseCiv(value) {
+  if (!value) return 'Random';
+  const clean = String(value).toUpperCase().replace(/[^A-Z]/g, '');
+  for (const key in CIV_MAP) {
+    if (clean.indexOf(key) !== -1) return CIV_MAP[key];
+  }
+  return String(value).trim() || 'Random';
+}
+
+function cleanPlayerName(value) {
+  if (!value) return '';
+  return String(value).replace(/[\[\]{}]/g, '').trim();
+}
+
+function getMode(count) {
+  if (count === 1) return '1v1';
+  if (count === 2) return '2v2';
+  if (count === 3) return '3v3';
+  if (count >= 4) return '4v4';
+  return '2v2';
+}
+
+function formatVietnamTime(ts = Date.now()) {
+  const now = new Date(ts);
+  // Adjust to UTC+7 if server runs in UTC (like Render.com)
+  const vnTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  const pad = v => String(v).padStart(2, '0');
+  return `${pad(vnTime.getHours())}:${pad(vnTime.getMinutes())} - ${pad(vnTime.getDate())}/${pad(vnTime.getMonth() + 1)}/${vnTime.getFullYear()}`;
+}
+
+async function checkAndAutoFinishDeadMatches() {
+  const matches = await db.getMatches();
+  const now = Date.now();
+  const FOUR_HOURS = 4 * 60 * 60 * 1000;
+  for (const m of matches) {
+    if (m.status === 'LIVE' && m.lastHeartbeat && (now - m.lastHeartbeat > FOUR_HOURS)) {
+      m.status = 'FINISHED';
+      await db.saveMatch(m);
+    }
+  }
+}
+
+async function validateOrRegisterPlayer(name, password, autoRegister = false) {
+  if (!name || password === undefined || password === null) return { valid: false, reason: 'Thiếu tên hoặc mật khẩu' };
+  const cleanName = String(name).trim();
+  const cleanPass = String(password).trim();
+  if (!cleanName || !cleanPass) return { valid: false, reason: 'Thiếu tên hoặc mật khẩu' };
+
+  const players = await db.getPlayers();
+  const existing = players.find(p => p.name.toLowerCase() === cleanName.toLowerCase());
+
+  if (existing) {
+    if (existing.password === cleanPass) {
+      return { valid: true, canonicalName: existing.name, isNew: false };
+    }
+    return { valid: false, reason: 'Mật khẩu không đúng!' };
+  }
+
+  if (autoRegister) {
+    players.push({ name: cleanName, password: cleanPass });
+    await db.savePlayers(players);
+    return { valid: true, canonicalName: cleanName, isNew: true };
+  }
+
+  return { valid: false, reason: 'Tài khoản chưa tồn tại!' };
+}
+
+async function canModifyMatch(match, data) {
+  if (!match) return false;
+  if (data.isAdmin && (!data.adminPassword || data.adminPassword === ADMIN_PASSWORD)) return true;
+  if (!data.updatedBy || !data.password) return false;
+  const auth = await validateOrRegisterPlayer(data.updatedBy, data.password, false);
+  return auth.valid && auth.canonicalName.toLowerCase() === String(match.streamerName || '').toLowerCase();
+}
+
+async function getInitialDataPayload(streamerFilter = '') {
+  await checkAndAutoFinishDeadMatches();
+  const [players, matches, settings] = await Promise.all([
+    db.getPlayers(),
+    db.getMatches(),
+    db.getSettings()
+  ]);
+
+  let currentMatch = null;
+  if (streamerFilter) {
+    const sf = streamerFilter.trim().toLowerCase();
+    currentMatch =
+      matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sf) ||
+      matches.find(m => String(m.streamerName || '').toLowerCase() === sf) ||
+      null;
+  }
+  if (!currentMatch) {
+    currentMatch = matches.find(m => m.status === 'LIVE') || matches[0] || null;
+  }
+
+  return {
+    status: 'ok',
+    databaseMode: db.isPostgresActive() ? 'neon_postgres' : 'local_json',
+    players,
+    matches,
+    currentMatch,
+    settings
+  };
+}
+
+async function handleAutoAddGame(data, canonicalStreamerName) {
+  const rawRedCivs = Array.isArray(data.redCivs) ? data.redCivs : [];
+  const rawBlueCivs = Array.isArray(data.blueCivs) ? data.blueCivs : [];
+  const redPlayers = (Array.isArray(data.redPlayers) ? data.redPlayers : [])
+    .map(cleanPlayerName)
+    .filter(Boolean);
+  const bluePlayers = (Array.isArray(data.bluePlayers) ? data.bluePlayers : [])
+    .map(cleanPlayerName)
+    .filter(Boolean);
+
+  const redCivs = rawRedCivs.map(parseCiv).filter(civ => civ !== 'Random');
+  const blueCivs = rawBlueCivs.map(parseCiv).filter(civ => civ !== 'Random');
+
+  if (!redCivs.length && !blueCivs.length) {
+    return { added: false, message: 'Bỏ qua: Không nhận diện được quân!' };
+  }
+
+  const maxCount = Math.max(redCivs.length, blueCivs.length, redPlayers.length, bluePlayers.length, 1);
+  const mode = getMode(maxCount);
+  while (redPlayers.length < maxCount) redPlayers.push('Red ' + (redPlayers.length + 1));
+  while (bluePlayers.length < maxCount) bluePlayers.push('Blue ' + (bluePlayers.length + 1));
+  while (redCivs.length < maxCount) redCivs.push('Random');
+  while (blueCivs.length < maxCount) blueCivs.push('Random');
+
+  const redColors = Array.isArray(data.redColors) ? data.redColors : [];
+  const blueColors = Array.isArray(data.blueColors) ? data.blueColors : [];
+  const streamerName = canonicalStreamerName || data.streamerName || 'Auto Bot';
+
+  const matches = await db.getMatches();
+  let liveMatch = matches.find(
+    item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === streamerName.toLowerCase()
+  );
+
+  if (liveMatch && liveMatch.games && liveMatch.games.length) {
+    const previous = liveMatch.games[liveMatch.games.length - 1];
+    if (
+      !data.allowSameCiv &&
+      JSON.stringify(previous.redCivs) === JSON.stringify(redCivs) &&
+      JSON.stringify(previous.blueCivs) === JSON.stringify(blueCivs)
+    ) {
+      // Update player names & colors in case OCR refined them on second F2 press
+      liveMatch.redTeam = redPlayers;
+      liveMatch.blueTeam = bluePlayers;
+      liveMatch.redColors = redColors;
+      liveMatch.blueColors = blueColors;
+      previous.redColors = redColors;
+      previous.blueColors = blueColors;
+      liveMatch.lastHeartbeat = Date.now();
+      await db.saveMatch(liveMatch);
+      broadcastUpdate('match_updated', { matchId: liveMatch.id });
+      return { added: false, match: liveMatch, message: `Đang ở Trận ${liveMatch.games.length} (Đã đồng bộ tên/màu)` };
+    }
+  }
+
+  if (!liveMatch) {
+    liveMatch = {
+      id: 'MATCH_' + Date.now(),
+      createdAt: Date.now(),
+      lastHeartbeat: Date.now(),
+      streamerName,
+      mode,
+      redTeam: redPlayers,
+      blueTeam: bluePlayers,
+      redColors,
+      blueColors,
+      updatedBy: streamerName,
+      formattedTime: formatVietnamTime(),
+      status: 'LIVE',
+      games: []
+    };
+  } else {
+    liveMatch.mode = mode;
+    liveMatch.redTeam = redPlayers;
+    liveMatch.blueTeam = bluePlayers;
+    liveMatch.redColors = redColors;
+    liveMatch.blueColors = blueColors;
+    liveMatch.lastHeartbeat = Date.now();
+  }
+
+  liveMatch.games.push({
+    redCivs,
+    blueCivs,
+    redColors,
+    blueColors,
+    winner: 'PENDING',
+    capturedAt: Date.now()
+  });
+
+  await db.saveMatch(liveMatch);
+  broadcastUpdate('game_added', { matchId: liveMatch.id, gameNumber: liveMatch.games.length });
+  return {
+    added: true,
+    match: liveMatch,
+    message: `Đã cập nhật Trận ${liveMatch.games.length} (${mode})`
+  };
+}
+
+// SSE Endpoint for instant live updates
+app.get('/api/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
+  sseClients.add(res);
+
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(': keep-alive\n\n');
+    } catch (e) {
+      clearInterval(keepAlive);
+      sseClients.delete(res);
+    }
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    sseClients.delete(res);
+  });
+});
+
+// GET /api (backward compatible with ?action=getInitialData)
+app.get('/api', async (req, res) => {
+  try {
+    const action = req.query.action || 'getInitialData';
+    const streamer = req.query.streamer || req.query.player || '';
+    if (action === 'getInitialData') {
+      const payload = await getInitialDataPayload(streamer);
+      return res.json(payload);
+    }
+    return res.json({ status: 'ok', databaseMode: db.isPostgresActive() ? 'neon_postgres' : 'local_json' });
+  } catch (err) {
+    console.error('[API GET Error]:', err);
+    return res.status(500).json({ status: 'error', message: String(err.message || err) });
+  }
+});
+
+// POST /api (handles all actions from Web Dashboard and Desktop Client)
+app.post('/api', async (req, res) => {
+  try {
+    const data = req.body || {};
+    const action = data.action;
+
+    if (action === 'verifyPlayerLogin') {
+      // Allow auto-registering new players when autoRegister is true (default true from Desktop Client!)
+      const autoReg = data.autoRegister !== false;
+      const auth = await validateOrRegisterPlayer(data.playerName, data.password, autoReg);
+      return res.json({
+        status: auth.valid ? 'success' : 'error',
+        playerName: auth.canonicalName || data.playerName,
+        isNewAccount: Boolean(auth.isNew),
+        message: auth.valid
+          ? (auth.isNew ? `Đã tạo mới & đăng nhập tài khoản "${auth.canonicalName}"!` : 'Đăng nhập thành công!')
+          : (auth.reason || 'Mật khẩu sai!')
+      });
+    }
+
+    if (action === 'verifyAdminLogin') {
+      const ok = String(data.password || '').trim() === ADMIN_PASSWORD;
+      return res.json({
+        status: ok ? 'success' : 'error',
+        message: ok ? 'Đăng nhập Admin thành công!' : 'Mật khẩu Admin sai!'
+      });
+    }
+
+    if (action === 'autoAddGame') {
+      const auth = await validateOrRegisterPlayer(data.streamerName, data.password, true);
+      if (!auth.valid) {
+        return res.json({ status: 'error', message: auth.reason || 'Tài khoản không hợp lệ!' });
+      }
+      const result = await handleAutoAddGame(data, auth.canonicalName);
+      return res.json({
+        status: 'success',
+        added: result.added,
+        match: result.match,
+        message: result.message
+      });
+    }
+
+    if (action === 'heartbeat') {
+      const auth = await validateOrRegisterPlayer(data.streamerName, data.password, false);
+      if (!auth.valid) {
+        return res.json({ status: 'error', message: 'Xác thực thất bại!' });
+      }
+      const matches = await db.getMatches();
+      const match = matches.find(
+        item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === auth.canonicalName.toLowerCase()
+      );
+      if (match) {
+        match.lastHeartbeat = Date.now();
+        await db.saveMatch(match);
+      }
+      return res.json({ status: 'success', match: match || null, message: 'Heartbeat OK' });
+    }
+
+    if (action === 'setWinner') {
+      const matches = await db.getMatches();
+      let match = null;
+      if (data.matchId) {
+        match = matches.find(item => item.id === data.matchId);
+      } else if (data.streamerName) {
+        match = matches.find(
+          item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === String(data.streamerName).toLowerCase()
+        );
+      }
+      if (!match || !(await canModifyMatch(match, data))) {
+        return res.json({ status: 'error', message: 'Không có quyền hoặc không tìm thấy kèo!' });
+      }
+      const gameIdx =
+        data.gameIndex !== undefined && data.gameIndex !== null
+          ? Number(data.gameIndex)
+          : (match.games ? match.games.length - 1 : -1);
+
+      if (!match.games || !match.games[gameIdx]) {
+        return res.json({ status: 'error', message: 'Không tìm thấy trận đấu!' });
+      }
+      match.games[gameIdx].winner = data.winner;
+      match.lastHeartbeat = Date.now();
+      await db.saveMatch(match);
+      broadcastUpdate('winner_updated', { matchId: match.id, gameIndex: gameIdx, winner: data.winner });
+      return res.json({ status: 'success', match });
+    }
+
+    if (action === 'finishMatch') {
+      const matches = await db.getMatches();
+      let match = null;
+      if (data.matchId) {
+        match = matches.find(item => item.id === data.matchId);
+      } else if (data.streamerName) {
+        match = matches.find(
+          item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === String(data.streamerName).toLowerCase()
+        );
+      }
+      if (!match || !(await canModifyMatch(match, data))) {
+        return res.json({ status: 'error', message: 'Không có quyền hoặc không tìm thấy kèo!' });
+      }
+      match.status = 'FINISHED';
+      await db.saveMatch(match);
+      broadcastUpdate('match_finished', { matchId: match.id });
+      return res.json({ status: 'success', match });
+    }
+
+    if (action === 'saveMatch') {
+      if (!data.match || !data.match.id) {
+        return res.json({ status: 'error', message: 'Dữ liệu kèo không hợp lệ!' });
+      }
+      const matches = await db.getMatches();
+      const existing = matches.find(item => item.id === data.match.id);
+      if (!existing || !(await canModifyMatch(existing, data))) {
+        return res.json({ status: 'error', message: 'Không có quyền chỉnh sửa kèo này!' });
+      }
+      await db.saveMatch(data.match);
+      broadcastUpdate('match_saved', { matchId: data.match.id });
+      return res.json({ status: 'success' });
+    }
+
+    if (action === 'deleteMatches') {
+      if (!data.isAdmin) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền xóa!' });
+      }
+      await db.deleteMatches(data.matchIds || []);
+      broadcastUpdate('matches_deleted', { matchIds: data.matchIds || [] });
+      return res.json({ status: 'success' });
+    }
+
+    if (action === 'savePlayers') {
+      if (!data.isAdmin) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền!' });
+      }
+      await db.savePlayers(data.players || []);
+      broadcastUpdate('players_updated');
+      return res.json({ status: 'success' });
+    }
+
+    if (action === 'saveSettings') {
+      await db.saveSetting('showCivStats', Boolean(data.showCivStats));
+      broadcastUpdate('settings_updated', { showCivStats: Boolean(data.showCivStats) });
+      return res.json({ status: 'success' });
+    }
+
+    return res.json({ status: 'error', message: 'Invalid action: ' + action });
+  } catch (err) {
+    console.error('[API POST Error]:', err);
+    return res.status(500).json({ status: 'error', message: String(err.message || err) });
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', db: db.isPostgresActive() ? 'neon_postgres' : 'local_json' });
+});
+
+// Serve static files from public/
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+app.use(express.static(PUBLIC_DIR));
+
+app.get('/overlay', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'overlay.html'));
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
+
+db.initDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`[*] AOE Match Tracker Server đang chạy tại: http://localhost:${PORT}`);
+    console.log(`[*] Trang quản lý kèo: http://localhost:${PORT}`);
+    console.log(`[*] Link OBS Overlay : http://localhost:${PORT}/overlay.html?streamer=XO`);
+  });
+});
+

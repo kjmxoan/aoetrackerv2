@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AOE Match Tracker - Quản Lý Kèo Đấu Đế Chế</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap');
+    body { font-family: 'Roboto Condensed', sans-serif; }
+    @keyframes pulse-cute { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    .animate-cute { animation: pulse-cute 2s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div id="app" class="max-w-6xl mx-auto px-4 py-6 flex flex-col min-h-screen justify-between">
+    <div>
+      <!-- NOTIFICATION ALERT -->
+      <div v-if="notification"
+           :class="notification.type === 'error' ? 'bg-red-900 border-red-500 text-red-100' : 'bg-emerald-900 border-emerald-500 text-emerald-100'"
+           class="fixed top-4 right-4 z-[100] max-w-sm p-4 rounded-xl border shadow-2xl flex justify-between items-center text-xs animate-bounce">
+        <span class="flex items-center gap-2">
+          <i :class="notification.type === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-circle-check text-emerald-400'" class="fa-solid text-base"></i>
+          <b>{{ notification.message }}</b>
+        </span>
+        <button @click="notification = null" class="text-slate-400 hover:text-white ml-3 text-sm">&times;</button>
+      </div>
+
+      <!-- HEADER -->
+      <header class="flex flex-col md:flex-row justify-between items-center bg-slate-900 border border-amber-500/30 p-4 rounded-xl shadow-lg mb-6 gap-4">
+        <div class="flex items-center gap-3 cursor-pointer" @click="goHome">
+          <div class="bg-amber-500 text-slate-950 p-2.5 rounded-lg font-black text-xl">AOE</div>
+          <div>
+            <h1 class="text-xl font-bold text-amber-400 tracking-wide">AOE MATCH TRACKER</h1>
+            <p class="text-xs text-slate-400">Hệ thống quản lý & theo dõi kèo đấu Đế Chế Realtime</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap z-10">
+          <button @click="showDonateModal = true"
+                  class="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold px-3.5 py-1.5 rounded-full text-xs shadow-lg animate-cute border border-pink-300/40 flex items-center gap-1.5 transition">
+            <span>🧋</span>
+            <span>Gửi Admin ly nước</span>
+          </button>
+
+          <button @click="goHome" :class="currentTab === 'matches' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'" class="px-3 py-1.5 rounded-lg text-xs transition">
+            <i class="fa-solid fa-list-check mr-1"></i> Danh Sách Kèo
+          </button>
+
+          <button @click="openAnalytics" :class="currentTab === 'analytics' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'" class="px-3 py-1.5 rounded-lg text-xs transition">
+            <i class="fa-solid fa-chart-pie mr-1"></i> Thống Kê (Insight)
+          </button>
+
+          <div v-if="sessionPlayerName" class="flex items-center gap-2 bg-slate-800 border border-amber-500/50 px-3 py-1 rounded-lg">
+            <span class="text-xs text-amber-400 font-bold"><i class="fa-solid fa-user-check"></i> {{ sessionPlayerName }}</span>
+            <button @click="copyOverlayLink(sessionPlayerName)" class="text-[11px] bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded" title="Copy Link OBS Overlay">
+              <i class="fa-solid fa-tv mr-1"></i>Link OBS
+            </button>
+            <button @click="logoutPlayer" class="text-xs text-red-400 hover:text-red-300 ml-1" title="Đăng xuất"><i class="fa-solid fa-right-from-bracket"></i></button>
+          </div>
+
+          <button v-else @click="openLoginUpdaterModal" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">
+            <i class="fa-solid fa-key mr-1"></i> Đăng Nhập Player
+          </button>
+
+          <button v-if="!isAdmin" @click="openAdminModal" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-3 py-1.5 rounded-lg text-xs transition">
+            <i class="fa-solid fa-lock mr-1"></i> Admin
+          </button>
+          <div v-else class="flex items-center gap-2 bg-slate-800 border border-emerald-500/50 px-3 py-1 rounded-lg">
+            <span class="text-xs text-emerald-400 font-bold"><i class="fa-solid fa-user-shield"></i> Admin</span>
+            <button @click="showPlayerManagerModal = true" class="text-[11px] bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded">Quản Lý</button>
+            <button @click="logoutAdmin" class="text-xs text-red-400 hover:text-red-300 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button>
+          </div>
+        </div>
+      </header>
+
+      <!-- TAB 1: DANH SÁCH KÈO ĐẤU -->
+      <div v-if="currentTab === 'matches'" class="space-y-4">
+        <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-lg border border-slate-800">
+          <div class="flex gap-2">
+            <button @click="filterStatus = 'ALL'" :class="filterStatus === 'ALL' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400'" class="px-3 py-1 rounded text-xs">Tất cả ({{ matches.length }})</button>
+            <button @click="filterStatus = 'LIVE'" :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-bold' : 'bg-slate-800 text-slate-400'" class="px-3 py-1 rounded text-xs">🔴 Trực tiếp ({{ liveMatchesCount }})</button>
+            <button @click="filterStatus = 'FINISHED'" :class="filterStatus === 'FINISHED' ? 'bg-slate-700 text-white font-bold' : 'bg-slate-800 text-slate-400'" class="px-3 py-1 rounded text-xs">🏁 Đã kết thúc</button>
+          </div>
+          <button @click="fetchInitialData" class="text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1">
+            <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i> Làm mới
+          </button>
+        </div>
+
+        <div v-if="filteredMatches.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div v-for="match in filteredMatches" :key="match.id" @click="selectMatch(match)" class="bg-slate-900 hover:border-amber-500/50 border border-slate-800 p-4 rounded-xl cursor-pointer transition shadow-md relative">
+            <div class="flex justify-between items-center mb-2.5 flex-wrap gap-1">
+              <div class="flex items-center gap-2">
+                <span class="font-bold px-2 py-0.5 rounded text-[11px] bg-slate-800 text-amber-400 border border-amber-500/20">{{ match.mode }}</span>
+                <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded font-bold animate-pulse">🔴 TRỰC TIẾP</span>
+                <span v-else class="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded">🏁 KẾT THÚC</span>
+                <span v-if="match.streamerName" class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800/50 px-2 py-0.5 rounded font-mono">🎮 {{ match.streamerName }}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button @click.stop="copyOverlayLink(match.streamerName)" class="text-[11px] bg-indigo-950 hover:bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded border border-indigo-700/40" title="Copy Link OBS Overlay">
+                  <i class="fa-solid fa-tv"></i> OBS Overlay
+                </button>
+                <button @click.stop="copyMatchLink(match.id)" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-400 px-2 py-0.5 rounded border border-amber-500/20" title="Copy Link">
+                  <i class="fa-solid fa-link"></i> Link Kèo
+                </button>
+                <span class="text-[11px] text-slate-400"><i class="fa-regular fa-clock mr-1"></i>{{ match.formattedTime }}</span>
+                <button v-if="isAdmin" @click.stop="deleteSingleMatch(match.id)" class="bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-2.5 py-0.5 rounded shadow border border-red-400"><i class="fa-solid fa-trash-can"></i> Xóa</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-7 gap-2 items-center bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 mb-2">
+              <div class="col-span-3 text-right">
+                <div class="font-bold text-red-400 text-xs truncate">Team Đỏ</div>
+                <div class="text-[11px] text-slate-300 truncate">{{ (match.redTeam || []).join(', ') }}</div>
+              </div>
+              <div class="col-span-1 text-center font-black text-base">
+                <span class="text-red-400">{{ getMatchScore(match).red }}</span>-<span class="text-blue-400">{{ getMatchScore(match).blue }}</span>
+              </div>
+              <div class="col-span-3 text-left">
+                <div class="font-bold text-blue-400 text-xs truncate">Team Xanh</div>
+                <div class="text-[11px] text-slate-300 truncate">{{ (match.blueTeam || []).join(', ') }}</div>
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-800/80 pt-2">
+              <div>Số trận: <span class="font-bold text-slate-200">{{ (match.games || []).length }}</span></div>
+              <div v-if="showCivStats">Cung-Chém: <span class="text-cyan-400 font-bold">{{ getMatchCivStats(match).cung }}</span> - <span class="text-yellow-400 font-bold">{{ getMatchCivStats(match).chem }}</span></div>
+              <div><i class="fa-solid fa-user-pen mr-1"></i>{{ match.updatedBy }}</div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-center py-10 bg-slate-900/40 rounded-xl border border-dashed border-slate-800 text-slate-500 text-sm">
+          Chưa có kèo đấu nào. Hãy mở App Desktop và bấm Diplomacy (F2) trong game để tự động tạo kèo!
+        </div>
+      </div>
+
+      <!-- TAB 2: CHI TIẾT KÈO ĐẤU -->
+      <div v-if="currentTab === 'detail' && selectedMatch" class="space-y-4">
+        <div class="flex justify-between items-center flex-wrap gap-2">
+          <button @click="goHome" class="text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1"><i class="fa-solid fa-arrow-left"></i> Quay lại danh sách</button>
+          <div class="flex items-center gap-2 text-xs">
+            <button @click="copyOverlayLink(selectedMatch.streamerName)" class="bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/50 px-3 py-1 rounded-lg text-xs transition">
+              <i class="fa-solid fa-tv mr-1"></i>Copy Link OBS Overlay
+            </button>
+            <button @click="copyMatchLink(selectedMatch.id)" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-lg text-xs transition">
+              <i class="fa-solid fa-share-nodes mr-1"></i>Sao Chép Link Kèo
+            </button>
+            <button v-if="isAdmin" @click="deleteSingleMatch(selectedMatch.id)" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 rounded"><i class="fa-solid fa-trash-can mr-1"></i>Xóa Kèo Này</button>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 p-4 rounded-xl border border-amber-500/30">
+          <div class="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-slate-800 pb-3 mb-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-base font-bold text-amber-400">Kèo {{ selectedMatch.mode }}</span>
+                <span v-if="selectedMatch.status === 'LIVE'" class="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded font-bold animate-pulse">🔴 TRỰC TIẾP</span>
+                <span v-else class="bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded">🏁 KẾT THÚC</span>
+                <span v-if="selectedMatch.streamerName" class="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800/50 px-2.5 py-0.5 rounded font-mono">🎮 {{ selectedMatch.streamerName }}</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1"><i class="fa-regular fa-clock mr-1"></i> {{ selectedMatch.formattedTime }} | Người tạo: <span class="text-amber-300 font-bold">{{ selectedMatch.updatedBy }}</span></p>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="bg-slate-950 px-5 py-2 rounded-xl border border-slate-800 text-center">
+                <div class="text-[10px] text-slate-400">TỈ SỐ CHUNG CUỘC</div>
+                <div class="text-2xl font-black"><span class="text-red-400">{{ activeMatchScore.red }}</span> - <span class="text-blue-400">{{ activeMatchScore.blue }}</span></div>
+                <div v-if="showCivStats" class="text-[11px] text-slate-400 mt-1">
+                  Tổng Cung - Chém: <span class="text-cyan-400 font-bold">{{ activeMatchCivStats.cung }}</span> - <span class="text-yellow-400 font-bold">{{ activeMatchCivStats.chem }}</span>
+                </div>
+              </div>
+              <button v-if="selectedMatch.status === 'LIVE' && canModify(selectedMatch)" @click="finishMatch" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-4 py-3 rounded-xl shadow border border-amber-400 text-xs">🏁 KẾT THÚC KÈO</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-red-950/30 border border-red-900/40 p-2.5 rounded-lg"><span class="text-red-400 font-bold block mb-0.5">TEAM ĐỎ:</span><span class="text-slate-200 font-semibold">{{ (selectedMatch.redTeam || []).join(' - ') }}</span></div>
+            <div class="bg-blue-950/30 border border-blue-900/40 p-2.5 rounded-lg"><span class="text-blue-400 font-bold block mb-0.5">TEAM XANH:</span><span class="text-slate-200 font-semibold">{{ (selectedMatch.blueTeam || []).join(' - ') }}</span></div>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
+          <h3 class="text-sm font-bold text-amber-400 mb-3 border-b border-slate-800 pb-2">Chi Tiết Bảng Lịch Sử Đấu ({{ (selectedMatch.games || []).length }} trận)</h3>
+          <div v-if="selectedMatch.games && selectedMatch.games.length > 0" class="space-y-3">
+            <div v-for="(g, idx) in selectedMatch.games" :key="idx" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+              <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-3 flex-wrap gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-amber-500/20">Trận {{ idx + 1 }}</span>
+                  <button @click="setWinner(idx, 'RED')" :class="g.winner === 'RED' ? 'bg-red-600 text-white font-bold ring-2 ring-red-400' : 'bg-slate-800 text-slate-400 hover:text-red-300'" class="px-2.5 py-1 rounded text-[11px] transition">🔴 Team Đỏ Thắng</button>
+                  <button @click="setWinner(idx, 'BLUE')" :class="g.winner === 'BLUE' ? 'bg-blue-600 text-white font-bold ring-2 ring-blue-400' : 'bg-slate-800 text-slate-400 hover:text-blue-300'" class="px-2.5 py-1 rounded text-[11px] transition">🔵 Team Xanh Thắng</button>
+                  <span v-if="g.winner === 'PENDING'" class="text-amber-400 font-bold bg-amber-950/60 px-2 py-0.5 rounded text-[10px] animate-pulse">⏳ Chưa chọn đội thắng</span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <span v-if="showCivStats" class="text-[11px] text-slate-400">
+                    Tỉ lệ: <span class="text-cyan-400 font-bold">{{ getGameCivStats(g).cung }} Cung</span> - <span class="text-yellow-400 font-bold">{{ getGameCivStats(g).chem }} Chém</span>
+                  </span>
+                  <button v-if="canModify(selectedMatch)" @click="deleteGameFromMatch(idx)" class="text-[10px] bg-red-950 text-red-300 border border-red-700/50 px-2 py-0.5 rounded">Xóa</button>
+                </div>
+              </div>
+
+              <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800 overflow-x-auto">
+                <div class="grid grid-cols-2 gap-4 pb-2 border-b border-slate-800 text-[11px] font-bold">
+                  <div class="text-red-400 text-center border-r border-slate-800">TEAM ĐỎ</div>
+                  <div class="text-blue-400 text-center">TEAM XANH</div>
+                </div>
+                <div class="divide-y divide-slate-800/50">
+                  <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'row-'+pi" class="grid grid-cols-2 gap-4 py-2 items-center text-xs">
+                    <div class="flex items-center justify-between pr-2 border-r border-slate-800">
+                      <span class="font-bold text-red-300 truncate">{{ selectedMatch.redTeam[pi] || ('Player ' + (pi + 1)) }}:</span>
+                      <span :class="getCivTypeClass(g.redCivs[pi])" class="px-2 py-0.5 rounded text-[11px] font-bold min-w-[65px] text-center">{{ g.redCivs[pi] || '---' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between pl-2">
+                      <span class="font-bold text-blue-300 truncate">{{ selectedMatch.blueTeam[pi] || ('Player ' + (pi + 1)) }}:</span>
+                      <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-2 py-0.5 rounded text-[11px] font-bold min-w-[65px] text-center">{{ g.blueCivs[pi] || '---' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: DASHBOARD THỐNG KÊ (ANALYTICS) -->
+      <div v-if="currentTab === 'analytics'" class="space-y-6">
+        <div class="bg-slate-900 p-4 rounded-xl border border-amber-500/30">
+          <h2 class="text-base font-bold text-amber-400 mb-1"><i class="fa-solid fa-chart-line mr-2"></i>Thống Kê Meta Game & Tỷ Lệ Chọn Quân (Civ Insight)</h2>
+          <p class="text-xs text-slate-400">Phân tích dữ liệu trực tiếp từ tất cả lịch sử kèo đấu đã lưu trên Neon Database.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow">
+            <h3 class="text-xs font-bold text-slate-300 mb-3 text-center">📊 Top Civilization (Quân Được Chọn Nhiều Nhất)</h3>
+            <canvas id="civChart" class="max-h-64"></canvas>
+          </div>
+
+          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow">
+            <h3 class="text-xs font-bold text-slate-300 mb-3 text-center">🏹 Tỉ Lệ Quân Cung vs Chém</h3>
+            <canvas id="civTypeChart" class="max-h-64"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL QR DONATE -->
+      <div v-if="showDonateModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+        <div class="bg-[#0b0e17] border border-pink-500/30 rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl relative">
+          <button @click="showDonateModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg transition">&times;</button>
+          <h3 class="text-base font-bold text-pink-400 flex items-center justify-center gap-2">
+            <span>🧋</span> Gửi Admin Ly Nước Mát
+          </h3>
+          <p class="text-xs text-slate-300 leading-relaxed px-2">
+            Cảm ơn bạn đã sử dụng hệ thống! Mọi sự ủng hộ ly trà đá/mì tôm là động lực lớn để Admin duy trì & nâng cấp web! ❤️
+          </p>
+          <div class="bg-white p-3 rounded-2xl inline-block shadow-lg my-1">
+            <img src="https://img.vietqr.io/image/VPB-0868549555-compact2.png?accountName=NGUYEN%20TUAN%20ANH&addInfo=AOE%20Tracker%20Donate"
+                 alt="VietQR Donate VPBank"
+                 class="w-56 h-56 mx-auto object-contain">
+          </div>
+          <div class="bg-[#121827] border border-slate-800/80 p-3.5 rounded-xl space-y-1 text-xs">
+            <div class="text-amber-400 font-bold">VPBank (Ngân Hàng TMCP Việt Nam Thịnh Vượng)</div>
+            <div class="text-slate-300">STK: <b class="text-white font-mono text-sm tracking-wider">0868549555</b></div>
+            <div class="text-slate-300">Chủ tài khoản: <b class="text-white uppercase">NGUYỄN TUẤN ANH</b></div>
+          </div>
+          <button @click="showDonateModal = false" class="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold rounded-xl text-xs shadow-lg transition duration-200">
+            Cảm ơn bạn nhiều lắm! ✨
+          </button>
+        </div>
+      </div>
+
+      <!-- MODAL LOGIN PLAYER WEB -->
+      <div v-if="showLoginUpdaterModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-amber-500/30 rounded-xl max-w-sm w-full p-5 space-y-3">
+          <h3 class="text-sm font-bold text-amber-400 text-center">Đăng Nhập / Đăng Ký Player</h3>
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Chọn hoặc nhập tên Player:</label>
+            <input list="players-list" v-model="updaterNameInput" placeholder="Ví dụ: XO..." class="bg-slate-800 border border-slate-700 p-2 rounded text-xs w-full">
+            <datalist id="players-list">
+              <option v-for="p in players" :value="p.name" :key="p.name">{{ p.name }}</option>
+            </datalist>
+          </div>
+          <div>
+            <label class="text-[11px] text-slate-400 block mb-1">Mật khẩu:</label>
+            <input type="password" v-model="updaterPassInput" @keyup.enter="verifyUpdaterPassword" placeholder="Nhập mật khẩu..." class="bg-slate-800 border border-slate-700 p-2 rounded text-xs w-full">
+          </div>
+          <div class="flex gap-2 pt-1">
+            <button @click="showLoginUpdaterModal = false" class="w-full py-1.5 bg-slate-800 rounded text-xs">Hủy</button>
+            <button @click="verifyUpdaterPassword" class="w-full py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Xác Nhận</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL ADMIN LOGIN -->
+      <div v-if="showAdminModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100]">
+        <div class="bg-slate-900 border border-amber-500/30 rounded-xl max-w-sm w-full p-5 space-y-3 text-center">
+          <h3 class="text-sm font-bold text-amber-400">Đăng Nhập Admin</h3>
+          <input type="password" v-model="adminPasswordInput" @keyup.enter="loginAdmin" placeholder="Mật khẩu Admin..." class="bg-slate-800 border border-slate-700 p-2 rounded text-xs w-full text-center">
+          <div class="flex gap-2">
+            <button @click="showAdminModal = false" class="w-full py-1.5 bg-slate-800 rounded text-xs">Hủy</button>
+            <button @click="loginAdmin" class="w-full py-1.5 bg-amber-500 text-slate-950 font-bold rounded text-xs">Đăng Nhập</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL QUẢN LÝ PLAYER & CẤU HÌNH ADMIN -->
+      <div v-if="showPlayerManagerModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-5 space-y-4 max-h-[90vh] flex flex-col">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+            <h3 class="text-sm font-bold text-emerald-400"><i class="fa-solid fa-sliders mr-1"></i> Bảng Quản Trị Hệ Thống</h3>
+            <button @click="showPlayerManagerModal = false" class="text-slate-400 hover:text-white">&times;</button>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-lg border border-amber-500/30 flex justify-between items-center">
+            <div>
+              <span class="text-xs font-bold text-amber-400 block"><i class="fa-solid fa-chart-pie mr-1"></i> Hiển Thị Thông Số Cung - Chém</span>
+              <span class="text-[10px] text-slate-400">Ẩn/hiện chỉ số tỉ lệ Cung-Chém trên toàn giao diện</span>
+            </div>
+            <button @click="toggleCivStats"
+                    :class="showCivStats ? 'bg-emerald-600 text-white font-bold' : 'bg-slate-800 text-slate-400'"
+                    class="px-3 py-1 rounded-full text-xs border border-slate-700 transition">
+              {{ showCivStats ? 'ON (Đang Hiện)' : 'OFF (Đang Ẩn)' }}
+            </button>
+          </div>
+
+          <div class="space-y-2">
+            <span class="text-xs font-bold text-emerald-400 block"><i class="fa-solid fa-user-plus mr-1"></i> Thêm Player & Pass:</span>
+            <div class="grid grid-cols-5 gap-2">
+              <input type="text" v-model="newPlayerForm.name" placeholder="Tên Player..." class="col-span-3 bg-slate-800 border border-slate-700 p-1.5 rounded text-xs">
+              <input type="text" v-model="newPlayerForm.password" placeholder="Pass..." class="col-span-1 bg-slate-800 border border-slate-700 p-1.5 rounded text-xs">
+              <button @click="addPlayer" class="col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold">Thêm</button>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-y-auto space-y-1.5 border-t border-b border-slate-800 py-2 pr-1">
+            <div v-for="(p, idx) in players" :key="idx" class="flex justify-between items-center bg-slate-950 p-2 rounded border border-slate-800 text-xs">
+              <div>
+                <span class="font-bold text-slate-200">{{ p.name }}</span>
+                <span class="text-[10px] text-amber-400 ml-2">(Pass: {{ p.password || '123' }})</span>
+              </div>
+              <div class="flex gap-1">
+                <button @click="copyOverlayLink(p.name)" class="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded text-[10px]">Link OBS</button>
+                <button @click="editPlayerPass(idx)" class="bg-slate-800 text-amber-400 px-2 py-0.5 rounded text-[10px]">Đổi Pass</button>
+                <button @click="deletePlayer(idx)" class="bg-red-950 text-red-400 px-2 py-0.5 rounded text-[10px]">Xóa</button>
+              </div>
+            </div>
+          </div>
+
+          <button @click="showPlayerManagerModal = false" class="w-full py-1.5 bg-slate-800 rounded text-xs font-bold">Đóng</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FOOTER HIỂN THỊ VERSION BUILD -->
+    <footer class="mt-8 pt-4 border-t border-slate-800 text-center text-[11px] text-slate-500 flex justify-center items-center gap-2 flex-wrap">
+      <span>AOE Match Tracker &bull; Powered by XO</span>
+      <span>&bull;</span>
+      <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-mono font-bold">
+        {{ appVersion }}
+      </span>
+      <span>&bull;</span>
+      <span :class="databaseMode === 'neon_postgres' ? 'text-emerald-400' : 'text-amber-400'" class="font-mono">
+        DB: {{ databaseMode === 'neon_postgres' ? 'Neon PostgreSQL' : 'Local Storage' }}
+      </span>
+    </footer>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+
+    Vue.createApp({
+      data() {
+        const localCivStats = localStorage.getItem('aoe_showCivStats');
+        return {
+          appVersion: 'v4.0.0 (Neon + Render)',
+          databaseMode: 'neon_postgres',
+          currentTab: 'matches',
+          filterStatus: 'ALL',
+          isLoading: false,
+          notification: null,
+          showDonateModal: false,
+          isAdmin: false,
+          showAdminModal: false,
+          adminPasswordInput: '',
+          adminPasswordSession: '',
+          showPlayerManagerModal: false,
+          newPlayerForm: { name: '', password: '' },
+          showCivStats: localCivStats !== null ? (localCivStats === 'true') : true,
+          sessionPlayerName: sessionStorage.getItem('aoe_playerName') || '',
+          sessionPlayerPass: sessionStorage.getItem('aoe_playerPass') || '',
+          showLoginUpdaterModal: false,
+          updaterNameInput: '',
+          updaterPassInput: '',
+          players: [],
+          civs: [
+            { name: "Cartha", type: "chém" }, { name: "Choson", type: "chém" }, { name: "Greek", type: "chém" },
+            { name: "Mace", type: "chém" }, { name: "Minoan", type: "chém" }, { name: "Persian", type: "chém" },
+            { name: "Roman", type: "chém" }, { name: "Yamato", type: "chém" }, { name: "Assy", type: "cung" },
+            { name: "Baby", type: "cung" }, { name: "Egyp", type: "cung" }, { name: "Hittite", type: "cung" },
+            { name: "Palmyran", type: "cung" }, { name: "Phoenic", type: "cung" }, { name: "Shang", type: "cung" },
+            { name: "Sumer", type: "cung" }
+          ],
+          matches: [],
+          selectedMatch: null,
+          civChartInstance: null,
+          civTypeChartInstance: null
+        };
+      },
+      computed: {
+        canEdit() { return this.isAdmin || (this.sessionPlayerName && this.sessionPlayerPass); },
+        filteredMatches() { return this.filterStatus === 'ALL' ? this.matches : this.matches.filter(m => m.status === this.filterStatus); },
+        liveMatchesCount() { return this.matches.filter(m => m.status === 'LIVE').length; },
+        activeMatchScore() { return this.selectedMatch ? this.getMatchScore(this.selectedMatch) : { red: 0, blue: 0 }; },
+        activeMatchCivStats() { return this.selectedMatch ? this.getMatchCivStats(this.selectedMatch) : { cung: 0, chem: 0 }; }
+      },
+      methods: {
+        canModify(match) {
+          if (!match) return false;
+          if (this.isAdmin) return true;
+          return (
+            this.sessionPlayerName &&
+            this.sessionPlayerName.toLowerCase() === String(match.streamerName || '').toLowerCase() &&
+            this.sessionPlayerPass
+          );
+        },
+        goHome() {
+          this.currentTab = 'matches';
+          this.selectedMatch = null;
+          window.history.pushState({}, '', window.location.pathname);
+        },
+        copyMatchLink(matchId) {
+          const url = `${window.location.origin}${window.location.pathname}?matchId=${matchId}`;
+          navigator.clipboard.writeText(url).then(() => {
+            this.showNotify('Đã sao chép đường dẫn trực tiếp kèo đấu!');
+          }).catch(() => {
+            this.showNotify('Không thể tự động sao chép link', 'error');
+          });
+        },
+        copyOverlayLink(streamerName) {
+          const name = streamerName || this.sessionPlayerName || 'XO';
+          const url = `${window.location.origin}/overlay.html?streamer=${encodeURIComponent(name)}`;
+          navigator.clipboard.writeText(url).then(() => {
+            this.showNotify(`Đã copy link OBS Overlay của ${name}!`);
+          }).catch(() => {
+            this.showNotify('Không thể copy link OBS', 'error');
+          });
+        },
+        selectMatch(match) {
+          this.selectedMatch = match;
+          this.currentTab = 'detail';
+          window.history.pushState({}, '', `?matchId=${match.id}`);
+        },
+        checkUrlForMatch() {
+          const params = new URLSearchParams(window.location.search);
+          const matchId = params.get('matchId');
+          if (matchId && this.matches.length > 0) {
+            const found = this.matches.find(m => m.id === matchId);
+            if (found) {
+              this.selectedMatch = found;
+              this.currentTab = 'detail';
+            }
+          }
+        },
+        openAdminModal() { this.adminPasswordInput = ''; this.showAdminModal = true; },
+        openAnalytics() {
+          this.currentTab = 'analytics';
+          this.$nextTick(() => { this.renderCharts(); });
+        },
+        async loginAdmin() {
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'verifyAdminLogin', password: this.adminPasswordInput.trim() })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.isAdmin = true;
+              this.adminPasswordSession = this.adminPasswordInput.trim();
+              this.showAdminModal = false;
+              this.showNotify('Đã đăng nhập Admin!');
+            } else {
+              this.showNotify(data.message || 'Mật khẩu Admin sai!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối Server!', 'error');
+          }
+        },
+        logoutAdmin() { this.isAdmin = false; this.adminPasswordSession = ''; },
+        openLoginUpdaterModal() {
+          this.updaterNameInput = this.sessionPlayerName || '';
+          this.updaterPassInput = '';
+          this.showLoginUpdaterModal = true;
+        },
+        async verifyUpdaterPassword() {
+          if (!this.updaterNameInput || !this.updaterPassInput) return;
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'verifyPlayerLogin',
+                playerName: this.updaterNameInput,
+                password: this.updaterPassInput,
+                autoRegister: true
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.sessionPlayerName = data.playerName || this.updaterNameInput;
+              this.sessionPlayerPass = this.updaterPassInput;
+              sessionStorage.setItem('aoe_playerName', this.sessionPlayerName);
+              sessionStorage.setItem('aoe_playerPass', this.sessionPlayerPass);
+              this.showLoginUpdaterModal = false;
+              this.fetchInitialData();
+              this.showNotify(data.message || 'Đã đăng nhập Player!');
+            } else {
+              this.showNotify(data.message || 'Mật khẩu sai!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi xác thực mạng!', 'error');
+          }
+        },
+        logoutPlayer() { this.sessionPlayerName = ''; this.sessionPlayerPass = ''; sessionStorage.clear(); },
+        async setWinner(gameIndex, winnerTeam) {
+          if (!this.canModify(this.selectedMatch)) {
+            if (!this.sessionPlayerName) {
+              this.openLoginUpdaterModal();
+            } else {
+              this.showNotify('Chỉ người tạo kèo hoặc Admin mới có quyền đổi kết quả!', 'error');
+            }
+            return;
+          }
+
+          this.selectedMatch.games[gameIndex].winner = winnerTeam;
+          this.selectedMatch = { ...this.selectedMatch };
+
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'setWinner',
+                matchId: this.selectedMatch.id,
+                gameIndex: gameIndex,
+                winner: winnerTeam,
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                updatedBy: this.sessionPlayerName,
+                password: this.sessionPlayerPass
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.showNotify(`Đã cập nhật: ${winnerTeam === 'RED' ? '🔴 Team Đỏ Thắng' : '🔵 Team Xanh Thắng'}`);
+            } else {
+              this.showNotify(data.message || 'Lỗi cập nhật!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối khi lưu tỉ số!', 'error');
+          }
+        },
+        async finishMatch() {
+          if (!this.canModify(this.selectedMatch)) {
+            this.showNotify('Bạn không có quyền kết thúc kèo này!', 'error');
+            return;
+          }
+          if (confirm('Xác nhận KẾT THÚC kèo đấu chung cuộc này?')) {
+            try {
+              const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'finishMatch',
+                  matchId: this.selectedMatch.id,
+                  updatedBy: this.sessionPlayerName,
+                  password: this.sessionPlayerPass,
+                  isAdmin: this.isAdmin,
+                  adminPassword: this.adminPasswordSession
+                })
+              });
+              const data = await res.json();
+              if (data.status === 'success') {
+                this.selectedMatch.status = 'FINISHED';
+                this.showNotify('Đã kết thúc kèo đấu!');
+              } else {
+                this.showNotify(data.message, 'error');
+              }
+            } catch (e) {
+              this.showNotify('Lỗi kết nối!', 'error');
+            }
+          }
+        },
+        async deleteGameFromMatch(gameIndex) {
+          if (!this.canModify(this.selectedMatch)) {
+            this.showNotify('Bạn không có quyền xóa trận thuộc kèo này!', 'error');
+            return;
+          }
+          if (confirm(`Bạn có chắc muốn xóa Trận ${gameIndex + 1}?`)) {
+            this.selectedMatch.games.splice(gameIndex, 1);
+            await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'saveMatch',
+                match: this.selectedMatch,
+                updatedBy: this.sessionPlayerName,
+                password: this.sessionPlayerPass,
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession
+              })
+            });
+            this.showNotify(`Đã xóa Trận ${gameIndex + 1}`);
+          }
+        },
+        async deleteSingleMatch(matchId) {
+          if (!this.isAdmin) {
+            this.showNotify('Chỉ Admin mới có quyền xóa hẳn kèo đấu!', 'error');
+            return;
+          }
+          if (confirm('Xác nhận XÓA VĨNH VIỄN kèo đấu này?')) {
+            try {
+              await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'deleteMatches',
+                  matchIds: [matchId],
+                  isAdmin: this.isAdmin,
+                  adminPassword: this.adminPasswordSession
+                })
+              });
+              this.matches = this.matches.filter(m => m.id !== matchId);
+              if (this.selectedMatch && this.selectedMatch.id === matchId) this.goHome();
+              this.showNotify('Đã xóa kèo thành công!');
+            } catch (e) {
+              this.showNotify('Lỗi khi xóa!', 'error');
+            }
+          }
+        },
+        async fetchInitialData() {
+          this.isLoading = true;
+          try {
+            const res = await fetch(API_URL + '?action=getInitialData');
+            const data = await res.json();
+            if (data.databaseMode) this.databaseMode = data.databaseMode;
+            if (data.players) this.players = data.players;
+            if (data.matches) this.matches = data.matches;
+            if (data.settings && data.settings.showCivStats !== undefined) {
+              this.showCivStats = Boolean(data.settings.showCivStats);
+            }
+
+            this.checkUrlForMatch();
+
+            if (this.selectedMatch) {
+              const updated = this.matches.find(m => m.id === this.selectedMatch.id);
+              if (updated) this.selectedMatch = updated;
+            }
+          } catch (e) {
+            // ignore
+          } finally {
+            this.isLoading = false;
+          }
+        },
+        toggleCivStats() {
+          this.showCivStats = !this.showCivStats;
+          localStorage.setItem('aoe_showCivStats', this.showCivStats);
+          fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'saveSettings', showCivStats: this.showCivStats })
+          });
+          this.showNotify(this.showCivStats ? 'Đã BẬT hiển thị Cung-Chém' : 'Đã ẨN hiển thị Cung-Chém');
+        },
+        async addPlayer() {
+          if (!this.newPlayerForm.name) return;
+          this.players.push({
+            name: this.newPlayerForm.name.trim(),
+            password: (this.newPlayerForm.password || '123').trim()
+          });
+          this.newPlayerForm = { name: '', password: '' };
+          await this.savePlayersToBackend();
+        },
+        async editPlayerPass(idx) {
+          const newPass = prompt('Nhập mật khẩu mới cho ' + this.players[idx].name + ':', this.players[idx].password);
+          if (newPass !== null) {
+            this.players[idx].password = newPass.trim();
+            await this.savePlayersToBackend();
+          }
+        },
+        async deletePlayer(idx) {
+          if (confirm('Xóa player: ' + this.players[idx].name + '?')) {
+            this.players.splice(idx, 1);
+            await this.savePlayersToBackend();
+          }
+        },
+        async savePlayersToBackend() {
+          await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'savePlayers',
+              players: this.players,
+              isAdmin: this.isAdmin,
+              adminPassword: this.adminPasswordSession
+            })
+          });
+          this.showNotify('Đã cập nhật danh sách Player!');
+        },
+        getCivType(civName) { const f = this.civs.find(c => c.name === civName); return f ? f.type : ''; },
+        getCivTypeClass(civName) {
+          const t = this.getCivType(civName);
+          return t === 'cung'
+            ? 'bg-cyan-950 text-cyan-300 border border-cyan-800'
+            : (t === 'chém' ? 'bg-yellow-950 text-yellow-300 border border-yellow-800' : 'bg-slate-800 text-slate-400');
+        },
+        getMatchScore(match) {
+          let red = 0, blue = 0;
+          (match.games || []).forEach(g => { if (g.winner === 'RED') red++; if (g.winner === 'BLUE') blue++; });
+          return { red, blue };
+        },
+        getGameCivStats(game) {
+          let cung = 0, chem = 0;
+          [...(game.redCivs || []), ...(game.blueCivs || [])].forEach(c => {
+            const t = this.getCivType(c);
+            if (t === 'cung') cung++;
+            if (t === 'chém') chem++;
+          });
+          return { cung, chem };
+        },
+        getMatchCivStats(match) {
+          let cung = 0, chem = 0;
+          (match.games || []).forEach(g => {
+            const st = this.getGameCivStats(g);
+            cung += st.cung;
+            chem += st.chem;
+          });
+          return { cung, chem };
+        },
+        getGameRowLoop(match, game) {
+          const len = Math.max(
+            (match.redTeam || []).length,
+            (match.blueTeam || []).length,
+            (game.redCivs || []).length,
+            (game.blueCivs || []).length
+          );
+          return Array.from({ length: len > 0 ? len : 1 });
+        },
+        showNotify(msg, type = 'success') {
+          this.notification = { message: msg, type };
+          setTimeout(() => { this.notification = null; }, 3500);
+        },
+        renderCharts() {
+          const civCounts = {}; let cungCount = 0, chemCount = 0;
+          this.matches.forEach(m => {
+            (m.games || []).forEach(g => {
+              [...(g.redCivs || []), ...(g.blueCivs || [])].forEach(c => {
+                if (!c || c === 'Random') return;
+                civCounts[c] = (civCounts[c] || 0) + 1;
+                const t = this.getCivType(c);
+                if (t === 'cung') cungCount++;
+                if (t === 'chém') chemCount++;
+              });
+            });
+          });
+
+          if (this.civChartInstance) this.civChartInstance.destroy();
+          if (this.civTypeChartInstance) this.civTypeChartInstance.destroy();
+
+          const ctx1 = document.getElementById('civChart').getContext('2d');
+          this.civChartInstance = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+              labels: Object.keys(civCounts),
+              datasets: [{ label: 'Số lần chọn', data: Object.values(civCounts), backgroundColor: '#f59e0b' }]
+            },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+          });
+
+          const ctx2 = document.getElementById('civTypeChart').getContext('2d');
+          this.civTypeChartInstance = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+              labels: ['Cung', 'Chém'],
+              datasets: [{ data: [cungCount, chemCount], backgroundColor: ['#06b6d4', '#eab308'] }]
+            }
+          });
+        },
+        connectRealtimeStream() {
+          try {
+            const es = new EventSource('/api/stream');
+            es.onmessage = () => {
+              this.fetchInitialData();
+            };
+          } catch (e) {
+            // fallback to polling
+          }
+        }
+      },
+      mounted() {
+        this.fetchInitialData();
+        this.connectRealtimeStream();
+        setInterval(() => {
+          if (this.currentTab === 'matches' || this.currentTab === 'detail') {
+            this.fetchInitialData();
+          }
+        }, 8000);
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
+

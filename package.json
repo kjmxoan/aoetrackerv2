@@ -1,0 +1,20 @@
+{
+  "name": "aoetrackerv2",
+  "version": "4.0.0",
+  "description": "Tool Bang Quan AOE (bangquanaoe) & OBS Overlay Server (Node.js + Neon PostgreSQL)",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
+

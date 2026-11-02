@@ -1,0 +1,9 @@
+node_modules/
+.env
+*.pyc
+__pycache__/
+build/
+dist/
+*.spec
+local_db.json
+

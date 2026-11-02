@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>AOE Overlay OBS - Realtime</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700;900&display=swap');
+    body { font-family: 'Roboto Condensed', sans-serif; background: transparent; overflow: hidden; }
+    .blur-text-white { color: #fff; text-shadow: 0 0 4px #fff, 0 0 8px rgba(255,255,255,.4); }
+    @keyframes glow { 0%,100% { text-shadow: 0 0 8px #f59e0b; color: #fbbf24; } 50% { text-shadow: 0 0 14px #ef4444; color: #f87171; } }
+    .effect-xo { animation: glow 2s infinite ease-in-out; }
+    @keyframes marquee { 0% { transform: translateX(100%); opacity: 0; } 2% { opacity: 1; } 98% { opacity: 1; } 100% { transform: translateX(-100%); opacity: 0; } }
+    .run-marquee { display: inline-block; white-space: nowrap; animation: marquee 38s linear forwards; }
+  </style>
+</head>
+<body class="p-0 m-0">
+  <div id="app" class="w-full">
+    <div v-if="match" class="flex flex-col w-[500px]">
+      <div class="flex justify-between items-center gap-2 mb-1">
+        <div class="flex items-center gap-2 shrink-0">
+          <div class="bg-slate-950/90 border border-amber-500/50 px-2.5 py-0.5 rounded-t-lg shadow-lg">
+            <span class="text-xs font-black uppercase effect-xo tracking-wider">MÁY {{ playerOverride || match.streamerName || 'XO' }}</span>
+          </div>
+          <div class="bg-slate-950/90 border border-slate-700/80 px-2.5 py-0.5 rounded-t-lg shadow-lg flex items-center gap-1.5">
+            <span class="text-xs font-black text-white uppercase tracking-wider">Bảng quân</span>
+            <span class="text-[11px] font-bold text-amber-400 bg-slate-900 border border-amber-500/30 px-1 rounded">{{ match.mode }}</span>
+          </div>
+        </div>
+        <div class="flex-1 h-5 overflow-hidden bg-slate-950/80 border border-amber-500/30 rounded-t-lg flex items-center px-2">
+          <div v-if="showMarquee && showCivStats" class="w-full text-[11px] font-bold text-amber-300">
+            <span class="run-marquee font-mono uppercase tracking-wider">{{ playerCivStatsText }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-stretch justify-between bg-black/95 text-white border-2 border-slate-800 shadow-2xl min-h-[115px] rounded-r-xl rounded-b-xl overflow-hidden">
+        <div class="flex-1 px-3 py-1.5 bg-black/80 flex flex-col justify-center border-r border-slate-800">
+          <div v-for="(player, index) in match.redTeam" :key="'red-'+index" class="flex justify-between items-center gap-2 text-sm font-bold leading-snug my-0.5">
+            <span class="truncate text-left max-w-[105px]" :style="playerStyle(currentRedColors, index, player)">{{ player }}</span>
+            <span class="font-mono uppercase text-right font-black flex items-center gap-1" :style="playerStyle(currentRedColors, index, player)">
+              <span v-if="isTopCiv(civAt(latestGame && latestGame.redCivs, index))" class="text-[8px] text-amber-300">⭐</span>
+              {{ getCivName(civAt(latestGame && latestGame.redCivs, index)) }} <span class="text-[10px]">{{ getCivIcon(civAt(latestGame && latestGame.redCivs, index)) }}</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="w-[95px] shrink-0 flex flex-col justify-between items-center bg-slate-900 border-r border-slate-800 text-center">
+          <div class="w-full bg-red-600 text-white font-black text-xs py-1 uppercase tracking-wider">CHẠM 100</div>
+          <div class="my-auto text-3xl font-black text-amber-400">{{ score.red }} <span class="text-slate-500 text-xl">-</span> {{ score.blue }}</div>
+          <div class="w-full bg-slate-950 py-0.5 border-t border-slate-800">
+            <span class="text-[11px] font-black uppercase tracking-widest blur-text-white">TRẬN {{ match.games ? match.games.length : 1 }}</span>
+          </div>
+        </div>
+
+        <div class="flex-1 px-3 py-1.5 bg-black/80 flex flex-col justify-center">
+          <div v-for="(player, index) in match.blueTeam" :key="'blue-'+index" class="flex justify-between items-center gap-2 text-sm font-bold leading-snug my-0.5">
+            <span class="font-mono uppercase text-left font-black flex items-center gap-1" :style="playerStyle(currentBlueColors, index, player)">
+              <span class="text-[10px]">{{ getCivIcon(civAt(latestGame && latestGame.blueCivs, index)) }}</span>
+              {{ getCivName(civAt(latestGame && latestGame.blueCivs, index)) }}
+              <span v-if="isTopCiv(civAt(latestGame && latestGame.blueCivs, index))" class="text-[8px] text-amber-300">⭐</span>
+            </span>
+            <span class="truncate text-right max-w-[105px]" :style="playerStyle(currentBlueColors, index, player)">{{ player }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '/api';
+    const COLORS = [
+      '#60a5fa', // 0: P1 - Blue (Xanh lam)
+      '#fb923c', // 1: P2 - Orange (Cam)
+      '#ef4444', // 2: P3 - Red (Đỏ)
+      '#facc15', // 3: P4 - Yellow (Vàng)
+      '#4ade80', // 4: P5 - Green (Xanh lá)
+      '#d1d5db', // 5: P6 - Gray/White (Xám trắng)
+      '#b45309', // 6: P7 - Brown (Nâu)
+      '#22d3ee'  // 7: P8 - Cyan (Xanh cung)
+    ];
+
+    Vue.createApp({
+      data() {
+        return {
+          match: null,
+          playerOverride: '',
+          showMarquee: true,
+          showCivStats: true,
+          topCivs: ['SHANG','ASSY','HIT','HITTITE','PER','PERSIAN','PAL','PALMYRAN','YAM','YAMATO','ROM','ROMAN']
+        };
+      },
+      computed: {
+        latestGame() {
+          return this.match && this.match.games && this.match.games.length
+            ? this.match.games[this.match.games.length - 1]
+            : null;
+        },
+        currentRedColors() {
+          return (this.latestGame && this.latestGame.redColors) || (this.match && this.match.redColors) || [];
+        },
+        currentBlueColors() {
+          return (this.latestGame && this.latestGame.blueColors) || (this.match && this.match.blueColors) || [];
+        },
+        score() {
+          return ((this.match && this.match.games) || []).reduce(
+            (result, game) => {
+              if (game.winner === 'RED') result.red++;
+              if (game.winner === 'BLUE') result.blue++;
+              return result;
+            },
+            { red: 0, blue: 0 }
+          );
+        },
+        playerCivStatsText() {
+          if (!this.match || !this.match.games || !this.match.games.length) {
+            return 'TỔNG CUNG - CHÉM: CHƯA CÓ DỮ LIỆU';
+          }
+          const cung = ['BABY','ASSY','HIT','EGYP','EGYPT','PHO','SUM','SHANG','PAL'];
+          let totalCung = 0, totalChem = 0;
+          const map = {};
+          [...(this.match.redTeam || []), ...(this.match.blueTeam || [])].forEach(name => {
+            map[name] = { cung: 0, chem: 0 };
+          });
+          this.match.games.forEach(game => {
+            [['redCivs', this.match.redTeam], ['blueCivs', this.match.blueTeam]].forEach(([field, team]) =>
+              (game[field] || []).forEach((civ, index) => {
+                if (!civ || civ === 'Random' || civ === '---') return;
+                const isCung = cung.some(key => String(civ).toUpperCase().includes(key));
+                const name = team[index];
+                if (isCung) {
+                  totalCung++;
+                  if (map[name]) map[name].cung++;
+                } else {
+                  totalChem++;
+                  if (map[name]) map[name].chem++;
+                }
+              })
+            );
+          });
+          return `TỔNG CUNG - CHÉM: ${totalCung} - ${totalChem} | ${Object.keys(map)
+            .map(name => `${name} (${map[name].cung}-${map[name].chem})`)
+            .join(', ')}`;
+        }
+      },
+      methods: {
+        civAt(list, index) {
+          return (list && list[index]) || '';
+        },
+        getCivName(civ) {
+          return !civ || civ === 'Random' ? '---' : String(civ).toUpperCase();
+        },
+        getCivIcon(civ) {
+          if (!civ || civ === 'Random' || civ === '---') return '';
+          return ['BABY','ASSY','HIT','EGYP','EGYPT','PHO','SUM','SHANG','PAL'].some(k =>
+            String(civ).toUpperCase().includes(k)
+          )
+            ? '🏹'
+            : '⚔️';
+        },
+        isTopCiv(civ) {
+          return civ && this.topCivs.some(k => String(civ).toUpperCase().includes(k));
+        },
+        getPlayerHexColor(colors, index) {
+          if (colors && colors[index] !== undefined && COLORS[colors[index]]) {
+            return COLORS[colors[index]];
+          }
+          return COLORS[index % COLORS.length] || '#ffffff';
+        },
+        playerStyle(colors, index, player) {
+          return { color: this.getPlayerHexColor(colors, index, player) };
+        },
+        async fetchMatch() {
+          const query = new URLSearchParams(location.search);
+          this.playerOverride = query.get('streamer') || query.get('player') || '';
+          const matchIdParam = query.get('matchId') || '';
+          try {
+            const url = `${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.playerOverride)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.settings && data.settings.showCivStats !== undefined) {
+              this.showCivStats = Boolean(data.settings.showCivStats);
+            }
+            const matches = data.matches || [];
+            if (matchIdParam) {
+              this.match = matches.find(m => m.id === matchIdParam) || data.currentMatch || null;
+            } else if (this.playerOverride) {
+              const target = this.playerOverride.trim().toLowerCase();
+              this.match =
+                matches.find(item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === target) ||
+                matches.find(item => String(item.streamerName || '').toLowerCase() === target) ||
+                data.currentMatch ||
+                null;
+            } else {
+              this.match =
+                data.currentMatch ||
+                matches.find(item => item.status === 'LIVE') ||
+                matches[0] ||
+                null;
+            }
+          } catch (error) {
+            console.error('Overlay API error:', error);
+          }
+        },
+        connectRealtimeStream() {
+          try {
+            const es = new EventSource('/api/stream');
+            es.onmessage = () => {
+              this.fetchMatch();
+            };
+          } catch (e) {
+            // Fallback to polling
+          }
+        }
+      },
+      mounted() {
+        this.fetchMatch();
+        this.connectRealtimeStream();
+        setInterval(this.fetchMatch, 3000);
+        setInterval(() => {
+          this.showMarquee = false;
+          setTimeout(() => {
+            this.showMarquee = true;
+          }, 2000);
+        }, 40000);
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
+

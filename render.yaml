@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: aoetrackerv2
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_PASSWORD
+        value: "00716441516"
+
