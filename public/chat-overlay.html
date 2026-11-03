@@ -54,10 +54,22 @@
       pointer-events: none;
       animation: floatUp 2.6s ease-out forwards;
     }
+    /* Tự động làm mờ 80% (còn 20% opacity) sau 5 giây không có tin nhắn mới */
+    .chat-active-bright {
+      opacity: 1;
+      transition: opacity 0.25s ease-out;
+    }
+    .chat-idle-dimmed {
+      opacity: 0.20;
+      transition: opacity 0.85s ease-in-out;
+    }
   </style>
 </head>
 <body class="p-2">
-  <div id="app" class="w-[370px] relative select-none" style="background: transparent !important;">
+  <div id="app"
+       class="w-[370px] relative select-none"
+       :class="isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright'"
+       style="background: transparent !important;">
     <!-- Hiệu ứng sao bay khi có người tặng sao -->
     <span v-for="st in starParticles" :key="st.id"
           class="star-float text-2xl z-50 stroke-gold"
@@ -83,22 +95,18 @@
         </div>
       </div>
 
-      <!-- Khung Vinh Danh Hoàng Gia khi có người vừa Tặng Sao / Vật phẩm AOE -->
+      <!-- Khung Vinh Danh Hoàng Gia gọn gàng 1 dòng khi có người vừa Tặng Sao / Vật phẩm AOE -->
       <div v-if="activeStarGift"
            class="aoe-honor-plate px-3 py-2 mb-2 flex items-center gap-2.5 msg-item shadow-xl">
         <span class="text-2xl aoe-honor-emblem shrink-0">{{ activeStarGift.giftIcon || '🌟' }}</span>
         <div class="flex-1 min-w-0">
-          <div class="font-honor text-[13px] font-black text-amber-300 leading-tight">
+          <div class="font-honor text-[13px] font-black leading-tight truncate">
             <span class="bg-amber-400 text-slate-950 text-[9px] px-1.5 py-0.5 rounded uppercase mr-1">👑 Vinh Danh</span>
-            <template v-if="activeStarGift.giftName && activeStarGift.giftCode && activeStarGift.giftCode !== 'STAR'">
-              {{ activeStarGift.senderName }} tặng {{ activeStarGift.giftIcon }} {{ activeStarGift.giftName.toUpperCase() }} (+{{ activeStarGift.starCount }} ⭐)!
-            </template>
-            <template v-else>
-              {{ activeStarGift.senderName }} tặng +{{ activeStarGift.starCount }} ⭐!
-            </template>
-          </div>
-          <div class="text-[11px] font-bold text-amber-100 italic truncate mt-0.5">
-            "{{ activeStarGift.message }}"
+            <span class="text-white">{{ activeStarGift.senderName }}</span>
+            <span class="text-slate-300 font-semibold mx-1">tặng</span>
+            <span class="text-amber-300">{{ getShortGiftItem(activeStarGift) }}</span>
+            <span class="text-slate-400 mx-1">➔</span>
+            <span class="text-emerald-400">{{ activeStarGift.streamerName || streamerFilter || 'XO' }}</span>
           </div>
         </div>
       </div>
@@ -108,9 +116,27 @@
         <div v-for="m in displayMessages" :key="m.id"
              class="msg-item text-[13px] leading-snug break-words stroke-text"
              style="background: transparent !important;">
-          <span v-if="m.type === 'STAR' || m.type === 'STAR_GIFT'" class="font-black text-amber-300 stroke-gold">
-            {{ m.giftIcon || '🌟' }} {{ m.senderName }}: {{ m.text || m.message }}
-          </span>
+          <!-- Hiệu ứng F8 Hô hào -->
+          <template v-if="m.giftCode === 'HYPE_F8'">
+            <span class="font-black text-emerald-400">🙌 {{ m.senderName }}</span>
+            <span class="font-bold text-slate-300 mx-1">hô vang:</span>
+            <span class="font-black text-amber-300 stroke-gold">"Tay đâu, tayyyy đâuuuuu" 🔥</span>
+          </template>
+          <!-- Tin nhắn Tặng Sao / Vật Phẩm AOE: Tối giản 1 dòng, tách rõ 4 màu (Người tặng Trắng • Vật phẩm Vàng • Người nhận Xanh Ngọc) -->
+          <template v-else-if="m.type === 'STAR' || m.type === 'STAR_GIFT'">
+            <span>{{ m.giftIcon || '🎁' }} </span>
+            <span class="font-extrabold text-white">{{ m.senderName }}</span>
+            <span class="font-semibold text-slate-300 mx-1">tặng</span>
+            <span class="font-black text-amber-300 stroke-gold">{{ getShortGiftItem(m) }}</span>
+            <span class="font-bold text-slate-400 mx-1">➔</span>
+            <span class="font-black text-emerald-400">{{ m.receiverName || m.streamerName || streamerFilter || 'XO' }}</span>
+          </template>
+          <!-- Sự kiện Hệ thống rút gọn -->
+          <template v-else-if="m.type === 'SYSTEM'">
+            <span class="font-extrabold text-sky-400">⚙️ </span>
+            <span class="font-bold text-slate-200">{{ m.text || m.message }}</span>
+          </template>
+          <!-- Tin nhắn Chat thông thường -->
           <template v-else>
             <span class="font-extrabold" :class="(m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-sky-300'">
               <span v-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'" class="text-[#38bdf8]">🔵 [FB] </span>
@@ -135,7 +161,10 @@
           messages: [],
           activeStarGift: null,
           starParticles: [],
-          starTimer: null
+          starTimer: null,
+          isIdleDimmed: false,
+          idleTimer: null,
+          lastLatestMsgId: ''
         };
       },
       computed: {
@@ -147,12 +176,37 @@
         }
       },
       methods: {
+        wakeUpOverlay() {
+          this.isIdleDimmed = false;
+          if (this.idleTimer) clearTimeout(this.idleTimer);
+          this.idleTimer = setTimeout(() => {
+            this.isIdleDimmed = true;
+          }, 5000);
+        },
+        getShortGiftItem(m) {
+          if (!m) return '+1 ⭐';
+          if (m.itemTitle) return m.itemTitle;
+          const stars = m.starCount || m.stars || 1;
+          const gCode = String(m.giftCode || '').toUpperCase();
+          if (gCode && gCode !== 'STAR') {
+            const cleanName = String(m.giftName || '')
+              .replace(/\s*\(wololo\)/ig, '')
+              .replace(/^bơm\s+/i, '')
+              .replace(/^đạo\s+/i, '')
+              .replace(/\s+điên$/i, '')
+              .trim();
+            const icon = (m.giftIcon || '🎁').replace('🧙‍♂️', '');
+            return `${icon} ${cleanName} (+${stars}⭐)`;
+          }
+          return `+${stars} ⭐`;
+        },
         triggerStarEffect(gift) {
           if (!gift) return;
           if (this.streamerFilter && gift.streamerName &&
               gift.streamerName.toLowerCase() !== this.streamerFilter.toLowerCase()) {
             return;
           }
+          this.wakeUpOverlay();
           const icons = (Array.isArray(gift.particles) && gift.particles.length > 0)
             ? gift.particles
             : ((Array.isArray(gift.giftParticles) && gift.giftParticles.length > 0)
@@ -178,13 +232,20 @@
             const res = await fetch(`${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.streamerFilter)}`);
             const data = await res.json();
             this.match = data.currentMatch || null;
+            let nextMsgs = [];
             if (this.match && Array.isArray(this.match.chatMessages) && this.match.chatMessages.length > 0) {
-              this.messages = this.match.chatMessages;
+              nextMsgs = this.match.chatMessages;
             } else if (Array.isArray(data.recentChat)) {
-              this.messages = this.streamerFilter
+              nextMsgs = this.streamerFilter
                 ? data.recentChat.filter(c => String(c.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase())
                 : data.recentChat;
             }
+            const latestId = nextMsgs.length > 0 ? String(nextMsgs[nextMsgs.length - 1].id || '') : '';
+            if (latestId && latestId !== this.lastLatestMsgId) {
+              this.lastLatestMsgId = latestId;
+              this.wakeUpOverlay();
+            }
+            this.messages = nextMsgs;
           } catch (e) {}
         },
         connectStream() {
@@ -198,12 +259,16 @@
                     if (!this.messages.some(m => m.id === payload.chat.id)) {
                       this.messages.push(payload.chat);
                     }
+                    this.lastLatestMsgId = String(payload.chat.id || '');
+                    this.wakeUpOverlay();
                   }
                 } else if (payload.type === 'star_gifted') {
                   if (payload.chat && (!this.streamerFilter || String(payload.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase())) {
                     if (!this.messages.some(m => m.id === payload.chat.id)) {
                       this.messages.push(payload.chat);
                     }
+                    this.lastLatestMsgId = String(payload.chat.id || '');
+                    this.wakeUpOverlay();
                   }
                   if (payload.gift) {
                     this.triggerStarEffect(payload.gift);
@@ -216,6 +281,8 @@
                     if (!this.messages.some(m => m.id === payload.chat.id)) {
                       this.messages.push(payload.chat);
                     }
+                    this.lastLatestMsgId = String(payload.chat.id || '');
+                    this.wakeUpOverlay();
                   }
                   if (payload.hype) {
                     this.triggerStarEffect({
@@ -239,6 +306,7 @@
         }
       },
       mounted() {
+        this.wakeUpOverlay();
         this.fetchChatData();
         this.connectStream();
         setInterval(this.fetchChatData, 4500);

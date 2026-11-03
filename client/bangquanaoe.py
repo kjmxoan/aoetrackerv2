@@ -3331,6 +3331,10 @@ class AOETrackerApp:
         self.chat_box.tag_config("FB_SENDER", foreground="#60a5fa", font=("Segoe UI", 9, "bold"))
         self.chat_box.tag_config("STAR", foreground="#fbbf24", background="#231a0e", font=("Segoe UI", 9, "bold"))
         self.chat_box.tag_config("AOE_GIFT", foreground="#fde047", background="#281d0e", font=("Segoe UI", 9, "bold"))
+        self.chat_box.tag_config("GIFT_SENDER", foreground="#ffffff", font=("Segoe UI", 9, "bold"))
+        self.chat_box.tag_config("GIFT_VERB", foreground="#cbd5e1", font=("Segoe UI", 9))
+        self.chat_box.tag_config("GIFT_ITEM", foreground="#fbbf24", font=("Segoe UI", 9, "bold"))
+        self.chat_box.tag_config("GIFT_RECEIVER", foreground="#34d399", font=("Segoe UI", 9, "bold"))
         self.chat_box.tag_config("SYS_EVENT", foreground="#93c5fd", background="#111a2e", font=("Segoe UI", 8, "bold"))
         self.chat_box.tag_config("MSG", foreground="#cbd5e1")
 
@@ -5589,13 +5593,13 @@ class AOETrackerApp:
                 if hasattr(self, "chat_honor_lbl"):
                     if latest_star_chat:
                         h_sender = latest_star_chat.get("senderName", "Player")
-                        h_icon = latest_star_chat.get("giftIcon") or "🌟"
-                        h_name = latest_star_chat.get("giftName") or ""
+                        h_receiver = latest_star_chat.get("receiverName") or latest_star_chat.get("streamerName") or lobby_target
+                        h_icon = (latest_star_chat.get("giftIcon") or "🌟").replace("🧙‍♂️", "")
+                        h_name = str(latest_star_chat.get("giftName") or "").replace("(Wololo)", "").strip()
                         h_stars = latest_star_chat.get("starCount") or latest_star_chat.get("stars") or 1
-                        h_msg = latest_star_chat.get("text") or latest_star_chat.get("message") or ""
-                        h_gift_txt = f"{h_icon} {h_name} (+{h_stars}⭐)" if h_name else f"+{h_stars}⭐"
+                        h_gift_txt = f"{h_icon} {h_name} (+{h_stars}⭐)" if (h_name and latest_star_chat.get("giftCode") != "STAR") else f"+{h_stars} ⭐"
                         self.chat_honor_lbl.config(
-                            text=f"👑 VINH DANH SẢNH {lobby_target.upper()}: {h_sender} tặng {h_gift_txt} — \"{h_msg[:48]}\"",
+                            text=f"👑 VINH DANH: {h_sender} tặng {h_gift_txt} ➔ {h_receiver}",
                             fg="#fef08a",
                         )
                     else:
@@ -5674,12 +5678,26 @@ class AOETrackerApp:
                         if c_type == "SYSTEM":
                             self.chat_box.insert("end", f"⚙️ [HỆ THỐNG] {msg}\n", "SYS_EVENT")
                         elif c_type in ("STAR", "STAR_GIFT"):
-                            g_icon = c.get("giftIcon") or "🌟"
-                            g_name = c.get("giftName") or ""
-                            star_amt = c.get("starCount") or c.get("stars") or 1
-                            tag_to_use = "AOE_GIFT" if c.get("giftCode") else "STAR"
-                            prefix = f"🎁 {g_icon} [{g_name} • +{star_amt}⭐]" if g_name else f"🎁 🌟 [+{star_amt}⭐]"
-                            self.chat_box.insert("end", f"{prefix} {sender}: {msg}\n", tag_to_use)
+                            if c.get("giftCode") == "HYPE_F8":
+                                self.chat_box.insert("end", f"🙌 {sender}", "GIFT_RECEIVER")
+                                self.chat_box.insert("end", " hô vang: ", "GIFT_VERB")
+                                self.chat_box.insert("end", "\"Tay đâu, tayyyy đâuuuuu\" 🔥\n", "GIFT_ITEM")
+                            else:
+                                g_icon = (c.get("giftIcon") or "🌟").replace("🧙‍♂️", "")
+                                g_code = str(c.get("giftCode") or "").upper()
+                                g_name = str(c.get("giftName") or "").replace("(Wololo)", "").strip()
+                                star_amt = c.get("starCount") or c.get("stars") or 1
+                                receiver = c.get("receiverName") or c.get("streamerName") or lobby_target
+                                if g_code and g_code != "STAR" and g_name:
+                                    item_short = f"{g_icon} {g_name} (+{star_amt}⭐)"
+                                else:
+                                    item_short = f"+{star_amt} ⭐"
+                                self.chat_box.insert("end", f"{g_icon} ", "GIFT_ITEM")
+                                self.chat_box.insert("end", f"{sender}", "GIFT_SENDER")
+                                self.chat_box.insert("end", " tặng ", "GIFT_VERB")
+                                self.chat_box.insert("end", f"{item_short}", "GIFT_ITEM")
+                                self.chat_box.insert("end", " ➔ ", "GIFT_VERB")
+                                self.chat_box.insert("end", f"{receiver}\n", "GIFT_RECEIVER")
                         elif c.get("source") == "FACEBOOK" or c.get("senderTier") == "FACEBOOK":
                             self.chat_box.insert("end", f"🔵 [FB] {sender}: ", "FB_SENDER")
                             self.chat_box.insert("end", f"{msg}\n", "MSG")

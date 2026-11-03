@@ -94,55 +94,55 @@ const CIV_MAP = {
   MIN: 'Minoan', PER: 'Persian', ROM: 'Roman', ASSY: 'Assy', HIT: 'Hittite'
 };
 
-// Danh mục Vật Phẩm Đế Chế (AOE Gifts) quy đổi tương ứng với Quỹ Sao của người chơi
+// Danh mục Vật Phẩm Đế Chế (AOE Gifts) quy đổi tương ứng với Quỹ Sao của người chơi (Tên ngắn gọn, không gây rối mắt trên Live Chat)
 const AOE_GIFT_CATALOG = {
   FOOD_200: {
     code: 'FOOD_200',
-    name: 'Bơm 200 Thực',
+    name: '200 Thực',
     icon: '🍖',
     stars: 5,
     particles: ['🍖', '🥩', '✨', '⭐'],
-    defaultMsg: 'Bơm 200 Thực cứu chủ lực!'
+    defaultMsg: 'Bơm 200 Thực!'
   },
   WOOD_500: {
     code: 'WOOD_500',
-    name: 'Bơm 500 Gỗ',
+    name: '500 Gỗ',
     icon: '🪵',
     stars: 10,
     particles: ['🪵', '🌲', '✨', '⭐'],
-    defaultMsg: 'Bơm 500 Gỗ đóng nhà BA!'
+    defaultMsg: 'Bơm 500 Gỗ!'
   },
   FOOD_1000: {
     code: 'FOOD_1000',
-    name: 'Bơm 1000 Thực',
+    name: '1000 Thực',
     icon: '🥩',
     stars: 15,
     particles: ['🥩', '🍖', '🔥', '⭐'],
-    defaultMsg: 'Bơm 1000 Thực kích Đời 4!'
+    defaultMsg: 'Bơm 1000 Thực!'
   },
   ELEPHANT: {
     code: 'ELEPHANT',
-    name: 'Con Voi Điên',
+    name: 'Con Voi',
     icon: '🐘',
     stars: 22,
     particles: ['🐘', '💥', '🔥', '⭐'],
-    defaultMsg: 'Thả Voi Điên húc bay nhà địch!'
+    defaultMsg: 'Thả Voi Điên!'
   },
   HORSE_ARCHER: {
     code: 'HORSE_ARCHER',
-    name: 'Đạo Song Mã',
+    name: 'Song Mã',
     icon: '🏹',
     stars: 50,
     particles: ['🏹', '🐎', '🔥', '🌟'],
-    defaultMsg: 'Viện trợ Đạo Song Mã thần cứu nhà!'
+    defaultMsg: 'Viện trợ Song Mã!'
   },
   PRIEST_LIGHTNING: {
     code: 'PRIEST_LIGHTNING',
-    name: 'Phù Thủy Sét (Wololo)',
-    icon: '⚡🧙‍♂️',
+    name: 'Phù Thủy Sét',
+    icon: '⚡',
     stars: 100,
     particles: ['⚡', '🧙‍♂️', '✨', '🔥'],
-    defaultMsg: 'Triệu hồi Phù Thủy Sét (Wololo) — Ái dà, hú hú!'
+    defaultMsg: 'Triệu hồi Phù Thủy Sét (Wololo)!'
   }
 };
 
@@ -1311,18 +1311,20 @@ app.post('/api', async (req, res) => {
         await db.upsertPlayer(streamerObj);
       }
 
-      const itemTitle = giftDef ? `${giftIcon} ${giftName.toUpperCase()} (${starCount} ⭐)` : `${starCount} ⭐`;
-      const displayLine = `vừa tặng ${itemTitle} cho ${streamerName} — "${cheerText}"`;
+      const itemTitle = giftDef ? `${giftIcon} ${giftName} (+${starCount}⭐)` : `+${starCount} ⭐`;
+      const displayLine = `tặng ${itemTitle} ➔ ${streamerName}`;
       const starChatObj = {
         id: 'STAR_' + now + '_' + Math.floor(Math.random() * 1000),
         matchId: targetMatch ? targetMatch.id : null,
         streamerName,
+        receiverName: streamerName,
         senderName,
         senderTier: 'STAR',
         starCount,
         giftCode,
         giftName,
         giftIcon,
+        itemTitle,
         text: displayLine,
         message: displayLine,
         type: 'STAR',

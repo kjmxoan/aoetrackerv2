@@ -1138,31 +1138,44 @@
               </div>
 
               <div v-for="m in activeChatMessages" :key="m.id"
-                   class="rounded-xl px-3 py-2.5 text-xs leading-relaxed transition"
+                   class="rounded-xl px-3 py-2 text-xs leading-relaxed transition"
                    :class="m.type === 'SYSTEM'
                      ? 'bg-slate-900/60 border border-slate-800/80 text-slate-400 italic py-1.5'
                      : (m.type === 'STAR'
-                       ? 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-900 border-2 border-amber-400/60 text-amber-100 shadow-md'
+                       ? 'bg-gradient-to-r from-amber-950/75 via-slate-900 to-slate-900 border border-amber-400/50 text-slate-100 shadow-sm'
                        : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK')
                            ? 'bg-blue-950/70 border border-blue-500/40 text-slate-100'
                            : 'bg-slate-900/95 border border-slate-800 text-slate-100'))">
-                <div class="flex justify-between items-center mb-1 gap-2">
-                  <span class="font-extrabold flex items-center gap-1.5 flex-wrap" :class="m.type === 'STAR' ? 'text-amber-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-sky-300' : 'text-white')">
-                    <span v-if="m.type === 'SYSTEM'">⚙️ [HỆ THỐNG]</span>
-                    <span v-else-if="m.type === 'STAR'" class="text-base">{{ m.giftIcon || '🌟' }}</span>
-                    <span v-else-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'">🔵 [FB Live]</span>
-                    <span v-if="m.type !== 'SYSTEM' && (m.isAdmin || String(m.senderName || '').toLowerCase() === 'xo')"
-                          class="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black">🛡️ ADMIN</span>
-                    <span v-else-if="m.type !== 'SYSTEM' && (m.isStreamer || String(m.senderName || '').toLowerCase() === activeChatStreamer.toLowerCase())"
-                          class="text-[10px] bg-sky-500 text-slate-950 px-1.5 py-0.5 rounded font-black">🎥 HOST</span>
-                    <span v-if="m.type !== 'SYSTEM'">{{ m.senderName }}</span>
-                    <span v-if="m.type === 'STAR'" class="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black uppercase">
-                      {{ m.giftName || 'Vinh Danh' }} {{ m.starCount ? ('+' + m.starCount + '⭐') : '' }}
+                <!-- Tin nhắn Tặng Sao / Vật Phẩm AOE: Tối giản 1 dòng, tách màu Người tặng (Trắng) • Quà (Vàng) • Người nhận (Xanh Ngọc) -->
+                <div v-if="m.type === 'STAR'" class="flex justify-between items-center gap-2">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-sm">{{ (m.giftIcon || '🌟').replace('🧙‍♂️', '') }}</span>
+                    <span class="font-extrabold text-white">{{ m.senderName }}</span>
+                    <span class="text-slate-300">tặng</span>
+                    <span class="font-black text-amber-300">
+                      {{ (m.giftCode && m.giftCode !== 'STAR' && m.giftName) ? (m.giftName.replace('(Wololo)', '').trim() + ' (+' + (m.starCount || 1) + '⭐)') : ('+' + (m.starCount || 1) + ' ⭐') }}
                     </span>
-                  </span>
-                  <span class="text-[10px] text-slate-300 font-mono shrink-0">{{ m.timeText }}</span>
+                    <span class="text-slate-400">➔</span>
+                    <span class="font-black text-emerald-400">{{ m.receiverName || m.streamerName || activeChatStreamer }}</span>
+                  </div>
+                  <span class="text-[10px] text-slate-400 font-mono shrink-0">{{ m.timeText }}</span>
                 </div>
-                <div class="text-slate-100 font-medium break-words">{{ m.displayText || m.text }}</div>
+                <!-- Tin nhắn Hệ thống & Chat thông thường -->
+                <template v-else>
+                  <div class="flex justify-between items-center mb-1 gap-2">
+                    <span class="font-extrabold flex items-center gap-1.5 flex-wrap" :class="(m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-sky-300' : 'text-white'">
+                      <span v-if="m.type === 'SYSTEM'">⚙️ [HỆ THỐNG]</span>
+                      <span v-else-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'">🔵 [FB Live]</span>
+                      <span v-if="m.type !== 'SYSTEM' && (m.isAdmin || String(m.senderName || '').toLowerCase() === 'xo')"
+                            class="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black">🛡️ ADMIN</span>
+                      <span v-else-if="m.type !== 'SYSTEM' && (m.isStreamer || String(m.senderName || '').toLowerCase() === activeChatStreamer.toLowerCase())"
+                            class="text-[10px] bg-sky-500 text-slate-950 px-1.5 py-0.5 rounded font-black">🎥 HOST</span>
+                      <span v-if="m.type !== 'SYSTEM'">{{ m.senderName }}</span>
+                    </span>
+                    <span class="text-[10px] text-slate-300 font-mono shrink-0">{{ m.timeText }}</span>
+                  </div>
+                  <div class="text-slate-100 font-medium break-words">{{ m.displayText || m.text }}</div>
+                </template>
               </div>
             </div>
 
