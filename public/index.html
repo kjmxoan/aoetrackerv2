@@ -548,24 +548,32 @@
               </div>
             </div>
 
-            <!-- Thanh lọc danh sách toàn bộ kèo đấu -->
-            <div class="flex justify-between items-center premium-card px-3.5 sm:px-4 py-3 rounded-xl gap-2">
-              <div class="flex gap-2 overflow-x-auto no-scrollbar">
-                <button @click="filterStatus = 'ALL'"
-                        :class="filterStatus === 'ALL' ? 'bg-amber-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
-                        class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
-                  Tất cả ({{ matches.length }})
-                </button>
-                <button @click="filterStatus = 'LIVE'"
-                        :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
-                        class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
-                  🔴 Đang Live ({{ liveMatchesCount }})
-                </button>
-                <button @click="filterStatus = 'FINISHED'"
-                        :class="filterStatus === 'FINISHED' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
-                        class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
-                  🏁 Đã kết thúc
-                </button>
+            <!-- Thanh tìm kiếm & lọc danh sách toàn bộ kèo đấu (Khu vực C) -->
+            <div class="flex flex-wrap justify-between items-center premium-card px-3.5 sm:px-4 py-3 rounded-xl gap-2">
+              <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+                <div class="relative flex-1 max-w-xs">
+                  <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs absolute left-3 top-1/2 -translate-y-1/2"></i>
+                  <input type="text" v-model="matchSearchQuery"
+                         placeholder="Tìm trận đấu, tên máy, tuyển thủ..."
+                         class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl pl-8 pr-3 py-1.5 text-xs sm:text-sm text-slate-100 outline-none">
+                </div>
+                <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
+                  <button @click="filterStatus = 'ALL'"
+                          :class="filterStatus === 'ALL' ? 'bg-amber-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
+                    Tất cả ({{ matches.length }})
+                  </button>
+                  <button @click="filterStatus = 'LIVE'"
+                          :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
+                    🔴 Đang Live ({{ liveMatchesCount }})
+                  </button>
+                  <button @click="filterStatus = 'FINISHED'"
+                          :class="filterStatus === 'FINISHED' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
+                    🏁 Đã kết thúc
+                  </button>
+                </div>
               </div>
               <button @click="fetchInitialData" class="text-xs sm:text-sm text-slate-200 hover:text-amber-300 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 shrink-0 transition">
                 <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i>
@@ -748,21 +756,26 @@
                   </div>
                   <div class="font-display font-black text-2xl sm:text-5xl tracking-tight my-0.5 whitespace-nowrap">
                     <span class="text-red-400">{{ activeMatchScore.red }}</span>
-                    <span class="text-slate-600 mx-1 sm:mx-2">-</span>
+                    <span class="text-slate-600 mx-1 sm:mx-2">:</span>
                     <span class="text-sky-400">{{ activeMatchScore.blue }}</span>
                   </div>
-                  <div class="flex items-center justify-center gap-1.5 mt-1.5 flex-wrap">
+                  <div class="grid grid-cols-2 gap-1.5 w-full mt-1.5">
                     <button @click="setWinner(null, 'RED')"
-                            class="bg-red-600/90 hover:bg-red-500 text-white font-bold px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs shadow transition"
-                            title="Cập nhật Đội Đỏ thắng trận hiện tại & đồng bộ lên OBS Overlay">
-                      🔴 +1 Đỏ
+                            class="bg-red-600/90 hover:bg-red-500 text-white font-bold px-2 py-1.5 rounded-lg text-[10px] sm:text-xs shadow transition text-center"
+                            title="Cập nhật Đội Đỏ thắng trận hiện tại (+1) & đồng bộ lên OBS Overlay">
+                      🏆 +1 Đỏ
                     </button>
                     <button @click="setWinner(null, 'BLUE')"
-                            class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs shadow transition"
-                            title="Cập nhật Đội Xanh thắng trận hiện tại & đồng bộ lên OBS Overlay">
-                      🔵 +1 Xanh
+                            class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-2 py-1.5 rounded-lg text-[10px] sm:text-xs shadow transition text-center"
+                            title="Cập nhật Đội Xanh thắng trận hiện tại (+1) & đồng bộ lên OBS Overlay">
+                      🏆 +1 Xanh
                     </button>
                   </div>
+                  <button @click="undoLastWinner"
+                          class="mt-1.5 w-full bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-semibold px-2 py-1 rounded-lg text-[10px] sm:text-[11px] transition"
+                          title="Hoàn tác kết quả ván gần nhất để tránh bấm nhầm">
+                    ↩️ Hoàn tác (-1)
+                  </button>
                   <div v-if="showCivStats" class="text-[10px] sm:text-xs text-slate-400 mt-1.5">
                     <b class="text-sky-300">{{ activeMatchCivStats.cung }} Cung</b> &bull;
                     <b class="text-slate-200">{{ activeMatchCivStats.chem }} Chém</b>
@@ -1024,9 +1037,14 @@
                 <span class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
                   <span class="text-amber-400">⚔️</span> Tiếp sức sảnh <b class="text-amber-300">{{ activeChatStreamer }}</b>:
                 </span>
-                <span v-if="myPlayerObj" class="text-[11px] font-extrabold text-amber-300 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-amber-400/40">
-                  💰 Quỹ Sao: {{ myPlayerObj.starsBalance || 0 }} ⭐
-                </span>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-[11px] font-extrabold text-emerald-300 bg-slate-900 px-2 py-0.5 rounded-lg border border-emerald-500/40">
+                    🎁 Phiên Live: {{ (activeChatMatch && activeChatMatch.starsCount) || 0 }} ⭐
+                  </span>
+                  <span v-if="myPlayerObj" class="text-[11px] font-extrabold text-amber-300 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-amber-400/40">
+                    💰 Quỹ Sao: {{ myPlayerObj.starsBalance || 0 }} ⭐
+                  </span>
+                </div>
               </div>
 
               <!-- Hàng 1: 6 Vật Phẩm Đặc Trưng AOE 1 (gap-2 = 8px) -->
@@ -1061,31 +1079,84 @@
               </div>
             </div>
 
+            <!-- Banner Ghim Bình Luận Quan Trọng -->
+            <div class="bg-slate-900/95 border border-sky-500/40 rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between gap-2 text-xs">
+              <div class="truncate text-sky-200 font-semibold">
+                <span v-if="activeChatMatch && activeChatMatch.pinnedChat && (activeChatMatch.pinnedChat.text || activeChatMatch.pinnedChat.message)">
+                  📌 <b class="text-amber-300">[GHIM - {{ activeChatMatch.pinnedChat.senderName }}]:</b> {{ activeChatMatch.pinnedChat.text || activeChatMatch.pinnedChat.message }}
+                </span>
+                <span v-else class="text-slate-400">📌 Chưa có bình luận ghim tại sảnh này</span>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button @click="pinChatMessageAction(false)"
+                        class="text-[11px] bg-slate-950 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-slate-700 px-2 py-0.5 rounded-lg font-bold transition"
+                        title="Ghim bình luận mới nhất lên đầu sảnh">
+                  📌 Ghim
+                </button>
+                <button v-if="activeChatMatch && activeChatMatch.pinnedChat"
+                        @click="pinChatMessageAction(true)"
+                        class="text-[11px] bg-slate-950 hover:bg-red-600 text-slate-400 hover:text-white border border-slate-700 px-1.5 py-0.5 rounded-lg font-bold transition"
+                        title="Bỏ ghim bình luận">
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <!-- Thanh Công Cụ Lọc Chat, Tìm User & Lọc Spam -->
+            <div class="flex flex-wrap items-center justify-between gap-1.5 mb-2.5 text-xs">
+              <div class="flex items-center gap-1">
+                <button v-for="ct in [{k:'ALL',l:'Tất cả'},{k:'CHAT',l:'💬 Chat'},{k:'GIFT',l:'🎁 Quà'},{k:'SYSTEM',l:'⚙️ Hệ thống'}]"
+                        :key="ct.k"
+                        @click="chatFilterTab = ct.k"
+                        :class="chatFilterTab === ct.k ? 'bg-amber-500 text-slate-950 font-extrabold' : 'bg-slate-900 text-slate-300 border border-slate-800'"
+                        class="px-2 py-1 rounded-lg text-[11px] transition">
+                  {{ ct.l }}
+                </button>
+              </div>
+              <div class="flex items-center gap-2 flex-1 justify-end min-w-[160px]">
+                <input type="text" v-model="chatSearchQuery"
+                       placeholder="🔍 Tìm user / nội dung..."
+                       class="bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-lg px-2.5 py-1 text-[11px] text-slate-100 outline-none w-32 sm:w-36">
+                <label class="flex items-center gap-1 text-[11px] text-slate-300 cursor-pointer select-none shrink-0"
+                       title="Tự động thu gọn các tin nhắn lặp chữ spam">
+                  <input type="checkbox" v-model="chatAntiSpam" class="accent-amber-500">
+                  <span>Lọc Spam</span>
+                </label>
+              </div>
+            </div>
+
             <!-- Danh sách tin nhắn bình luận & Thẻ Vinh Danh trong luồng Chat -->
             <div ref="webChatBox" class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 h-72 overflow-y-auto space-y-2.5 mb-3">
               <div v-if="activeChatMessages.length === 0" class="text-center py-10 text-xs text-slate-300">
-                Chưa có bình luận nào trong sảnh <b class="text-amber-300">{{ activeChatStreamer }}</b>. Hãy gửi bình luận hoặc thả Voi / Phù Thủy Sét cổ vũ!
+                Chưa có bình luận phù hợp trong sảnh <b class="text-amber-300">{{ activeChatStreamer }}</b>. Hãy gửi bình luận hoặc thả Voi / Phù Thủy Sét cổ vũ!
               </div>
 
               <div v-for="m in activeChatMessages" :key="m.id"
                    class="rounded-xl px-3 py-2.5 text-xs leading-relaxed transition"
-                   :class="m.type === 'STAR'
-                     ? 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-900 border-2 border-amber-400/60 text-amber-100 shadow-md'
-                     : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK')
-                         ? 'bg-blue-950/70 border border-blue-500/40 text-slate-100'
-                         : 'bg-slate-900/95 border border-slate-800 text-slate-100')">
+                   :class="m.type === 'SYSTEM'
+                     ? 'bg-slate-900/60 border border-slate-800/80 text-slate-400 italic py-1.5'
+                     : (m.type === 'STAR'
+                       ? 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-900 border-2 border-amber-400/60 text-amber-100 shadow-md'
+                       : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK')
+                           ? 'bg-blue-950/70 border border-blue-500/40 text-slate-100'
+                           : 'bg-slate-900/95 border border-slate-800 text-slate-100'))">
                 <div class="flex justify-between items-center mb-1 gap-2">
-                  <span class="font-extrabold flex items-center gap-1.5" :class="m.type === 'STAR' ? 'text-amber-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-sky-300' : 'text-white')">
-                    <span v-if="m.type === 'STAR'" class="text-base">{{ m.giftIcon || '🌟' }}</span>
+                  <span class="font-extrabold flex items-center gap-1.5 flex-wrap" :class="m.type === 'STAR' ? 'text-amber-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-sky-300' : 'text-white')">
+                    <span v-if="m.type === 'SYSTEM'">⚙️ [HỆ THỐNG]</span>
+                    <span v-else-if="m.type === 'STAR'" class="text-base">{{ m.giftIcon || '🌟' }}</span>
                     <span v-else-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'">🔵 [FB Live]</span>
-                    <span>{{ m.senderName }}</span>
+                    <span v-if="m.type !== 'SYSTEM' && (m.isAdmin || String(m.senderName || '').toLowerCase() === 'xo')"
+                          class="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black">🛡️ ADMIN</span>
+                    <span v-else-if="m.type !== 'SYSTEM' && (m.isStreamer || String(m.senderName || '').toLowerCase() === activeChatStreamer.toLowerCase())"
+                          class="text-[10px] bg-sky-500 text-slate-950 px-1.5 py-0.5 rounded font-black">🎥 HOST</span>
+                    <span v-if="m.type !== 'SYSTEM'">{{ m.senderName }}</span>
                     <span v-if="m.type === 'STAR'" class="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black uppercase">
-                      Vinh Danh {{ m.starCount ? ('+' + m.starCount + '⭐') : '' }}
+                      {{ m.giftName || 'Vinh Danh' }} {{ m.starCount ? ('+' + m.starCount + '⭐') : '' }}
                     </span>
                   </span>
                   <span class="text-[10px] text-slate-300 font-mono shrink-0">{{ m.timeText }}</span>
                 </div>
-                <div class="text-slate-100 font-medium break-words">{{ m.text }}</div>
+                <div class="text-slate-100 font-medium break-words">{{ m.displayText || m.text }}</div>
               </div>
             </div>
 
@@ -1774,17 +1845,17 @@
       data() {
         const localCivStats = localStorage.getItem('aoe_showCivStats');
         return {
-          appVersion: 'v5.3 Wood-Gold Esports Edition (By XO)',
+          appVersion: 'v5.4.0 Wood-Gold Esports Edition (By XO)',
           appRelease: {
-            latestVersion: '5.3',
+            latestVersion: '5.4.0',
             downloadUrl: '/download-tool',
-            releaseNotes: 'Giao diện Wood-Gold mới, Màn hình Đăng nhập riêng, Tab Cài đặt VIP góc phải.',
+            releaseNotes: 'Modern Esports Dashboard (4 Khu vực chuẩn Pro), Hoàn tác tỉ số, Ghim Chat & Lọc Spam.',
             forceUpdate: false
           },
           releaseConfigForm: {
-            latestVersion: '5.3',
+            latestVersion: '5.4.0',
             downloadUrl: '/download-tool',
-            releaseNotes: 'Giao diện Wood-Gold mới, Màn hình Đăng nhập riêng, Tab Cài đặt VIP góc phải.',
+            releaseNotes: 'Modern Esports Dashboard (4 Khu vực chuẩn Pro), Hoàn tác tỉ số, Ghim Chat & Lọc Spam.',
             forceUpdate: false
           },
           historyCleanupForm: {
@@ -1799,6 +1870,10 @@
           mobileSection: 'matches',
           showMobileMenu: false,
           filterStatus: 'ALL',
+          matchSearchQuery: '',
+          chatFilterTab: 'ALL',
+          chatSearchQuery: '',
+          chatAntiSpam: true,
           isLoading: false,
           notification: null,
           showDonateModal: false,
@@ -1881,7 +1956,20 @@
       },
       computed: {
         canEdit() { return this.isAdmin || (this.sessionPlayerName && this.sessionPlayerPass); },
-        filteredMatches() { return this.filterStatus === 'ALL' ? this.matches : this.matches.filter(m => m.status === this.filterStatus); },
+        filteredMatches() {
+          const q = (this.matchSearchQuery || '').trim().toLowerCase();
+          return (this.matches || []).filter(m => {
+            if (this.filterStatus !== 'ALL' && m.status !== this.filterStatus) return false;
+            if (!q) return true;
+            const hay = [
+              m.streamerName || '',
+              m.mode || '',
+              ...(m.redTeam || []),
+              ...(m.blueTeam || [])
+            ].join(' ').toLowerCase();
+            return hay.includes(q);
+          });
+        },
         liveMatchesCount() { return this.matches.filter(m => m.status === 'LIVE').length; },
         activeMatchScore() { return this.selectedMatch ? this.getMatchScore(this.selectedMatch) : { red: 0, blue: 0 }; },
         activeMatchCivStats() { return this.selectedMatch ? this.getMatchCivStats(this.selectedMatch) : { cung: 0, chem: 0 }; },
@@ -1950,13 +2038,117 @@
           return (this.activeChatMatch && this.activeChatMatch.streamerName) || this.sessionPlayerName || 'XO';
         },
         activeChatMessages() {
+          let raw = [];
           if (this.activeChatMatch && Array.isArray(this.activeChatMatch.chatMessages) && this.activeChatMatch.chatMessages.length > 0) {
-            return this.activeChatMatch.chatMessages;
+            raw = this.activeChatMatch.chatMessages;
+          } else {
+            raw = this.recentChat.filter(c => !this.activeChatStreamer || String(c.streamerName || '').toLowerCase() === this.activeChatStreamer.toLowerCase());
           }
-          return this.recentChat.filter(c => !this.activeChatStreamer || String(c.streamerName || '').toLowerCase() === this.activeChatStreamer.toLowerCase());
+          const tab = this.chatFilterTab || 'ALL';
+          const q = (this.chatSearchQuery || '').trim().toLowerCase();
+          const antispam = Boolean(this.chatAntiSpam);
+          const out = [];
+          let prevSig = '';
+          raw.forEach(m => {
+            const cType = m.type || 'CHAT';
+            if (tab === 'CHAT' && (cType === 'STAR' || cType === 'STAR_GIFT' || cType === 'SYSTEM')) return;
+            if (tab === 'GIFT' && cType !== 'STAR' && cType !== 'STAR_GIFT') return;
+            if (tab === 'SYSTEM' && cType !== 'SYSTEM') return;
+            const sender = String(m.senderName || 'Player');
+            const text = String(m.text || m.message || '');
+            if (q && !sender.toLowerCase().includes(q) && !text.toLowerCase().includes(q)) return;
+            const disp = (antispam && cType === 'CHAT') ? this.condenseSpamText(text) : text;
+            if (antispam && cType === 'CHAT') {
+              const sig = `${sender.toLowerCase()}::${disp.toLowerCase()}`;
+              if (sig === prevSig) return;
+              prevSig = sig;
+            }
+            out.push({ ...m, displayText: disp });
+          });
+          return out;
         }
       },
       methods: {
+        condenseSpamText(text) {
+          const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+          if (words.length >= 4) {
+            const first = words[0].toLowerCase();
+            if (words.every(w => w.toLowerCase() === first)) {
+              return `${words[0]} (x${words.length})`;
+            }
+            const uniq = new Set(words.map(w => w.toLowerCase()));
+            if (words.length >= 6 && uniq.size <= 2) {
+              return `${words.slice(0, 2).join(' ')} (x${Math.floor(words.length / 2)})`;
+            }
+          }
+          return text;
+        },
+        async pinChatMessageAction(unpin = false) {
+          if (!this.sessionPlayerName || !this.sessionPlayerPass) {
+            this.openLoginUpdaterModal();
+            return;
+          }
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'pinChatMessage',
+                matchId: this.activeChatMatch ? this.activeChatMatch.id : null,
+                streamerName: this.activeChatStreamer,
+                playerName: this.sessionPlayerName,
+                password: this.sessionPlayerPass,
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                unpin
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              this.fetchInitialData();
+              this.showNotify(data.message || 'Đã cập nhật ghim bình luận!');
+            } else {
+              this.showNotify(data.message || 'Không thể ghim bình luận!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối khi ghim bình luận!', 'error');
+          }
+        },
+        async undoLastWinner() {
+          if (!this.selectedMatch) return;
+          if (!this.canModify(this.selectedMatch)) {
+            this.openLoginUpdaterModal();
+            return;
+          }
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'undoLastWinner',
+                matchId: this.selectedMatch.id,
+                streamerName: this.selectedMatch.streamerName,
+                updatedBy: this.sessionPlayerName,
+                password: this.sessionPlayerPass,
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              if (data.match) {
+                this.selectedMatch = data.match;
+                const mIdx = this.matches.findIndex(m => m.id === data.match.id);
+                if (mIdx !== -1) this.matches.splice(mIdx, 1, data.match);
+              }
+              this.showNotify(data.message || '↩️ Đã hoàn tác kết quả ván vừa rồi!');
+            } else {
+              this.showNotify(data.message || 'Không thể hoàn tác kết quả!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối khi hoàn tác kết quả!', 'error');
+          }
+        },
         updateClock() {
           const d = new Date();
           const pad = n => String(n).padStart(2, '0');

@@ -284,3 +284,26 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
       - **Tái thiết kế khu vực `🏟️ Sảnh Các Trận Đấu Đang Live` (`Live Arena Showcase`)**: Bổ sung khu vực tiêu điểm Đấu Trường Trực Tiếp ngay đầu trang Web (`public/index.html`) và nâng cấp danh sách Sảnh Live trên App PC (`self.live_matches_list_frame`), hiển thị rõ Streamer, thể thức, bảng tỉ số ngang Đỏ vs Xanh bằng font điện tử `Chakra Petch`, tổng Sao, bình luận và cụm nút hành động 1 chạm (**`👁️ Vào Sảnh & Chat`**, **`🐘 Thả Voi 22⭐`**, **`⚡ Phù Thủy 100⭐`**).
       - **Làm mới Hiệu ứng Vinh Danh Hoàng Gia (`Royal Honor Plate` — `.aoe-honor-plate`)**: Khi người chơi tặng Sao hoặc Vật Phẩm Đế Chế (`🐘 Con Voi`, `⚡🧙‍♂️ Phù Thủy Sét`, `🥩 1000 Thực`, `🏹 Song Mã`), cả 3 nền tảng (**Web Dashboard**, **OBS Overlay `overlay.html` / `chat-overlay.html`**, và **Đỉnh Hộp Chat Đứng trên App PC `self.chat_honor_banner_frame`**) đồng loạt hiển thị Bảng Vinh Danh Hoàng Gia viền vàng ánh kim chuyển động kèm mưa biểu tượng vật phẩm bay lên.
       - **Kiểm tra & Chuẩn hóa Độ Tương Phản (WCAG AA/AAA), Khoảng Cách Nút Bấm (`>= 8px`) & Tỷ Lệ Chữ**: Nâng độ tương phản chữ phụ từ `#8e99a7` / `text-slate-500` lên `#cbd5e1` / `text-slate-200` (`>= 11.2:1`), chuẩn hóa khoảng cách nút `gap-2` (`8px`) và `padx=3..6` trên toàn bộ Dashboard.
+    - **v5.4.0 — Tái Thiết Kế Giao Diện `Modern Esports Dashboard – Dark Premium – Gold Accent` (Chia 4 Khu Vực Chuẩn Pro)**:
+      - **Khu vực A – Header và Thanh Điều Hướng**:
+        - **Thanh Header Chính**: Gom gọn Logo Vector + `AOE COMMAND CENTER` (`TOOL QUẢN LÝ AOE BY XO - v5.4.0 Wood-Gold Esports`) bên trái; trạng thái kết nối pill (`🟢 Đã kết nối •`) và đồng hồ thực (`🕒 HH:MM:SS - DD/MM/YYYY`) ở giữa; `👑 Quỹ Sao`, `💎 Hạng VIP`, **Menu gộp `🛡️ Quản trị ▾`** (gồm Quản lý Tài khoản & Quỹ Sao, Phát hành Phiên bản, Dọn lịch sử kèo đấu) và `🚪 Đăng xuất` bên phải.
+        - **Thanh Điều Hướng & Công Cụ Phụ**: Bên trái là 3 Tab chính có gạch chân vàng (`⊞ Bảng điều khiển`, `⚙️ Cài đặt VIP`, `👤 Tài khoản`); bên phải là các nút công cụ phụ kích thước nhỏ gọn (`🖥️ Link OBS`, `💬 OBS Chat`, `🔵 FB Group Live`, `📖 Hướng dẫn`, `🌐 Mở Web`).
+        - **Thanh Thao Tác Nhanh (`Quick Action Sub-bar`)**: Phân cấp rõ độ nổi bật với nút chính màu vàng kim **`🔍 Quét F2 ngay`**, hộp kiểm `[✓] Tự động quét F2`, nút phụ `🖼️ Test ảnh` và liên kết `🔗 Link OBS Bảng Quân` bên phải.
+      - **Khu vực B – Trung Tâm Quản Lý Trận Đấu (`Esports Scoreboard`)**:
+        - Thiết kế dạng **Scoreboard Esports chuyên nghiệp**: Khiên Biểu Tượng Đội Đỏ (`#dc2626`) và Đội Xanh (`#2563eb`) vẽ bằng Canvas đối xứng 2 bên, hiển thị nổi bật tên tuyển thủ chính, loại quân + màu (`[Hittite] (Xám trắng)`).
+        - **Tỉ số khổng lồ (`34pt`, `1 : 0`)** đặt chính giữa kèm thể thức (`Kèo 1v1 - Chạm 7`), trạng thái trận (`Trận #1 đang diễn ra`), **Dải lịch sử kết quả từng ván (`Lịch sử: V1: 🔴 Đỏ • V2: 🔵 Xanh`)** và hiệu ứng vinh danh khi kết thúc kèo.
+        - **2 Nút xác nhận chiến thắng kích thước bằng nhau (`50% / 50%`)**: `🏆 Team Đỏ thắng (+1)` và `🏆 Team Xanh thắng (+1)`, kèm **nút `↩️ Hoàn tác (-1)` (`undoLastWinner`)** ngay trên thanh tiêu đề Scoreboard để tránh thao tác nhầm.
+      - **Khu vực C – Danh Sách Trận Đấu (Dạng Card Nhỏ) và Bạn Bè**:
+        - Bổ sung **ô tìm kiếm trận đấu (`🔍`)** và **bộ lọc nhanh (`Tất cả` | `Đang LIVE` | `Đã kết thúc`)**.
+        - Hiển thị danh sách trận đấu dạng **Card nhỏ gọn** (`LIVE` / `XONG`, `Máy XO [1v1] • XO (1 - 0) Irm • ⭐ 0`, nút thả nhanh `🐘 22`, nút `📌 Đang xem` / `👁️ Xem trận`). Nhấn vào bất kỳ trận đấu nào sẽ chuyển ngay Scoreboard Khu vực B và Sảnh Chat Khu vực D sang trận đấu đó.
+        - Thanh trạng thái bạn bè dưới đáy hiển thị số lượng bạn bè đang online (`👥 Bạn bè: X online • 🟢 ... • ⚫ bond (Offline)`).
+      - **Khu vực D – Live Chat và Quà Tặng (Nâng Cấp 7 Tính Năng Livestream)**:
+        1. **Tin nhắn quà tặng nổi bật**: Nền nâu vàng ánh kim (`#231b10`), viền vàng và biểu tượng vật phẩm riêng (`🐘`, `⚡`, `🥩`, `🏹`).
+        2. **Phân biệt tin nhắn Admin & Chủ sảnh**: Gắn huy hiệu `🛡️ ADMIN` (nền đỏ) và `🎥 HOST` (nền xanh lam).
+        3. **Ghim bình luận quan trọng (`pinChatMessage`)**: Thanh banner `📌 GHIM` cố định đầu khung chat kèm nút `📌 Ghim mới nhất` / `✕` bỏ ghim.
+        4. **Tìm kiếm tên người dùng / nội dung chat (`🔍`)** ngay trên thanh công cụ chat.
+        5. **Tùy chọn `Lọc Spam` (`[✓] Lọc Spam`)**: Tự động thu gọn các chuỗi từ lặp lại kiểu `"hay hay hay hay..."` thành `"hay (x16)"` và ẩn tin nhắn trùng lặp liên tiếp.
+        6. **Hiển thị Tổng Sao nhận được trong phiên Live (`🎁 Phiên Live: X ⭐`)** cạnh Quỹ Sao cá nhân.
+        7. **Tách sự kiện hệ thống (`⚙️ [HỆ THỐNG]`)** khỏi tin nhắn thông thường với 4 tab lọc nhanh (`Tất cả` | `💬 Chat` | `🎁 Quà` | `⚙️ Hệ thống`).
+        - Khu vực **Vật Phẩm Đế Chế 3x2** có hình minh họa riêng (`200 Thực 5⭐`, `500 Gỗ 10⭐`, `1000 Thực 15⭐`, `Con Voi 22⭐`, `Song Mã 50⭐`, `Phù Thủy Sét 100⭐`), 4 nút tặng Sao nhanh (`+1`, `+10`, `+50`, `+100`) và nút `😊` chèn nhanh biểu tượng cảm xúc cổ vũ.
+      - **Thanh Phím Tắt & Nhật Ký Thu Gọn Dưới Đáy (`Bottom Status & Hotkey Bar`)**: Hiển thị `Phiên bản 5.4.0`, `🟢 Cập nhật mới`, cụm phím tắt nhanh (`F2 Quét | F3 Test ảnh | F5 Thắng Đỏ | F6 Thắng Xanh | F7 Kết thúc kèo`) và ngăn kéo Nhật ký thu gọn mặc định (`📜 Xem chi tiết Nhật ký`).

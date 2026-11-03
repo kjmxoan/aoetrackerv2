@@ -1006,6 +1006,8 @@ app.post('/api', async (req, res) => {
       }
 
       const streamerName = (targetMatch && targetMatch.streamerName) || data.streamerName || senderName || 'XO';
+      const isAdminSender = Boolean(auth.isAdmin || isAdminAuthorized(data) || senderName.toLowerCase() === 'xo');
+      const isStreamerSender = Boolean(senderName.toLowerCase() === String(streamerName).toLowerCase());
       const now = Date.now();
       const msgObj = {
         id: 'MSG_' + now + '_' + Math.floor(Math.random() * 1000),
@@ -1013,6 +1015,8 @@ app.post('/api', async (req, res) => {
         streamerName,
         senderName,
         senderTier,
+        isAdmin: isAdminSender,
+        isStreamer: isStreamerSender,
         text,
         message: text,
         type: 'CHAT',
@@ -1042,6 +1046,77 @@ app.post('/api', async (req, res) => {
         status: 'success',
         chat: msgObj,
         match: targetMatch || null
+      });
+    }
+
+    // ==================== GHIM / BỎ GHIM BÌNH LUẬN QUAN TRỌNG TRONG SẢNH LIVE ====================
+    if (action === 'pinChatMessage') {
+      const loginName = String(data.senderName || data.playerName || data.updatedBy || '').trim();
+      const auth = await validatePlayerAccount(loginName, data.password);
+      const adminOk = isAdminAuthorized(data) || Boolean(auth.valid && auth.isAdmin);
+      if (!auth.valid && !adminOk) {
+        return res.json({ status: 'error', message: 'Vui lòng đăng nhập để ghim bình luận!' });
+      }
+      const matches = await db.getMatches();
+      let targetMatch = null;
+      if (data.matchId) {
+        targetMatch = matches.find(m => m.id === data.matchId);
+      }
+      if (!targetMatch && data.streamerName) {
+        const sLower = String(data.streamerName).toLowerCase();
+        targetMatch =
+          matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sLower) ||
+          matches.find(m => String(m.streamerName || '').toLowerCase() === sLower);
+      }
+      if (!targetMatch) {
+        targetMatch = matches.find(m => m.status === 'LIVE') || matches[0] || null;
+      }
+
+      const streamerName = (targetMatch && targetMatch.streamerName) || data.streamerName || auth.canonicalName || 'XO';
+      const isRoomOwner = auth.valid && auth.canonicalName.toLowerCase() === String(streamerName).toLowerCase();
+      if (!adminOk && !isRoomOwner) {
+        return res.json({ status: 'error', message: 'Chỉ chủ sảnh Streamer hoặc Admin XO mới có quyền ghim bình luận!' });
+      }
+
+      let pinnedObj = null;
+      if (data.unpin) {
+        pinnedObj = null;
+      } else if (data.chat && typeof data.chat === 'object') {
+        pinnedObj = {
+          id: data.chat.id || ('PIN_' + Date.now()),
+          senderName: String(data.chat.senderName || auth.canonicalName || 'XO').slice(0, 60),
+          text: String(data.chat.text || data.chat.message || '').trim().slice(0, 260),
+          pinnedBy: auth.canonicalName || 'XO',
+          pinnedAt: Date.now(),
+          timeText: formatShortTimeVN(Date.now())
+        };
+      } else if (data.text) {
+        pinnedObj = {
+          id: 'PIN_' + Date.now(),
+          senderName: String(data.authorName || auth.canonicalName || 'XO').slice(0, 60),
+          text: String(data.text || '').trim().slice(0, 260),
+          pinnedBy: auth.canonicalName || 'XO',
+          pinnedAt: Date.now(),
+          timeText: formatShortTimeVN(Date.now())
+        };
+      }
+
+      if (targetMatch) {
+        targetMatch.pinnedChat = pinnedObj;
+        await db.saveMatch(targetMatch);
+      }
+
+      broadcastUpdate('chat_pinned', {
+        matchId: targetMatch ? targetMatch.id : null,
+        streamerName,
+        pinnedChat: pinnedObj
+      });
+
+      return res.json({
+        status: 'success',
+        pinnedChat: pinnedObj,
+        match: targetMatch || null,
+        message: pinnedObj ? `📌 Đã ghim bình luận của ${pinnedObj.senderName}!` : 'Đã bỏ ghim bình luận!'
       });
     }
 
@@ -1396,6 +1471,28 @@ app.post('/api', async (req, res) => {
         match.overlayConfig || (owner && owner.overlayConfig) || db.DEFAULT_OVERLAY_CONFIG
       );
 
+      const rWinsNow = (match.games || []).filter(g => g && g.winner === 'RED').length;
+      const bWinsNow = (match.games || []).filter(g => g && g.winner === 'BLUE').length;
+      if (winnerVal === 'RED' || winnerVal === 'BLUE') {
+        const sysNow = Date.now();
+        const winLabel = winnerVal === 'RED' ? '🔴 TEAM ĐỎ' : '🔵 TEAM XANH';
+        const sysEvent = {
+          id: 'SYS_' + sysNow + '_' + Math.floor(Math.random() * 1000),
+          matchId: match.id,
+          streamerName: match.streamerName,
+          senderName: 'HỆ THỐNG',
+          senderTier: 'SYSTEM',
+          type: 'SYSTEM',
+          text: `Ván #${gameIdx + 1}: ${winLabel} chiến thắng! Tỷ số hiện tại: ${rWinsNow} - ${bWinsNow}`,
+          message: `Ván #${gameIdx + 1}: ${winLabel} chiến thắng! Tỷ số hiện tại: ${rWinsNow} - ${bWinsNow}`,
+          createdAt: sysNow,
+          timeText: formatShortTimeVN(sysNow)
+        };
+        if (!Array.isArray(match.chatMessages)) match.chatMessages = [];
+        match.chatMessages.push(sysEvent);
+        if (match.chatMessages.length > 60) match.chatMessages = match.chatMessages.slice(-60);
+      }
+
       await db.saveMatch(match);
       broadcastUpdate('winner_updated', {
         matchId: match.id,
@@ -1405,6 +1502,86 @@ app.post('/api', async (req, res) => {
         match
       });
       return res.json({ status: 'success', gameIndex: gameIdx, winner: winnerVal, match });
+    }
+
+    if (action === 'undoLastWinner') {
+      const matches = await db.getMatches();
+      let match = null;
+      if (data.matchId) {
+        match = matches.find(item => item.id === data.matchId);
+      } else if (data.streamerName) {
+        const sLower = String(data.streamerName).toLowerCase();
+        const sortedForStreamer = matches
+          .filter(item => String(item.streamerName || '').toLowerCase() === sLower)
+          .sort(
+            (a, b) =>
+              Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+              Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+          );
+        match =
+          sortedForStreamer.find(item => item.status === 'LIVE') ||
+          sortedForStreamer[0] ||
+          null;
+      }
+      if (!match || !(await canModifyMatch(match, data))) {
+        return res.json({ status: 'error', message: 'Không có quyền hoặc không tìm thấy kèo!' });
+      }
+      if (!Array.isArray(match.games) || match.games.length === 0) {
+        return res.json({ status: 'error', message: 'Kèo đấu chưa có trận nào để hoàn tác!' });
+      }
+
+      let targetIdx = -1;
+      for (let i = match.games.length - 1; i >= 0; i--) {
+        const w = String((match.games[i] && match.games[i].winner) || '').toUpperCase();
+        if (w === 'RED' || w === 'BLUE') {
+          targetIdx = i;
+          break;
+        }
+      }
+      if (targetIdx === -1) {
+        return res.json({ status: 'error', message: 'Chưa có ván thắng nào được chấm để hoàn tác!' });
+      }
+
+      const prevWinner = match.games[targetIdx].winner;
+      match.games[targetIdx].winner = 'PENDING';
+      match.lastHeartbeat = Date.now();
+      match.status = 'LIVE';
+
+      const rWinsNow = (match.games || []).filter(g => g && g.winner === 'RED').length;
+      const bWinsNow = (match.games || []).filter(g => g && g.winner === 'BLUE').length;
+      const sysNow = Date.now();
+      const sysEvent = {
+        id: 'SYS_' + sysNow + '_' + Math.floor(Math.random() * 1000),
+        matchId: match.id,
+        streamerName: match.streamerName,
+        senderName: 'HỆ THỐNG',
+        senderTier: 'SYSTEM',
+        type: 'SYSTEM',
+        text: `↩️ Đã hoàn tác kết quả Ván #${targetIdx + 1}. Tỷ số hiện tại: ${rWinsNow} - ${bWinsNow}`,
+        message: `↩️ Đã hoàn tác kết quả Ván #${targetIdx + 1}. Tỷ số hiện tại: ${rWinsNow} - ${bWinsNow}`,
+        createdAt: sysNow,
+        timeText: formatShortTimeVN(sysNow)
+      };
+      if (!Array.isArray(match.chatMessages)) match.chatMessages = [];
+      match.chatMessages.push(sysEvent);
+      if (match.chatMessages.length > 60) match.chatMessages = match.chatMessages.slice(-60);
+
+      await db.saveMatch(match);
+      broadcastUpdate('winner_updated', {
+        matchId: match.id,
+        streamerName: match.streamerName,
+        gameIndex: targetIdx,
+        winner: 'PENDING',
+        match
+      });
+      return res.json({
+        status: 'success',
+        gameIndex: targetIdx,
+        previousWinner: prevWinner,
+        winner: 'PENDING',
+        match,
+        message: `↩️ Đã hoàn tác kết quả Ván #${targetIdx + 1} (${prevWinner === 'RED' ? 'Team Đỏ' : 'Team Xanh'})!`
+      });
     }
 
     if (action === 'finishMatch') {

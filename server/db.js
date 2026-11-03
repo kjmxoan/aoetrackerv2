@@ -31,9 +31,9 @@ const DEFAULT_OVERLAY_CONFIG = {
 };
 
 const DEFAULT_APP_RELEASE = {
-  latestVersion: '5.3',
+  latestVersion: '5.4.0',
   downloadUrl: '/download-tool',
-  releaseNotes: 'Cập nhật giao diện Wood-Gold mới, Màn hình Đăng nhập riêng, Tab Cài đặt VIP góc phải và tối ưu Bảng Điều Khiển.',
+  releaseNotes: 'Nâng cấp giao diện v5.4.0 Modern Esports Dashboard – Dark Premium – Gold Accent (4 Khu vực A/B/C/D, Scoreboard Khiên Đỏ/Xanh, Hoàn tác tỉ số, Ghim & Lọc Chat Live).',
   forceUpdate: false,
   updatedAt: Date.now()
 };

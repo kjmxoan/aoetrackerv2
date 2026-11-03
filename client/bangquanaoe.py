@@ -30,7 +30,7 @@ if os.name == "nt":
     except Exception:
         pass
 
-APP_VERSION_NUMBER = "5.3"
+APP_VERSION_NUMBER = "5.4.0"
 APP_VERSION = f"v{APP_VERSION_NUMBER} Wood-Gold Esports"
 APP_TITLE = "TOOL BẢNG QUÂN AOE BY XO"
 DEFAULT_SERVER_URL = "https://aoe-tracker.onrender.com/"
@@ -1467,6 +1467,150 @@ class AOETrackerApp:
         )
         return cv
 
+    def _create_team_shield_canvas(self, parent, team: str = "RED", size: int = 58, bg_color: str = "#161218"):
+        """Vẽ biểu tượng Khiên Chiến Thuật Esports cho TEAM ĐỎ (Đỏ Crimson) và TEAM XANH (Xanh Royal)."""
+        tk = self.tk
+        cv = tk.Canvas(
+            parent,
+            width=size,
+            height=size,
+            bg=bg_color,
+            highlightthickness=0,
+            bd=0,
+        )
+        s = size / 100.0
+        is_red = str(team).upper() == "RED"
+        outer_border = "#ef4444" if is_red else "#3b82f6"
+        inner_border = "#fca5a5" if is_red else "#93c5fd"
+        shield_fill = "#2d1219" if is_red else "#10203b"
+        emblem_fg = "#f87171" if is_red else "#60a5fa"
+
+        # Hào quang viền ngoài khiên
+        outer_pts = [
+            int(50 * s), int(6 * s),
+            int(88 * s), int(20 * s),
+            int(88 * s), int(54 * s),
+            int(72 * s), int(84 * s),
+            int(50 * s), int(95 * s),
+            int(28 * s), int(84 * s),
+            int(12 * s), int(54 * s),
+            int(12 * s), int(20 * s),
+        ]
+        cv.create_polygon(outer_pts, fill=shield_fill, outline=outer_border, width=max(2, int(3 * s)))
+
+        # Viền bạc/sáng bên trong khiên
+        inner_pts = [
+            int(50 * s), int(14 * s),
+            int(79 * s), int(25 * s),
+            int(79 * s), int(51 * s),
+            int(66 * s), int(76 * s),
+            int(50 * s), int(86 * s),
+            int(34 * s), int(76 * s),
+            int(21 * s), int(51 * s),
+            int(21 * s), int(25 * s),
+        ]
+        cv.create_polygon(inner_pts, fill="", outline=inner_border, width=1)
+
+        if is_red:
+            # Họa tiết chữ thập kiếm chiến thuật Team Đỏ
+            cv.create_line(int(50 * s), int(22 * s), int(50 * s), int(76 * s), fill=inner_border, width=max(2, int(3 * s)))
+            cv.create_line(int(30 * s), int(44 * s), int(70 * s), int(44 * s), fill=inner_border, width=max(2, int(3 * s)))
+            cv.create_oval(int(36 * s), int(30 * s), int(64 * s), int(58 * s), outline=emblem_fg, width=max(1, int(2 * s)))
+        else:
+            # Họa tiết khiên sao chiến thuật Team Xanh
+            diamond_pts = [
+                int(50 * s), int(24 * s),
+                int(68 * s), int(48 * s),
+                int(50 * s), int(74 * s),
+                int(32 * s), int(48 * s),
+            ]
+            cv.create_polygon(diamond_pts, fill="#1d4ed8", outline=inner_border, width=max(1, int(2 * s)))
+            cv.create_oval(int(43 * s), int(41 * s), int(57 * s), int(55 * s), fill=inner_border, outline="")
+        return cv
+
+    def _show_admin_management_menu(self):
+        """Hiển thị menu gom nhóm các chức năng Quản trị & Hệ thống ở Khu vực A."""
+        tk = self.tk
+        menu = tk.Menu(
+            self.root,
+            tearoff=0,
+            bg="#131822",
+            fg="#e7ebf0",
+            activebackground="#eca133",
+            activeforeground="#11151b",
+            font=("Segoe UI", 9, "bold"),
+            bd=1,
+            relief="solid",
+        )
+        menu.add_command(label="🛡️ Quản trị hệ thống & Cấp VIP (Admin XO)", command=self.open_admin_manager_window)
+        menu.add_separator()
+        menu.add_command(label="👤 Hồ sơ & Đổi mật khẩu cá nhân", command=self.open_my_profile_window)
+        menu.add_command(label="⚙️ Tùy chỉnh Cài đặt VIP Overlay", command=lambda: self.switch_main_tab("SETTINGS"))
+        menu.add_command(label="📺 Hướng dẫn gán OBS Studio", command=self.show_obs_guide_window)
+        menu.add_command(label="🔵 Cầu nối Comment Facebook Group Live", command=self.show_fb_group_live_bridge_window)
+        menu.add_separator()
+        menu.add_command(label="🌐 Mở Web Dashboard trên trình duyệt", command=self.open_web_dashboard)
+        try:
+            x = self.admin_mgr_btn.winfo_rootx()
+            y = self.admin_mgr_btn.winfo_rooty() + self.admin_mgr_btn.winfo_height() + 2
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
+    def _show_quick_emoji_menu(self):
+        """Menu chọn nhanh biểu cảm / khẩu hiệu Đế Chế AOE trong Khu vực D."""
+        tk = self.tk
+        menu = tk.Menu(
+            self.root,
+            tearoff=0,
+            bg="#131822",
+            fg="#e7ebf0",
+            activebackground="#eca133",
+            activeforeground="#11151b",
+            font=("Segoe UI", 9, "bold"),
+            bd=1,
+            relief="solid",
+        )
+        cheers = [
+            "🔥 Đánh hay quá idol ơi!",
+            "🐘 Thả Voi điên húc bay nhà địch!",
+            "⚡ Wololo! Ái dà hú hú!",
+            "🏹 Điều cung R đỉnh cao quá!",
+            "🥩 Bơm đồ kích 4 cân bản đồ!",
+            "👑 Kèo đấu siêu kinh điển!",
+        ]
+        for ch in cheers:
+            def _insert_txt(t=ch):
+                cur = self.chat_msg_var.get().strip()
+                self.chat_msg_var.set((cur + " " + t).strip() if cur else t)
+            menu.add_command(label=ch, command=_insert_txt)
+        try:
+            x = self.btn_emoji_chat.winfo_rootx() - 140
+            y = self.btn_emoji_chat.winfo_rooty() - 165
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
+    def _set_match_filter_mode(self, mode: str):
+        self.match_filter_mode = mode
+        for m_code, btn in getattr(self, "_match_filter_btns", {}).items():
+            if m_code == mode:
+                btn.configure(bg="#eca133", fg="#11151b", highlightthickness=0)
+            else:
+                btn.configure(bg="#11151b", fg="#94a3b8", highlightthickness=1, highlightbackground="#2b3541")
+        if getattr(self, "_cached_social_data", None):
+            self._update_friends_and_social_ui(self._cached_social_data)
+
+    def _set_chat_filter_tab(self, tab_code: str):
+        self.chat_filter_tab = tab_code
+        for t_code, btn in getattr(self, "_chat_filter_btns", {}).items():
+            if t_code == tab_code:
+                btn.configure(bg="#eca133", fg="#11151b", highlightthickness=0)
+            else:
+                btn.configure(bg="#11151b", fg="#94a3b8", highlightthickness=1, highlightbackground="#2b3541")
+        if getattr(self, "_cached_social_data", None):
+            self._update_friends_and_social_ui(self._cached_social_data)
+
     def _build_ui(self):
         tk = self.tk
 
@@ -1708,690 +1852,813 @@ class AOETrackerApp:
         self.login_status_lbl.pack(pady=(8, 0))
 
         # ======================================================================
-        # 2. MÀN HÌNH CHÍNH SAU KHI ĐĂNG NHẬP (MAIN DASHBOARD 2 CỘT GỌN GÀNG)
+        # 2. MÀN HÌNH CHÍNH SAU KHI ĐĂNG NHẬP:
+        #    MODERN ESPORTS DASHBOARD – DARK PREMIUM – GOLD ACCENT (4 KHU VỰC A / B / C / D)
         # ======================================================================
-        self.main_app_frame = tk.Frame(self.root, bg="#080c16")
+        self.log_drawer_open = False
+        self.match_search_var = tk.StringVar()
+        self.match_filter_mode = "ALL"
+        self._match_filter_btns = {}
+        self.chat_search_var = tk.StringVar()
+        self.chat_filter_tab = "ALL"
+        self._chat_filter_btns = {}
+        self.chat_antispam_var = tk.BooleanVar(value=True)
+        self._cached_social_data = {}
 
-        # --- HEADER GỌN GÀNG + THANH TAB Ở GÓC PHẢI ---
+        self.match_search_var.trace_add(
+            "write",
+            lambda *_: self._update_friends_and_social_ui(self._cached_social_data) if self._cached_social_data else None,
+        )
+        self.chat_search_var.trace_add(
+            "write",
+            lambda *_: self._update_friends_and_social_ui(self._cached_social_data) if self._cached_social_data else None,
+        )
+
+        # Phím tắt thao tác nhanh toàn cục trên cửa sổ Tool
+        self.root.bind("<F3>", lambda _e: self.test_from_image_file() if self.is_logged_in else None)
+        self.root.bind("<F5>", lambda _e: self.set_current_winner("RED") if self.is_logged_in else None)
+        self.root.bind("<F6>", lambda _e: self.set_current_winner("BLUE") if self.is_logged_in else None)
+        self.root.bind("<F7>", lambda _e: self.finish_current_match() if self.is_logged_in else None)
+
+        self.main_app_frame = tk.Frame(self.root, bg="#0b0e14")
+
+        # ----------------------------------------------------------------------
+        # KHU VỰC A – HEADER VÀ THANH ĐIỀU HƯỚNG PHÂN NHÓM RÕ RÀNG
+        # ----------------------------------------------------------------------
+        # Hàng 1: Logo + Tên sản phẩm (Trái) | Trạng thái kết nối + Đồng hồ (Giữa) | Quỹ Sao + Hạng VIP + Menu Quản trị + Đăng xuất (Phải)
         hdr_outer = tk.Frame(
             self.main_app_frame,
-            bg="#181e28",
+            bg="#131720",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=12,
-            pady=7,
+            highlightbackground="#232a36",
+            padx=14,
+            pady=8,
         )
         hdr_outer.pack(fill="x", padx=12, pady=(8, 4))
 
-        left_hdr = tk.Frame(hdr_outer, bg="#181e28")
+        left_hdr = tk.Frame(hdr_outer, bg="#131720")
         left_hdr.pack(side="left", anchor="w")
 
         emblem_box = tk.Frame(
             left_hdr,
-            bg="#11151b",
+            bg="#0e121a",
             highlightthickness=1,
             highlightbackground="#eca133",
-            padx=5,
+            padx=4,
             pady=3,
         )
         emblem_box.pack(side="left", padx=(0, 10))
-        self._create_brand_crest_canvas(emblem_box, size=38, bg_color="#11151b").pack()
+        self._create_brand_crest_canvas(emblem_box, size=40, bg_color="#0e121a").pack()
 
-        title_stack = tk.Frame(left_hdr, bg="#181e28")
+        title_stack = tk.Frame(left_hdr, bg="#131720")
         title_stack.pack(side="left")
-
-        hud_tag_row = tk.Frame(title_stack, bg="#181e28")
-        hud_tag_row.pack(anchor="w")
-
-        self.pulse_dot = tk.Label(
-            hud_tag_row,
-            text="● Đã kết nối",
-            font=("Segoe UI", 8, "bold"),
-            fg="#34d399",
-            bg="#11151b",
-            padx=6,
-            pady=1,
-        )
-        self.pulse_dot.pack(side="left", padx=(0, 6))
-
-        self.status_lbl = tk.Label(
-            hud_tag_row,
-            text="Chưa kết nối",
-            font=("Segoe UI", 8, "bold"),
-            fg="#8e99a7",
-            bg="#181e28",
-        )
-        self.status_lbl.pack(side="left")
 
         tk.Label(
             title_stack,
-            text=f"{APP_TITLE}",
-            font=("Segoe UI", 12, "bold"),
-            fg="#e7ebf0",
-            bg="#181e28",
-        ).pack(anchor="w", pady=(1, 0))
+            text="AOE COMMAND CENTER",
+            font=("Segoe UI", 13, "bold"),
+            fg="#eca133",
+            bg="#131720",
+        ).pack(anchor="w")
 
-        # --- GÓC PHẢI HEADER: QUỸ SAO, HẠNG VIP, NGÀY GIỜ & CÁC TAB ĐIỀU HƯỚNG ---
-        right_hdr = tk.Frame(hdr_outer, bg="#181e28")
+        tk.Label(
+            title_stack,
+            text=f"TOOL QUẢN LÝ AOE BY XO - {APP_VERSION}",
+            font=("Segoe UI", 8, "bold"),
+            fg="#94a3b8",
+            bg="#131720",
+        ).pack(anchor="w")
+
+        # Cụm phải Header: Quỹ Sao, Hạng VIP, Menu Quản trị & Đăng xuất
+        right_hdr = tk.Frame(hdr_outer, bg="#131720")
         right_hdr.pack(side="right", anchor="e")
 
-        top_meta_row = tk.Frame(right_hdr, bg="#181e28")
-        top_meta_row.pack(anchor="e", pady=(0, 4))
-
         self.my_stars_badge_lbl = tk.Label(
-            top_meta_row,
-            text="💰 Quỹ Sao: 0 ⭐",
-            font=("Segoe UI", 8, "bold"),
-            fg="#eca133",
-            bg="#1f170d",
-            padx=8,
-            pady=2,
+            right_hdr,
+            text="👑 Quỹ Sao: 0 ⭐",
+            font=("Segoe UI", 9, "bold"),
+            fg="#fbbf24",
+            bg="#231a0e",
+            padx=10,
+            pady=4,
             highlightthickness=1,
-            highlightbackground="#b7791f",
+            highlightbackground="#92400e",
             cursor="hand2",
         )
         self.my_stars_badge_lbl.pack(side="left", padx=(0, 6))
         self.my_stars_badge_lbl.bind("<Button-1>", lambda _e: self.open_my_profile_window())
 
-        self.header_ver_badge_btn = tk.Button(
-            top_meta_row,
-            text=f"🏷️ v{APP_VERSION_NUMBER}",
-            command=self.open_download_tool_url,
-            font=("Segoe UI", 8, "bold"),
-            fg="#34d399",
-            bg="#11151b",
-            relief="flat",
-            padx=7,
-            pady=1,
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            cursor="hand2",
-        )
-        self.header_ver_badge_btn.pack(side="left", padx=(0, 6))
-
         self.tier_badge_lbl = tk.Label(
-            top_meta_row,
-            text="🥉 Hạng Đồng",
-            font=("Segoe UI", 8, "bold"),
-            fg="#eca133",
-            bg="#11151b",
-            padx=8,
-            pady=2,
+            right_hdr,
+            text="💎 Hạng Kim Cương",
+            font=("Segoe UI", 9, "bold"),
+            fg="#60a5fa",
+            bg="#111b2d",
+            padx=10,
+            pady=4,
             highlightthickness=1,
-            highlightbackground="#2b3541",
+            highlightbackground="#1e3a8a",
             cursor="hand2",
         )
         self.tier_badge_lbl.pack(side="left", padx=(0, 6))
         self.tier_badge_lbl.bind("<Button-1>", lambda _e: self.open_my_profile_window())
 
-        self.date_corner_lbl = tk.Label(
-            top_meta_row,
-            text="📅 --/--/---- • --:--:--",
-            font=("Consolas", 8, "bold"),
-            fg="#8e99a7",
-            bg="#11151b",
-            padx=8,
-            pady=2,
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-        )
-        self.date_corner_lbl.pack(side="left")
-
-        # Thanh Tab điều hướng ở góc phải (Ngắn gọn để không bao giờ bị khuất chữ)
-        nav_tabs_row = tk.Frame(right_hdr, bg="#181e28")
-        nav_tabs_row.pack(anchor="e")
-
-        self.tab_battle_btn = tk.Button(
-            nav_tabs_row,
-            text="⚔️ Bảng Điều Khiển",
-            command=lambda: self.switch_main_tab("BATTLE"),
-            font=("Segoe UI", 8, "bold"),
-            bg="#eca133",
-            fg="#11151b",
-            relief="flat",
-            padx=10,
-            pady=3,
-            cursor="hand2",
-        )
-        self.tab_battle_btn.pack(side="left", padx=(0, 5))
-
-        self.tab_settings_btn = tk.Button(
-            nav_tabs_row,
-            text="⚙️ Cài Đặt VIP",
-            command=lambda: self.switch_main_tab("SETTINGS"),
-            font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=10,
-            pady=3,
-            cursor="hand2",
-        )
-        self.tab_settings_btn.pack(side="left", padx=(0, 5))
-
-        self.my_profile_btn = tk.Button(
-            nav_tabs_row,
-            text="👤 Tài Khoản",
-            command=self.open_my_profile_window,
-            font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=9,
-            pady=3,
-            cursor="hand2",
-        )
-        self.my_profile_btn.pack(side="left", padx=(0, 5))
-        self._bind_hover(self.my_profile_btn, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
-
         self.admin_mgr_btn = tk.Button(
-            nav_tabs_row,
-            text="🛡️ Admin",
-            command=self.open_admin_manager_window,
-            font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#eca133",
+            right_hdr,
+            text="🛡️ Quản trị ▾",
+            command=self._show_admin_management_menu,
+            font=("Segoe UI", 9, "bold"),
+            bg="#241b0f",
+            fg="#fbbf24",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=9,
+            highlightbackground="#b45309",
+            padx=10,
             pady=3,
             cursor="hand2",
         )
-        self.admin_mgr_btn.pack(side="left", padx=(0, 5))
-        self._bind_hover(self.admin_mgr_btn, "#11151b", "#222b38", "#eca133", "#ffffff")
+        self.admin_mgr_btn.pack(side="left", padx=(0, 6))
+        self._bind_hover(self.admin_mgr_btn, "#241b0f", "#362712", "#fbbf24", "#ffffff")
 
         self.logout_btn = tk.Button(
-            nav_tabs_row,
+            right_hdr,
             text="🚪 Đăng xuất",
             command=self.logout_to_login_screen,
-            font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#f0657b",
+            font=("Segoe UI", 9, "bold"),
+            bg="#261319",
+            fg="#f87171",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#c94a61",
-            padx=9,
+            highlightbackground="#7f1d1d",
+            padx=10,
             pady=3,
             cursor="hand2",
         )
         self.logout_btn.pack(side="left")
-        self._bind_hover(self.logout_btn, "#11151b", "#2b161d", "#f0657b", "#fda4af")
+        self._bind_hover(self.logout_btn, "#261319", "#3b1822", "#f87171", "#fecaca")
+
+        # Cụm giữa Header: Trạng thái kết nối + Đồng hồ trực tiếp
+        center_hdr = tk.Frame(hdr_outer, bg="#131720")
+        center_hdr.pack(side="left", padx=(24, 10))
+
+        self.pulse_dot = tk.Label(
+            center_hdr,
+            text="🟢 Đã kết nối •",
+            font=("Segoe UI", 9, "bold"),
+            fg="#34d399",
+            bg="#0e261e",
+            padx=10,
+            pady=3,
+            highlightthickness=1,
+            highlightbackground="#14532d",
+        )
+        self.pulse_dot.pack(side="left", padx=(0, 8))
+
+        self.date_corner_lbl = tk.Label(
+            center_hdr,
+            text="🕒 --:--:-- - --/--/----",
+            font=("Consolas", 9, "bold"),
+            fg="#94a3b8",
+            bg="#131720",
+        )
+        self.date_corner_lbl.pack(side="left", padx=(0, 8))
+
+        self.status_lbl = tk.Label(
+            center_hdr,
+            text="",
+            font=("Segoe UI", 8, "bold"),
+            fg="#64748b",
+            bg="#131720",
+        )
+        self.status_lbl.pack(side="left")
+
+        # Hàng 2 Khu vực A: Thanh điều hướng Tab chính (Trái) + Thanh công cụ phụ trợ (Phải)
+        nav_sub_bar = tk.Frame(
+            self.main_app_frame,
+            bg="#131720",
+            highlightthickness=1,
+            highlightbackground="#232a36",
+            padx=12,
+            pady=0,
+        )
+        nav_sub_bar.pack(fill="x", padx=12, pady=(0, 4))
+
+        nav_left_tabs = tk.Frame(nav_sub_bar, bg="#131720")
+        nav_left_tabs.pack(side="left")
+
+        # Tab 1: Bảng điều khiển (có gạch chân vàng khi active)
+        tab1_wrap = tk.Frame(nav_left_tabs, bg="#131720")
+        tab1_wrap.pack(side="left", padx=(0, 8))
+        self.tab_battle_btn = tk.Button(
+            tab1_wrap,
+            text="⊞ Bảng điều khiển",
+            command=lambda: self.switch_main_tab("BATTLE"),
+            font=("Segoe UI", 9, "bold"),
+            bg="#131720",
+            fg="#fbbf24",
+            activebackground="#1a202c",
+            activeforeground="#fbbf24",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=6,
+            cursor="hand2",
+        )
+        self.tab_battle_btn.pack(fill="x")
+        self.tab_battle_underline = tk.Frame(tab1_wrap, bg="#eca133", height=3)
+        self.tab_battle_underline.pack(fill="x")
+
+        # Tab 2: Cài đặt VIP
+        tab2_wrap = tk.Frame(nav_left_tabs, bg="#131720")
+        tab2_wrap.pack(side="left", padx=(0, 8))
+        self.tab_settings_btn = tk.Button(
+            tab2_wrap,
+            text="⚙️ Cài đặt VIP",
+            command=lambda: self.switch_main_tab("SETTINGS"),
+            font=("Segoe UI", 9, "bold"),
+            bg="#131720",
+            fg="#94a3b8",
+            activebackground="#1a202c",
+            activeforeground="#ffffff",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=6,
+            cursor="hand2",
+        )
+        self.tab_settings_btn.pack(fill="x")
+        self.tab_settings_underline = tk.Frame(tab2_wrap, bg="#131720", height=3)
+        self.tab_settings_underline.pack(fill="x")
+
+        # Tab 3: Tài khoản
+        tab3_wrap = tk.Frame(nav_left_tabs, bg="#131720")
+        tab3_wrap.pack(side="left", padx=(0, 8))
+        self.my_profile_btn = tk.Button(
+            tab3_wrap,
+            text="👤 Tài khoản",
+            command=self.open_my_profile_window,
+            font=("Segoe UI", 9, "bold"),
+            bg="#131720",
+            fg="#94a3b8",
+            activebackground="#1a202c",
+            activeforeground="#ffffff",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=6,
+            cursor="hand2",
+        )
+        self.my_profile_btn.pack(fill="x")
+        tk.Frame(tab3_wrap, bg="#131720", height=3).pack(fill="x")
+
+        # Vạch ngăn cách dọc
+        tk.Frame(nav_sub_bar, bg="#262f3d", width=1, height=22).pack(side="left", padx=10, pady=6)
+
+        # Cụm công cụ phụ bên phải thanh điều hướng (kích thước gọn, độ nổi bật vừa phải)
+        nav_right_tools = tk.Frame(nav_sub_bar, bg="#131720")
+        nav_right_tools.pack(side="right", pady=4)
+
+        for lbl_txt, cmd_fn in [
+            ("🖥️ Link OBS", self.copy_obs_link),
+            ("💬 OBS Chat", self.copy_obs_chat_link),
+            ("🔵 FB Group Live", self.show_fb_group_live_bridge_window),
+            ("📖 Hướng dẫn", self.show_obs_guide_window),
+            ("🌐 Mở Web", self.open_web_dashboard),
+        ]:
+            b_tool = tk.Button(
+                nav_right_tools,
+                text=lbl_txt,
+                command=cmd_fn,
+                font=("Segoe UI", 8, "bold"),
+                bg="#131720",
+                fg="#cbd5e1",
+                activebackground="#1e2533",
+                activeforeground="#eca133",
+                relief="flat",
+                bd=0,
+                padx=9,
+                pady=3,
+                cursor="hand2",
+            )
+            b_tool.pack(side="left", padx=3)
+            self._bind_hover(b_tool, "#131720", "#1b2230", "#cbd5e1", "#fbbf24")
+            if lbl_txt == "🌐 Mở Web":
+                self.open_web_btn = b_tool
 
         # ======================================================================
-        # 3. THANH TRẠNG THÁI NHẬT KÝ MỎNG Ở ĐÁY CỬA SỔ
+        # THANH TRẠNG THÁI & PHÍM TẮT Ở ĐÁY CỬA SỔ
         # ======================================================================
         self.status_log_bar = tk.Frame(
             self.main_app_frame,
-            bg="#181e28",
+            bg="#131720",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=10,
-            pady=4,
+            highlightbackground="#232a36",
+            padx=12,
+            pady=5,
         )
-        self.status_log_bar.pack(fill="x", side="bottom", padx=12, pady=(2, 8))
+        self.status_log_bar.pack(fill="x", side="bottom", padx=12, pady=(4, 8))
+
+        tk.Label(
+            self.status_log_bar,
+            text=f"Phiên bản {APP_VERSION_NUMBER}",
+            font=("Segoe UI", 8, "bold"),
+            fg="#94a3b8",
+            bg="#131720",
+        ).pack(side="left", padx=(0, 8))
+
+        self.header_ver_badge_btn = tk.Button(
+            self.status_log_bar,
+            text="🟢 Cập nhật mới",
+            command=self.open_download_tool_url,
+            font=("Segoe UI", 8, "bold"),
+            fg="#34d399",
+            bg="#0e261e",
+            relief="flat",
+            padx=8,
+            pady=1,
+            highlightthickness=1,
+            highlightbackground="#14532d",
+            cursor="hand2",
+        )
+        self.header_ver_badge_btn.pack(side="left", padx=(0, 16))
+
+        tk.Label(
+            self.status_log_bar,
+            text="Phím tắt:  F2 Quét  |  F3 Test ảnh  |  F5 Thắng Đỏ  |  F6 Thắng Xanh  |  F7 Kết thúc kèo",
+            font=("Segoe UI", 8, "bold"),
+            fg="#cbd5e1",
+            bg="#131720",
+        ).pack(side="left", padx=(0, 12))
 
         self.latest_log_lbl = tk.Label(
             self.status_log_bar,
-            text="📜 Sẵn sàng — Giao diện 2 cột mới: Trận đấu & Sảnh Live (Trái) | Hộp Chat & Tặng Vật Phẩm AOE (Phải).",
+            text="",
             font=("Consolas", 8),
-            fg="#8e99a7",
-            bg="#181e28",
+            fg="#64748b",
+            bg="#131720",
             anchor="w",
         )
         self.latest_log_lbl.pack(side="left", fill="x", expand=True)
 
         self.btn_toggle_log = tk.Button(
             self.status_log_bar,
-            text="📜 Ẩn Nhật ký ▼",
+            text="📜 Xem chi tiết Nhật ký",
             command=self.toggle_log_drawer,
             font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#eca133",
+            bg="#241b0f",
+            fg="#fbbf24",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=8,
+            highlightbackground="#b45309",
+            padx=9,
             pady=2,
             cursor="hand2",
         )
-        self.btn_toggle_log.pack(side="right", padx=(5, 0))
-        self._bind_hover(self.btn_toggle_log, "#11151b", "#222b38", "#eca133", "#ffffff")
+        self.btn_toggle_log.pack(side="right", padx=(6, 0))
+        self._bind_hover(self.btn_toggle_log, "#241b0f", "#362712", "#fbbf24", "#ffffff")
 
         self.btn_expand_log = tk.Button(
             self.status_log_bar,
             text="🔎 Phóng to Log (14 dòng)",
             command=self.toggle_expand_log_height,
             font=("Segoe UI", 8, "bold"),
-            bg="#152238",
+            bg="#131f33",
             fg="#60a5fa",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#2563eb",
-            padx=8,
+            highlightbackground="#1d4ed8",
+            padx=9,
             pady=2,
             cursor="hand2",
         )
-        self.btn_expand_log.pack(side="right", padx=(5, 0))
-        self._bind_hover(self.btn_expand_log, "#152238", "#1d4ed8", "#60a5fa", "#ffffff")
+        self.btn_expand_log.pack(side="right", padx=(6, 0))
+        self._bind_hover(self.btn_expand_log, "#131f33", "#1e3a8a", "#60a5fa", "#ffffff")
 
         self.btn_copy_log = tk.Button(
             self.status_log_bar,
             text="📋 Copy Log",
             command=self.copy_all_logs_to_clipboard,
             font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
+            bg="#181e29",
+            fg="#cbd5e1",
             relief="flat",
             highlightthickness=1,
             highlightbackground="#2b3541",
-            padx=8,
+            padx=9,
             pady=2,
             cursor="hand2",
         )
-        self.btn_copy_log.pack(side="right", padx=(5, 0))
-        self._bind_hover(self.btn_copy_log, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
+        self.btn_copy_log.pack(side="right", padx=(6, 0))
+        self._bind_hover(self.btn_copy_log, "#181e29", "#242c3d", "#cbd5e1", "#ffffff")
 
         # ======================================================================
         # VÙNG CHỨA CÁC TAB CHÍNH (TAB 1: BẢNG ĐIỀU KHIỂN | TAB 2: CÀI ĐẶT VIP)
         # ======================================================================
-        self.tab_container = tk.Frame(self.main_app_frame, bg="#080c16")
+        self.tab_container = tk.Frame(self.main_app_frame, bg="#0b0e14")
         self.tab_container.pack(fill="both", expand=True)
 
-        self.battle_tab_frame = tk.Frame(self.tab_container, bg="#080c16")
-        self.settings_tab_frame = tk.Frame(self.tab_container, bg="#080c16")
+        self.battle_tab_frame = tk.Frame(self.tab_container, bg="#0b0e14")
+        self.settings_tab_frame = tk.Frame(self.tab_container, bg="#0b0e14")
 
-        # ----------------------------------------------------------------------
-        # TAB 1: BẢNG ĐIỀU KHIỂN CHÍNH (THANH TÁC VỤ NHANH + BỐ CỤC 2 CỘT TRÁI/PHẢI)
-        # ----------------------------------------------------------------------
+        # Thanh thao tác nhanh thứ hai (Gom gọn: Tự động quét F2 | Nút chính Quét F2 ngay | Test ảnh | Link OBS Bảng Quân)
         quick_bar = tk.Frame(
             self.battle_tab_frame,
-            bg="#181e28",
+            bg="#131720",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=10,
+            highlightbackground="#232a36",
+            padx=12,
             pady=6,
         )
-        quick_bar.pack(fill="x", padx=12, pady=(2, 4))
+        quick_bar.pack(fill="x", padx=12, pady=(0, 6))
 
         tk.Checkbutton(
             quick_bar,
             text="Tự động quét F2",
             variable=self.auto_scan_var,
             command=self.save_current_config,
-            font=("Segoe UI", 8, "bold"),
-            fg="#e7ebf0",
-            bg="#181e28",
-            selectcolor="#11151b",
-            activebackground="#181e28",
+            font=("Segoe UI", 9, "bold"),
+            fg="#e2e8f0",
+            bg="#131720",
+            selectcolor="#0b0e14",
+            activebackground="#131720",
             activeforeground="#eca133",
             cursor="hand2",
-        ).pack(side="left", padx=(0, 6))
+        ).pack(side="left", padx=(0, 10))
 
         self.btn_scan_now = tk.Button(
             quick_bar,
             text="🔍 Quét F2 ngay",
             command=self.manual_scan_screen,
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#eca133",
             fg="#11151b",
             relief="flat",
-            padx=9,
-            pady=3,
+            padx=14,
+            pady=4,
             cursor="hand2",
         )
-        self.btn_scan_now.pack(side="left", padx=(0, 5))
-        self._bind_hover(self.btn_scan_now, "#eca133", "#d98f26", "#11151b", "#11151b")
+        self.btn_scan_now.pack(side="left", padx=(0, 8))
+        self._bind_hover(self.btn_scan_now, "#eca133", "#f59e0b", "#11151b", "#11151b")
 
         self.btn_test_img = tk.Button(
             quick_bar,
             text="🖼️ Test ảnh",
             command=self.test_from_image_file,
-            font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=8,
-            pady=3,
-            cursor="hand2",
-        )
-        self.btn_test_img.pack(side="left", padx=(0, 5))
-        self._bind_hover(self.btn_test_img, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
-
-        # Cụm nút OBS & Web bên phải thanh công cụ (gọn gàng, không bao giờ bị che khuất)
-        self.open_web_btn = tk.Button(
-            quick_bar,
-            text="🌐 Mở Web",
-            command=self.open_web_dashboard,
-            font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=8,
-            pady=3,
-            cursor="hand2",
-        )
-        self.open_web_btn.pack(side="right")
-        self._bind_hover(self.open_web_btn, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
-
-        btn_obs_guide = tk.Button(
-            quick_bar,
-            text="📖 Hướng dẫn OBS",
-            command=self.show_obs_guide_window,
-            font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=8,
-            pady=3,
-            cursor="hand2",
-        )
-        btn_obs_guide.pack(side="right", padx=(0, 5))
-        self._bind_hover(btn_obs_guide, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
-
-        btn_fb_live = tk.Button(
-            quick_bar,
-            text="🔵 FB Group Live",
-            command=self.show_fb_group_live_bridge_window,
-            font=("Segoe UI", 8, "bold"),
-            bg="#152238",
-            fg="#60a5fa",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#2563eb",
-            padx=8,
-            pady=3,
-            cursor="hand2",
-        )
-        btn_fb_live.pack(side="right", padx=(0, 5))
-        self._bind_hover(btn_fb_live, "#152238", "#1d4ed8", "#60a5fa", "#ffffff")
-
-        btn_copy_chat_obs = tk.Button(
-            quick_bar,
-            text="💬 Link OBS Chat",
-            command=self.copy_obs_chat_link,
-            font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#eca133",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=8,
-            pady=3,
-            cursor="hand2",
-        )
-        btn_copy_chat_obs.pack(side="right", padx=(0, 5))
-        self._bind_hover(btn_copy_chat_obs, "#11151b", "#222b38", "#eca133", "#ffffff")
-
-        btn_copy_obs = tk.Button(
-            quick_bar,
-            text="📋 Link OBS Bảng Quân",
-            command=self.copy_obs_link,
-            font=("Segoe UI", 8, "bold"),
-            bg="#eca133",
-            fg="#11151b",
-            relief="flat",
-            padx=9,
-            pady=3,
-            cursor="hand2",
-        )
-        btn_copy_obs.pack(side="right", padx=(0, 5))
-        self._bind_hover(btn_copy_obs, "#eca133", "#d98f26", "#11151b", "#11151b")
-
-        # ======================================================================
-        # BỐ CỤC CHIA 2 CỘT CHÍNH (WORKSPACE SPLIT: TRÁI 56% | PHẢI 44%)
-        # - CỘT TRÁI: Khung Team Đỏ/Xanh thu gọn ở góc trên + Sảnh các trận đang Live + Bảng Log Điều Tra
-        # - CỘT PHẢI: Hộp Chat Đứng (Vertical Chat Box giống chat-overlay) + Kho Vật Phẩm Đế Chế (Voi, Phù Thủy, Thực...)
-        # ======================================================================
-        workspace_split = tk.Frame(self.battle_tab_frame, bg="#080c16")
-        workspace_split.pack(fill="both", expand=True, padx=12, pady=2)
-        workspace_split.columnconfigure(0, weight=56, uniform="ws_col")
-        workspace_split.columnconfigure(1, weight=44, uniform="ws_col")
-        workspace_split.rowconfigure(0, weight=1)
-
-        self.left_workspace_col = tk.Frame(workspace_split, bg="#080c16")
-        self.left_workspace_col.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-
-        self.right_workspace_col = tk.Frame(workspace_split, bg="#080c16")
-        self.right_workspace_col.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
-
-        # ----------------------------------------------------------------------
-        # CỘT TRÁI - PHẦN 1 (GÓC TRÊN TRÁI): KHUNG TEAM ĐỎ VS TEAM XANH THU GỌN
-        # ----------------------------------------------------------------------
-        battle_card = tk.Frame(
-            self.left_workspace_col,
-            bg="#181e28",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=10,
-            pady=8,
-        )
-        battle_card.pack(fill="x", side="top", pady=(0, 6))
-
-        arena_grid = tk.Frame(battle_card, bg="#181e28")
-        arena_grid.pack(fill="x")
-        arena_grid.columnconfigure(0, weight=4)
-        arena_grid.columnconfigure(1, weight=3)
-        arena_grid.columnconfigure(2, weight=4)
-
-        # --- CARD TRÁI: TEAM ĐỎ ---
-        self.red_card = tk.Frame(
-            arena_grid,
-            bg="#1e171b",
-            highlightthickness=1,
-            highlightbackground="#5c242c",
-            padx=8,
-            pady=7,
-        )
-        self.red_card.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-
-        red_hdr = tk.Frame(self.red_card, bg="#1e171b")
-        red_hdr.pack(fill="x", side="top")
-        tk.Label(
-            red_hdr,
-            text="🔴 Team Đỏ",
             font=("Segoe UI", 9, "bold"),
-            fg="#f87171",
-            bg="#1e171b",
-        ).pack(side="left")
-        self.red_count_lbl = tk.Label(
-            red_hdr,
-            text="0 người",
-            font=("Segoe UI", 8, "bold"),
-            fg="#fca5a5",
-            bg="#11151b",
-            padx=6,
-            pady=1,
-        )
-        self.red_count_lbl.pack(side="right")
-
-        self.btn_red_win = tk.Button(
-            self.red_card,
-            text="🔴 Team Đỏ thắng (+1)",
-            command=lambda: self.set_current_winner("RED"),
-            font=("Segoe UI", 9, "bold"),
-            bg="#c83745",
-            fg="#ffffff",
-            activebackground="#a82835",
-            relief="flat",
-            pady=5,
-            cursor="hand2",
-        )
-        self.btn_red_win.pack(side="bottom", fill="x")
-        self._bind_hover(self.btn_red_win, "#c83745", "#a82835", "#ffffff", "#ffffff")
-
-        self.red_roster_lbl = tk.Label(
-            self.red_card,
-            text="Chưa có đội hình Team Đỏ\n(Ấn F2 Diplomacy trong game)",
-            font=("Segoe UI", 8, "bold"),
-            fg="#e7ebf0",
-            bg="#11151b",
-            justify="left",
-            anchor="w",
-            padx=8,
-            pady=6,
-            height=4,
-        )
-        self.red_roster_lbl.pack(side="top", fill="both", expand=True, pady=5)
-
-        # --- CARD GIỮA: TỶ SỐ TRẬN ĐẤU TRUNG TÂM ---
-        center_hud = tk.Frame(
-            arena_grid,
-            bg="#11151b",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=8,
-            pady=7,
-        )
-        center_hud.grid(row=0, column=1, sticky="nsew", padx=2)
-
-        self.match_mode_lbl = tk.Label(
-            center_hud,
-            text="Chạm 100 • Chờ kèo",
-            font=("Segoe UI", 8, "bold"),
-            fg="#eca133",
-            bg="#181e28",
-            padx=7,
-            pady=2,
-        )
-        self.match_mode_lbl.pack(side="top", pady=(0, 2))
-
-        self.btn_end_match = tk.Button(
-            center_hud,
-            text="🗑 Kết thúc kèo",
-            command=self.finish_current_match,
-            font=("Segoe UI", 8, "bold"),
-            bg="#181e28",
-            fg="#f0657b",
-            activebackground="#2b161d",
-            activeforeground="#fda4af",
+            bg="#1a202c",
+            fg="#cbd5e1",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#c94a61",
+            highlightbackground="#2d3748",
+            padx=11,
             pady=4,
             cursor="hand2",
         )
-        self.btn_end_match.pack(side="bottom", fill="x")
-        self._bind_hover(self.btn_end_match, "#181e28", "#2b161d", "#f0657b", "#fda4af")
+        self.btn_test_img.pack(side="left")
+        self._bind_hover(self.btn_test_img, "#1a202c", "#242c3d", "#cbd5e1", "#ffffff")
+
+        btn_copy_obs = tk.Button(
+            quick_bar,
+            text="🔗 Link OBS Bảng Quân",
+            command=self.copy_obs_link,
+            font=("Segoe UI", 9, "bold"),
+            bg="#131720",
+            fg="#eca133",
+            relief="flat",
+            bd=0,
+            padx=10,
+            pady=3,
+            cursor="hand2",
+        )
+        btn_copy_obs.pack(side="right")
+        self._bind_hover(btn_copy_obs, "#131720", "#1e2533", "#eca133", "#fde047")
+
+        # ======================================================================
+        # BỐ CỤC CHIA 2 CỘT CHÍNH (TRÁI: KHU VỰC B + KHU VỰC C | PHẢI: KHU VỰC D)
+        # ======================================================================
+        workspace_split = tk.Frame(self.battle_tab_frame, bg="#0b0e14")
+        workspace_split.pack(fill="both", expand=True, padx=12, pady=0)
+        workspace_split.columnconfigure(0, weight=54, uniform="ws_col")
+        workspace_split.columnconfigure(1, weight=46, uniform="ws_col")
+        workspace_split.rowconfigure(0, weight=1)
+
+        self.left_workspace_col = tk.Frame(workspace_split, bg="#0b0e14")
+        self.left_workspace_col.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+
+        self.right_workspace_col = tk.Frame(workspace_split, bg="#0b0e14")
+        self.right_workspace_col.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+
+        # ----------------------------------------------------------------------
+        # KHU VỰC B – TRUNG TÂM QUẢN LÝ TRẬN ĐẤU (ESPORTS SCOREBOARD THỰC THỤ)
+        # ----------------------------------------------------------------------
+        battle_card = tk.Frame(
+            self.left_workspace_col,
+            bg="#131720",
+            highlightthickness=1,
+            highlightbackground="#232a36",
+            padx=14,
+            pady=12,
+        )
+        battle_card.pack(fill="x", side="top", pady=(0, 8))
+
+        # Thanh tiêu đề Scoreboard: TRẬN ĐẤU ĐANG DIỄN RA | Nút Hoàn tác (-1) + Nhãn LIVE
+        sb_top_bar = tk.Frame(battle_card, bg="#131720")
+        sb_top_bar.pack(fill="x", pady=(0, 8))
+
+        self.scoreboard_hdr_lbl = tk.Label(
+            sb_top_bar,
+            text="◉  TRẬN ĐẤU ĐANG DIỄN RA",
+            font=("Segoe UI", 9, "bold"),
+            fg="#cbd5e1",
+            bg="#131720",
+        )
+        self.scoreboard_hdr_lbl.pack(side="left")
+
+        self.scoreboard_live_badge = tk.Label(
+            sb_top_bar,
+            text="LIVE",
+            font=("Segoe UI", 8, "bold"),
+            fg="#34d399",
+            bg="#0e2920",
+            padx=8,
+            pady=2,
+            highlightthickness=1,
+            highlightbackground="#166534",
+        )
+        self.scoreboard_live_badge.pack(side="right")
+
+        self.btn_undo_win = tk.Button(
+            sb_top_bar,
+            text="↩️ Hoàn tác (-1)",
+            command=self.undo_last_winner,
+            font=("Segoe UI", 8, "bold"),
+            bg="#1a202c",
+            fg="#fbbf24",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#475569",
+            padx=8,
+            pady=1,
+            cursor="hand2",
+        )
+        self.btn_undo_win.pack(side="right", padx=(0, 8))
+        self._bind_hover(self.btn_undo_win, "#1a202c", "#2d3748", "#fbbf24", "#ffffff")
+
+        # Khung Scoreboard 3 cột: TEAM ĐỎ (Trái) | TỶ SỐ LỚN (Giữa) | TEAM XANH (Phải)
+        sb_board_inner = tk.Frame(
+            battle_card,
+            bg="#161b26",
+            highlightthickness=1,
+            highlightbackground="#262f3f",
+            padx=12,
+            pady=12,
+        )
+        sb_board_inner.pack(fill="x", pady=(0, 10))
+        sb_board_inner.columnconfigure(0, weight=4, uniform="sb_col")
+        sb_board_inner.columnconfigure(1, weight=4, uniform="sb_col")
+        sb_board_inner.columnconfigure(2, weight=4, uniform="sb_col")
+
+        # --- CỘT TRÁI: TEAM ĐỎ ---
+        self.red_card = tk.Frame(
+            sb_board_inner,
+            bg="#1c1419",
+            highlightthickness=1,
+            highlightbackground="#4c1d24",
+            padx=10,
+            pady=10,
+        )
+        self.red_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+
+        self._create_team_shield_canvas(self.red_card, "RED", size=56, bg_color="#1c1419").pack(pady=(2, 4))
+
+        tk.Label(
+            self.red_card,
+            text="TEAM ĐỎ",
+            font=("Segoe UI", 12, "bold"),
+            fg="#ef4444",
+            bg="#1c1419",
+        ).pack()
+
+        self.red_primary_player_lbl = tk.Label(
+            self.red_card,
+            text="XO",
+            font=("Segoe UI", 12, "bold"),
+            fg="#ffffff",
+            bg="#1c1419",
+        )
+        self.red_primary_player_lbl.pack(pady=(2, 0))
+
+        self.red_roster_lbl = tk.Label(
+            self.red_card,
+            text="Ấn F2 Diplomacy trong game",
+            font=("Segoe UI", 9, "bold"),
+            fg="#94a3b8",
+            bg="#1c1419",
+            justify="center",
+        )
+        self.red_roster_lbl.pack(pady=(1, 2))
+
+        self.red_count_lbl = tk.Label(
+            self.red_card,
+            text="Chủ nhà",
+            font=("Segoe UI", 8, "bold"),
+            fg="#fca5a5",
+            bg="#2b161b",
+            padx=6,
+            pady=1,
+        )
+        self.red_count_lbl.pack(pady=(2, 0))
+
+        # --- CỘT GIỮA: TỶ SỐ LỚN TRUNG TÂM & HOÀN TÁC / KẾT THÚC KÈO ---
+        center_hud = tk.Frame(
+            sb_board_inner,
+            bg="#161b26",
+            padx=8,
+            pady=4,
+        )
+        center_hud.grid(row=0, column=1, sticky="nsew", padx=4)
+
+        self.match_mode_lbl = tk.Label(
+            center_hud,
+            text="Kèo 1v1 - Chạm 7",
+            font=("Segoe UI", 9, "bold"),
+            fg="#eca133",
+            bg="#161b26",
+        )
+        self.match_mode_lbl.pack(side="top", pady=(2, 0))
 
         self.score_lbl = tk.Label(
             center_hud,
-            text="0 - 0",
-            font=("Segoe UI", 22, "bold"),
-            fg="#e7ebf0",
-            bg="#11151b",
+            text="0 : 0",
+            font=("Segoe UI", 34, "bold"),
+            fg="#ffffff",
+            bg="#161b26",
         )
-        self.score_lbl.pack(side="top", pady=1)
+        self.score_lbl.pack(side="top", pady=(0, 2))
 
         self.c_mode_summary_lbl = tk.Label(
             center_hud,
             text="Ấn F2 trong game để bắt đầu",
             font=("Segoe UI", 8, "bold"),
-            fg="#8e99a7",
-            bg="#11151b",
-            wraplength=175,
+            fg="#94a3b8",
+            bg="#161b26",
+            wraplength=210,
             justify="center",
         )
-        self.c_mode_summary_lbl.pack(side="top", pady=(1, 2))
+        self.c_mode_summary_lbl.pack(side="top", pady=(0, 2))
+
+        self.match_history_lbl = tk.Label(
+            center_hud,
+            text="Lịch sử ván: Chưa có ván kết thúc",
+            font=("Segoe UI", 8, "bold"),
+            fg="#cbd5e1",
+            bg="#11151e",
+            padx=8,
+            pady=2,
+            wraplength=210,
+            justify="center",
+        )
+        self.match_history_lbl.pack(side="top", pady=(2, 4))
 
         self.stars_counter_lbl = tk.Label(
             center_hud,
-            text="⭐ 0 sao tại sảnh",
-            font=("Segoe UI", 8, "bold"),
-            fg="#eca133",
-            bg="#11151b",
-        )
-        self.stars_counter_lbl.pack(side="top", pady=(0, 3))
-
-        # --- CARD PHẢI: TEAM XANH ---
-        self.blue_card = tk.Frame(
-            arena_grid,
-            bg="#151d29",
-            highlightthickness=1,
-            highlightbackground="#284268",
-            padx=8,
-            pady=7,
-        )
-        self.blue_card.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
-
-        blue_hdr = tk.Frame(self.blue_card, bg="#151d29")
-        blue_hdr.pack(fill="x", side="top")
-        tk.Label(
-            blue_hdr,
-            text="🔵 Team Xanh",
+            text="⭐ 0 sao tại sảnh XO",
             font=("Segoe UI", 9, "bold"),
-            fg="#60a5fa",
-            bg="#151d29",
-        ).pack(side="left")
-        self.blue_count_lbl = tk.Label(
-            blue_hdr,
-            text="0 người",
-            font=("Segoe UI", 8, "bold"),
-            fg="#93c5fd",
-            bg="#11151b",
-            padx=6,
-            pady=1,
+            fg="#fbbf24",
+            bg="#161b26",
         )
-        self.blue_count_lbl.pack(side="right")
+        self.stars_counter_lbl.pack(side="top", pady=(0, 6))
 
-        self.btn_blue_win = tk.Button(
-            self.blue_card,
-            text="🔵 Team Xanh thắng (+1)",
-            command=lambda: self.set_current_winner("BLUE"),
-            font=("Segoe UI", 9, "bold"),
-            bg="#2563eb",
-            fg="#ffffff",
-            activebackground="#1d4ed8",
+        self.btn_end_match = tk.Button(
+            center_hud,
+            text="🗑️ Kết thúc kèo",
+            command=self.finish_current_match,
+            font=("Segoe UI", 8, "bold"),
+            bg="#261419",
+            fg="#f87171",
+            activebackground="#3b1822",
+            activeforeground="#fecaca",
             relief="flat",
-            pady=5,
+            highlightthickness=1,
+            highlightbackground="#7f1d1d",
+            padx=14,
+            pady=4,
             cursor="hand2",
         )
-        self.btn_blue_win.pack(side="bottom", fill="x")
-        self._bind_hover(self.btn_blue_win, "#2563eb", "#1d4ed8", "#ffffff", "#ffffff")
+        self.btn_end_match.pack(side="bottom")
+        self._bind_hover(self.btn_end_match, "#261419", "#3b1822", "#f87171", "#fecaca")
+
+        # --- CỘT PHẢI: TEAM XANH ---
+        self.blue_card = tk.Frame(
+            sb_board_inner,
+            bg="#121a28",
+            highlightthickness=1,
+            highlightbackground="#1e3a8a",
+            padx=10,
+            pady=10,
+        )
+        self.blue_card.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
+
+        self._create_team_shield_canvas(self.blue_card, "BLUE", size=56, bg_color="#121a28").pack(pady=(2, 4))
+
+        tk.Label(
+            self.blue_card,
+            text="TEAM XANH",
+            font=("Segoe UI", 12, "bold"),
+            fg="#3b82f6",
+            bg="#121a28",
+        ).pack()
+
+        self.blue_primary_player_lbl = tk.Label(
+            self.blue_card,
+            text="Đối thủ",
+            font=("Segoe UI", 12, "bold"),
+            fg="#ffffff",
+            bg="#121a28",
+        )
+        self.blue_primary_player_lbl.pack(pady=(2, 0))
 
         self.blue_roster_lbl = tk.Label(
             self.blue_card,
-            text="Chưa có đội hình Team Xanh\n(Ấn F2 Diplomacy trong game)",
-            font=("Segoe UI", 8, "bold"),
-            fg="#e7ebf0",
-            bg="#11151b",
-            justify="left",
-            anchor="w",
-            padx=8,
-            pady=6,
-            height=4,
+            text="Ấn F2 Diplomacy trong game",
+            font=("Segoe UI", 9, "bold"),
+            fg="#94a3b8",
+            bg="#121a28",
+            justify="center",
         )
-        self.blue_roster_lbl.pack(side="top", fill="both", expand=True, pady=5)
+        self.blue_roster_lbl.pack(pady=(1, 2))
+
+        self.blue_count_lbl = tk.Label(
+            self.blue_card,
+            text="Đội khách",
+            font=("Segoe UI", 8, "bold"),
+            fg="#93c5fd",
+            bg="#15233b",
+            padx=6,
+            pady=1,
+        )
+        self.blue_count_lbl.pack(pady=(2, 0))
+
+        # --- HÀNG NÚT XÁC NHẬN CHIẾN THẮNG (2 NÚT BẰNG NHAU 50/50) ---
+        win_btns_row = tk.Frame(battle_card, bg="#131720")
+        win_btns_row.pack(fill="x")
+        win_btns_row.columnconfigure(0, weight=1, uniform="win_btn_col")
+        win_btns_row.columnconfigure(1, weight=1, uniform="win_btn_col")
+
+        self.btn_red_win = tk.Button(
+            win_btns_row,
+            text="🏆  Team Đỏ thắng (+1)",
+            command=lambda: self.set_current_winner("RED"),
+            font=("Segoe UI", 10, "bold"),
+            bg="#881b24",
+            fg="#ffffff",
+            activebackground="#a8222d",
+            activeforeground="#ffffff",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#dc2626",
+            pady=8,
+            cursor="hand2",
+        )
+        self.btn_red_win.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        self._bind_hover(self.btn_red_win, "#881b24", "#a8222d", "#ffffff", "#ffffff")
+
+        self.btn_blue_win = tk.Button(
+            win_btns_row,
+            text="🏆  Team Xanh thắng (+1)",
+            command=lambda: self.set_current_winner("BLUE"),
+            font=("Segoe UI", 10, "bold"),
+            bg="#19397a",
+            fg="#ffffff",
+            activebackground="#1d4ed8",
+            activeforeground="#ffffff",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#3b82f6",
+            pady=8,
+            cursor="hand2",
+        )
+        self.btn_blue_win.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        self._bind_hover(self.btn_blue_win, "#19397a", "#1d4ed8", "#ffffff", "#ffffff")
 
         # ----------------------------------------------------------------------
-        # CỘT TRÁI - PHẦN 3 (ĐÁY CỘT TRÁI): KHUNG NHẬT KÝ ĐIỀU TRA (PACK TRƯỚC ĐỂ GIỮ CHỖ)
+        # NGĂN NHẬT KÝ ĐIỀU TRA (MẶC ĐỊNH ẨN ĐỂ GIAO DIỆN GỌN, BẤM NÚT Ở ĐÁY ĐỂ MỞ)
         # ----------------------------------------------------------------------
         self.log_drawer_frame = tk.Frame(
             self.left_workspace_col,
-            bg="#181e28",
+            bg="#131720",
             highlightthickness=1,
-            highlightbackground="#2b3541",
+            highlightbackground="#232a36",
             padx=8,
             pady=5,
         )
-        self.log_drawer_frame.pack(fill="x", side="bottom", pady=(4, 0))
 
         self.log_scrollbar = tk.Scrollbar(self.log_drawer_frame, orient="vertical")
         self.log_scrollbar.pack(side="right", fill="y")
 
         self.log_box = tk.Text(
             self.log_drawer_frame,
-            bg="#11151b",
+            bg="#0e121a",
             fg="#e7ebf0",
             font=("Consolas", 8),
             relief="flat",
@@ -2400,43 +2667,43 @@ class AOETrackerApp:
             pady=5,
             insertbackground="#eca133",
             highlightthickness=1,
-            highlightbackground="#2b3541",
+            highlightbackground="#232a36",
             yscrollcommand=self.log_scrollbar.set,
         )
         self.log_box.pack(side="left", fill="both", expand=True)
         self.log_scrollbar.config(command=self.log_box.yview)
-        self.log_box.tag_config("TIME", foreground="#6f7986")
+        self.log_box.tag_config("TIME", foreground="#64748b")
         self.log_box.tag_config("DEFAULT", foreground="#e7ebf0")
         self.log_box.tag_config("SUCCESS", foreground="#34d399")
         self.log_box.tag_config("WARN", foreground="#eca133")
-        self.log_box.tag_config("ERROR", foreground="#f0657b")
+        self.log_box.tag_config("ERROR", foreground="#f87171")
         self.log_box.tag_config("TEAM", foreground="#eca133")
 
         # ----------------------------------------------------------------------
-        # CỘT TRÁI - PHẦN 2 (GIỮA CỘT TRÁI): SẢNH CÁC TRẬN ĐẤU ĐANG LIVE & BẠN BÈ
+        # KHU VỰC C – DANH SÁCH TRẬN ĐẤU VÀ BẠN BÈ (DẠNG CARD NHỎ + TÌM KIẾM & LỌC)
         # ----------------------------------------------------------------------
         live_lobby_card = tk.Frame(
             self.left_workspace_col,
-            bg="#181e28",
+            bg="#131720",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=10,
-            pady=8,
+            highlightbackground="#232a36",
+            padx=12,
+            pady=10,
         )
         live_lobby_card.pack(fill="both", expand=True, side="top", pady=0)
 
-        friends_hdr = tk.Frame(live_lobby_card, bg="#181e28")
-        friends_hdr.pack(fill="x", side="top")
+        friends_hdr = tk.Frame(live_lobby_card, bg="#131720")
+        friends_hdr.pack(fill="x", side="top", pady=(0, 6))
 
         tk.Label(
             friends_hdr,
-            text="🏟️ Sảnh Các Trận Đấu Đang Live & Bạn Bè",
+            text="🏆  SẢNH CÁC TRẬN ĐẤU LIVE & BẠN BÈ",
             font=("Segoe UI", 9, "bold"),
-            fg="#eca133",
-            bg="#181e28",
+            fg="#e2e8f0",
+            bg="#131720",
         ).pack(side="left")
 
-        friend_add_box = tk.Frame(friends_hdr, bg="#181e28")
+        friend_add_box = tk.Frame(friends_hdr, bg="#131720")
         friend_add_box.pack(side="right")
 
         self.friend_target_var = tk.StringVar()
@@ -2444,10 +2711,10 @@ class AOETrackerApp:
             friend_add_box,
             textvariable=self.friend_target_var,
             font=("Segoe UI", 8),
-            bg="#11151b",
+            bg="#0e121a",
             fg="#e7ebf0",
             insertbackground="#eca133",
-            width=15,
+            width=14,
             relief="flat",
             highlightthickness=1,
             highlightbackground="#2b3541",
@@ -2455,76 +2722,147 @@ class AOETrackerApp:
 
         btn_add_friend = tk.Button(
             friend_add_box,
-            text="+ Kết bạn / Hủy",
+            text="+ Kết bạn",
             command=self.toggle_friend_action,
             font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
+            bg="#1a202c",
+            fg="#cbd5e1",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=7,
-            pady=1,
+            highlightbackground="#2d3748",
+            padx=8,
+            pady=2,
             cursor="hand2",
         )
-        btn_add_friend.pack(side="left")
-        self._bind_hover(btn_add_friend, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
+        btn_add_friend.pack(side="left", padx=(0, 4))
+        self._bind_hover(btn_add_friend, "#1a202c", "#2d3748", "#cbd5e1", "#ffffff")
 
-        # Danh sách các trận đấu đang LIVE trên hệ thống (Bấm để theo dõi bảng quân + vào sảnh chat tương tác)
-        self.live_matches_list_frame = tk.Frame(live_lobby_card, bg="#11151b", highlightthickness=1, highlightbackground="#2b3541", padx=8, pady=6)
-        self.live_matches_list_frame.pack(fill="both", expand=True, pady=(5, 4))
+        btn_unfriend = tk.Button(
+            friend_add_box,
+            text="🔄 Hủy",
+            command=self.toggle_friend_action,
+            font=("Segoe UI", 8, "bold"),
+            bg="#1a202c",
+            fg="#94a3b8",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2d3748",
+            padx=7,
+            pady=2,
+            cursor="hand2",
+        )
+        btn_unfriend.pack(side="left")
+        self._bind_hover(btn_unfriend, "#1a202c", "#2d3748", "#94a3b8", "#ffffff")
+
+        # Thanh Tìm kiếm trận đấu + Lọc Đang LIVE / Đã kết thúc
+        match_filter_bar = tk.Frame(live_lobby_card, bg="#131720")
+        match_filter_bar.pack(fill="x", side="top", pady=(0, 6))
+
+        tk.Label(
+            match_filter_bar,
+            text="🔍",
+            font=("Segoe UI", 8),
+            fg="#94a3b8",
+            bg="#0e121a",
+            padx=5,
+            pady=2,
+        ).pack(side="left")
+
+        tk.Entry(
+            match_filter_bar,
+            textvariable=self.match_search_var,
+            font=("Segoe UI", 8),
+            bg="#0e121a",
+            fg="#e2e8f0",
+            insertbackground="#eca133",
+            width=22,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#262f3f",
+        ).pack(side="left", padx=(0, 8), ipady=2)
+
+        for m_code, m_lbl in [("ALL", "Tất cả"), ("LIVE", "Đang LIVE"), ("FINISHED", "Đã kết thúc")]:
+            is_act = m_code == "ALL"
+            b_mf = tk.Button(
+                match_filter_bar,
+                text=m_lbl,
+                command=lambda c=m_code: self._set_match_filter_mode(c),
+                font=("Segoe UI", 8, "bold"),
+                bg="#eca133" if is_act else "#11151b",
+                fg="#11151b" if is_act else "#94a3b8",
+                relief="flat",
+                highlightthickness=0 if is_act else 1,
+                highlightbackground="#2b3541",
+                padx=8,
+                pady=1,
+                cursor="hand2",
+            )
+            b_mf.pack(side="left", padx=(0, 4))
+            self._match_filter_btns[m_code] = b_mf
+
+        # Danh sách Card các trận đấu
+        self.live_matches_list_frame = tk.Frame(
+            live_lobby_card,
+            bg="#0e121a",
+            highlightthickness=1,
+            highlightbackground="#232a36",
+            padx=8,
+            pady=6,
+        )
+        self.live_matches_list_frame.pack(fill="both", expand=True, pady=(0, 6))
 
         tk.Label(
             self.live_matches_list_frame,
-            text="Đang tải danh sách các trận đấu đang LIVE trên hệ thống...",
+            text="Đang tải danh sách các trận đấu trên hệ thống...",
             font=("Segoe UI", 8, "bold"),
-            fg="#8e99a7",
-            bg="#11151b",
+            fg="#94a3b8",
+            bg="#0e121a",
         ).pack(anchor="w")
 
+        # Thanh trạng thái Online của bạn bè ở đáy Khu vực C
         self.friends_status_lbl = tk.Label(
             live_lobby_card,
-            text="👥 Bạn bè: Kết nối tài khoản để xem bạn bè nào đang 🔴 LIVE hoặc 🟢 Online.",
+            text="👥 Bạn bè: 0 online  •  Kết nối tài khoản để theo dõi bạn bè đang LIVE",
             font=("Segoe UI", 8, "bold"),
-            fg="#8e99a7",
-            bg="#11151b",
+            fg="#94a3b8",
+            bg="#0e121a",
             justify="left",
             anchor="w",
             padx=8,
-            pady=4,
+            pady=5,
             wraplength=540,
         )
         self.friends_status_lbl.pack(fill="x", side="bottom")
 
-        self.friends_live_btn_frame = tk.Frame(live_lobby_card, bg="#181e28")
+        self.friends_live_btn_frame = tk.Frame(live_lobby_card, bg="#131720")
 
         # ----------------------------------------------------------------------
-        # CỘT PHẢI: HỘP CHAT ĐỨNG (VERTICAL CHAT BOX GIỐNG CHAT-OVERLAY) & TẶNG VẬT PHẨM ĐẾ CHẾ
+        # KHU VỰC D – LIVE CHAT VÀ QUÀ TẶNG (NÂNG CẤP TOÀN DIỆN 7 TÍNH NĂNG)
         # ----------------------------------------------------------------------
         chat_card = tk.Frame(
             self.right_workspace_col,
-            bg="#181e28",
+            bg="#131720",
             highlightthickness=1,
-            highlightbackground="#2b3541",
+            highlightbackground="#232a36",
             padx=12,
-            pady=9,
+            pady=10,
         )
         chat_card.pack(fill="both", expand=True)
 
-        # 1. Header Hộp Chat Đứng (Side="top")
-        chat_hdr = tk.Frame(chat_card, bg="#181e28")
-        chat_hdr.pack(fill="x", side="top", pady=(0, 4))
+        # 1. Header Sảnh Chat Live
+        chat_hdr = tk.Frame(chat_card, bg="#131720")
+        chat_hdr.pack(fill="x", side="top", pady=(0, 6))
 
         self.lobby_badge_lbl = tk.Label(
             chat_hdr,
-            text="💬 Sảnh Chat Live · Máy XO",
+            text="💬  SẢNH CHAT LIVE - MÁY XO",
             font=("Segoe UI", 10, "bold"),
-            fg="#eca133",
-            bg="#181e28",
+            fg="#e2e8f0",
+            bg="#131720",
         )
         self.lobby_badge_lbl.pack(side="left")
 
-        chat_hdr_btns = tk.Frame(chat_hdr, bg="#181e28")
+        chat_hdr_btns = tk.Frame(chat_hdr, bg="#131720")
         chat_hdr_btns.pack(side="right")
 
         btn_my_lobby = tk.Button(
@@ -2532,88 +2870,196 @@ class AOETrackerApp:
             text="🏠 Sảnh của tôi",
             command=lambda: self.enter_friend_live_lobby(""),
             font=("Segoe UI", 8, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
+            bg="#1a202c",
+            fg="#cbd5e1",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=7,
+            highlightbackground="#2d3748",
+            padx=8,
             pady=2,
             cursor="hand2",
         )
         btn_my_lobby.pack(side="left", padx=(0, 5))
-        self._bind_hover(btn_my_lobby, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
+        self._bind_hover(btn_my_lobby, "#1a202c", "#2d3748", "#cbd5e1", "#ffffff")
 
         btn_fb_chat_hdr = tk.Button(
             chat_hdr_btns,
-            text="🔵 FB Live",
+            text="📞 ●",
             command=self.show_fb_group_live_bridge_window,
             font=("Segoe UI", 8, "bold"),
-            bg="#152238",
-            fg="#60a5fa",
+            bg="#0e2920",
+            fg="#34d399",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#2563eb",
-            padx=7,
+            highlightbackground="#166534",
+            padx=8,
             pady=2,
             cursor="hand2",
         )
         btn_fb_chat_hdr.pack(side="left")
-        self._bind_hover(btn_fb_chat_hdr, "#152238", "#1d4ed8", "#60a5fa", "#ffffff")
+        self._bind_hover(btn_fb_chat_hdr, "#0e2920", "#14532d", "#34d399", "#ffffff")
 
-        # Thanh hiển thị Quỹ Sao cá nhân & Hướng dẫn vật phẩm (Side="top")
+        # 2. Thanh Quỹ Sao cá nhân & Tổng Sao nhận được trong phiên Live (Tính năng #6)
         wallet_bar = tk.Frame(
             chat_card,
-            bg="#11151b",
+            bg="#161b26",
             highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=9,
-            pady=4,
+            highlightbackground="#262f3f",
+            padx=10,
+            pady=5,
         )
-        wallet_bar.pack(fill="x", side="top", pady=(0, 4))
+        wallet_bar.pack(fill="x", side="top", pady=(0, 5))
 
         self.chat_wallet_lbl = tk.Label(
             wallet_bar,
-            text="💰 Quỹ Sao của bạn: 0 ⭐ (Trừ trực tiếp khi tặng)",
+            text="💰 Quỹ Sao của bạn: 0 ⭐  (Trừ trực tiếp khi tặng)",
             font=("Segoe UI", 8, "bold"),
-            fg="#eca133",
-            bg="#11151b",
+            fg="#fbbf24",
+            bg="#161b26",
         )
         self.chat_wallet_lbl.pack(side="left")
 
         self.chat_lobby_stars_lbl = tk.Label(
             wallet_bar,
-            text="🎁 Sảnh nhận: 0 ⭐",
+            text="🎁 Phiên Live: 0 ⭐",
             font=("Segoe UI", 8, "bold"),
             fg="#34d399",
-            bg="#11151b",
+            bg="#161b26",
         )
         self.chat_lobby_stars_lbl.pack(side="right")
 
-        # Khung Bảng Vinh Danh Hoàng Gia trên đỉnh Hộp Chat Đứng (Đồng bộ hiệu ứng Vinh danh với Web & OBS)
+        # 3. Khung Vinh Danh Hoàng Gia
         self.chat_honor_banner_frame = tk.Frame(
             chat_card,
-            bg="#241a0d",
+            bg="#231a0e",
             highlightthickness=1,
-            highlightbackground="#eca133",
-            padx=9,
-            pady=4,
+            highlightbackground="#92400e",
+            padx=10,
+            pady=5,
         )
-        self.chat_honor_banner_frame.pack(fill="x", side="top", pady=(0, 6))
+        self.chat_honor_banner_frame.pack(fill="x", side="top", pady=(0, 5))
 
         self.chat_honor_lbl = tk.Label(
             self.chat_honor_banner_frame,
-            text="👑 VINH DANH SẢNH LIVE: Hãy thả 🐘 Con Voi (22⭐) hoặc ⚡ Phù Thủy Sét (100⭐) để lên bảng vàng!",
+            text="👑 VINH DANH SẢNH XO: Thả 🐘 Con Voi (22 ⭐) hoặc ⚡ Phù Thủy (100 ⭐) để lên bảng vàng!",
             font=("Segoe UI", 8, "bold"),
             fg="#fde047",
-            bg="#241a0d",
+            bg="#231a0e",
             anchor="w",
             justify="left",
         )
         self.chat_honor_lbl.pack(fill="x")
 
-        # 2. Ô nhập Bình luận ở Đáy Hộp Chat Đứng (Pack side="bottom" TRƯỚC để không bao giờ bị che khuất)
-        chat_input_row = tk.Frame(chat_card, bg="#181e28")
+        # 4. Thanh Ghim bình luận quan trọng (Tính năng #3) + Thanh Tìm kiếm User & Lọc Spam / Tách sự kiện (Tính năng #4, #5, #7)
+        self.pinned_chat_frame = tk.Frame(
+            chat_card,
+            bg="#172030",
+            highlightthickness=1,
+            highlightbackground="#2563eb",
+            padx=8,
+            pady=3,
+        )
+        self.pinned_chat_frame.pack(fill="x", side="top", pady=(0, 4))
+
+        self.pinned_chat_lbl = tk.Label(
+            self.pinned_chat_frame,
+            text="📌 Ghim: Chưa có bình luận ghim (Bấm '📌 Ghim' để ghim tin mới nhất)",
+            font=("Segoe UI", 8, "bold"),
+            fg="#93c5fd",
+            bg="#172030",
+            anchor="w",
+        )
+        self.pinned_chat_lbl.pack(side="left", fill="x", expand=True)
+
+        btn_unpin = tk.Button(
+            self.pinned_chat_frame,
+            text="✕",
+            command=lambda: self.pin_chat_message_action(unpin=True),
+            font=("Segoe UI", 7, "bold"),
+            bg="#172030",
+            fg="#94a3b8",
+            relief="flat",
+            bd=0,
+            padx=4,
+            cursor="hand2",
+        )
+        btn_unpin.pack(side="right")
+
+        btn_pin_latest = tk.Button(
+            self.pinned_chat_frame,
+            text="📌 Ghim",
+            command=lambda: self.pin_chat_message_action(unpin=False),
+            font=("Segoe UI", 7, "bold"),
+            bg="#1e3a8a",
+            fg="#ffffff",
+            relief="flat",
+            padx=6,
+            pady=1,
+            cursor="hand2",
+        )
+        btn_pin_latest.pack(side="right", padx=(4, 2))
+
+        chat_tools_bar = tk.Frame(chat_card, bg="#131720")
+        chat_tools_bar.pack(fill="x", side="top", pady=(0, 4))
+
+        tk.Label(
+            chat_tools_bar,
+            text="🔍",
+            font=("Segoe UI", 8),
+            fg="#94a3b8",
+            bg="#0e121a",
+            padx=4,
+            pady=1,
+        ).pack(side="left")
+
+        tk.Entry(
+            chat_tools_bar,
+            textvariable=self.chat_search_var,
+            font=("Segoe UI", 8),
+            bg="#0e121a",
+            fg="#e2e8f0",
+            insertbackground="#eca133",
+            width=13,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#262f3f",
+        ).pack(side="left", padx=(0, 6), ipady=1)
+
+        for t_code, t_lbl in [("ALL", "Tất cả"), ("CHAT", "💬 Chat"), ("GIFT", "🎁 Quà"), ("SYSTEM", "⚙️ Hệ thống")]:
+            is_act = t_code == "ALL"
+            b_cf = tk.Button(
+                chat_tools_bar,
+                text=t_lbl,
+                command=lambda c=t_code: self._set_chat_filter_tab(c),
+                font=("Segoe UI", 7, "bold"),
+                bg="#eca133" if is_act else "#11151b",
+                fg="#11151b" if is_act else "#94a3b8",
+                relief="flat",
+                highlightthickness=0 if is_act else 1,
+                highlightbackground="#2b3541",
+                padx=6,
+                pady=1,
+                cursor="hand2",
+            )
+            b_cf.pack(side="left", padx=(0, 3))
+            self._chat_filter_btns[t_code] = b_cf
+
+        tk.Checkbutton(
+            chat_tools_bar,
+            text="Lọc Spam",
+            variable=self.chat_antispam_var,
+            command=lambda: self._update_friends_and_social_ui(self._cached_social_data) if self._cached_social_data else None,
+            font=("Segoe UI", 8, "bold"),
+            fg="#94a3b8",
+            bg="#131720",
+            selectcolor="#0b0e14",
+            activebackground="#131720",
+            activeforeground="#eca133",
+            cursor="hand2",
+        ).pack(side="right")
+
+        # 5. Ô nhập Bình luận ở Đáy Khu vực D (Pack side="bottom" trước để cố định đáy)
+        chat_input_row = tk.Frame(chat_card, bg="#131720")
         chat_input_row.pack(fill="x", side="bottom", pady=(4, 0))
 
         self.chat_msg_var = tk.StringVar()
@@ -2621,105 +3067,180 @@ class AOETrackerApp:
             chat_input_row,
             textvariable=self.chat_msg_var,
             font=("Segoe UI", 9),
-            bg="#11151b",
+            bg="#0e121a",
             fg="#f8fafc",
             insertbackground="#eca133",
             relief="flat",
             highlightthickness=1,
-            highlightbackground="#384659",
+            highlightbackground="#262f3f",
         )
-        chat_entry.pack(side="left", fill="x", expand=True, padx=(0, 8), ipady=5)
+        chat_entry.pack(side="left", fill="x", expand=True, padx=(0, 6), ipady=6)
         chat_entry.bind("<Return>", lambda _e: self.send_chat_message_action())
+
+        self.btn_emoji_chat = tk.Button(
+            chat_input_row,
+            text="😊",
+            command=self._show_quick_emoji_menu,
+            font=("Segoe UI", 10),
+            bg="#1a202c",
+            fg="#e2e8f0",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2d3748",
+            padx=8,
+            pady=3,
+            cursor="hand2",
+        )
+        self.btn_emoji_chat.pack(side="right", padx=(5, 0))
+        self._bind_hover(self.btn_emoji_chat, "#1a202c", "#2d3748", "#e2e8f0", "#fbbf24")
 
         btn_send_chat = tk.Button(
             chat_input_row,
-            text="Gửi bình luận",
+            text="Gửi",
             command=self.send_chat_message_action,
             font=("Segoe UI", 9, "bold"),
             bg="#eca133",
             fg="#11151b",
             relief="flat",
-            padx=12,
-            pady=4,
+            padx=16,
+            pady=5,
             cursor="hand2",
         )
         btn_send_chat.pack(side="right")
-        self._bind_hover(btn_send_chat, "#eca133", "#d98f26", "#11151b", "#11151b")
+        self._bind_hover(btn_send_chat, "#eca133", "#f59e0b", "#11151b", "#11151b")
 
-        # 3. Khung Vật Phẩm Đế Chế & Tặng Sao nhanh (Pack side="bottom" ngay trên ô nhập chat)
+        # 6. Khung Vật Phẩm Đế Chế 3x2 Card lớn & 4 Nút Tặng Sao nhanh (Pack side="bottom")
         aoe_gift_panel = tk.Frame(
             chat_card,
-            bg="#131821",
+            bg="#131720",
             highlightthickness=1,
-            highlightbackground="#2b3541",
+            highlightbackground="#232a36",
             padx=8,
             pady=6,
         )
-        aoe_gift_panel.pack(fill="x", side="bottom", pady=(4, 2))
+        aoe_gift_panel.pack(fill="x", side="bottom", pady=(6, 2))
 
         tk.Label(
             aoe_gift_panel,
-            text="⚔️ Vật Phẩm Đế Chế & Tặng Sao (Quy đổi trực tiếp từ Quỹ Sao của bạn):",
+            text="⚔️ VẬT PHẨM ĐẾ CHẾ & TẶNG SAO  (Quy đổi trừ trực tiếp từ Quỹ Sao của bạn)",
             font=("Segoe UI", 8, "bold"),
             fg="#cbd5e1",
-            bg="#131821",
-        ).pack(anchor="w", pady=(0, 4))
+            bg="#131720",
+        ).pack(anchor="w", pady=(0, 5))
 
-        # Lưới 3x2 các biểu tượng đặc trưng AOE (200 Thực, 500 Gỗ, 1000 Thực, Con Voi 22⭐, Song Mã 50⭐, Phù Thủy Sét 100⭐)
-        gift_grid = tk.Frame(aoe_gift_panel, bg="#131821")
+        gift_grid = tk.Frame(aoe_gift_panel, bg="#131720")
         gift_grid.pack(fill="x", pady=(0, 4))
         for c_i in range(3):
             gift_grid.columnconfigure(c_i, weight=1, uniform="gift_col")
 
-        for idx, (g_code, g_label, g_cost, g_desc) in enumerate(AOE_GIFT_ITEMS):
+        gift_visual_defs = [
+            ("FOOD_200", "🍖", "200 Thực", 5, "Bơm 200 Thực cứu chủ lực!"),
+            ("WOOD_500", "🪵", "500 Gỗ", 10, "Bơm 500 Gỗ đóng nhà BA!"),
+            ("FOOD_1000", "🥩", "1000 Thực", 15, "Bơm 1000 Thực kích Đời 4!"),
+            ("ELEPHANT", "🐘", "Con Voi", 22, "Thả Voi Điên húc bay nhà địch!"),
+            ("HORSE_ARCHER", "🏹", "Song Mã", 50, "Viện trợ Đạo Song Mã thần cứu nhà!"),
+            ("PRIEST_LIGHTNING", "⚡", "Phù Thủy Sét", 100, "Triệu hồi Phù Thủy Sét (Wololo) — Ái dà, hú hú!"),
+        ]
+
+        for idx, (g_code, g_ico, g_title, g_cost, g_desc) in enumerate(gift_visual_defs):
             r_i = idx // 3
             c_i = idx % 3
             is_special = g_code in ("ELEPHANT", "PRIEST_LIGHTNING")
-            btn_bg = "#241911" if is_special else "#11151b"
-            btn_border = "#d98f26" if is_special else "#334155"
-            g_btn = tk.Button(
+            card_bg = "#211a12" if is_special else "#171c26"
+            card_border = "#b45309" if is_special else "#283142"
+
+            g_card = tk.Frame(
                 gift_grid,
-                text=f"{g_label} ({g_cost}⭐)",
-                command=lambda code=g_code, cost=g_cost, lbl=g_label, desc=g_desc: self.send_star_gift_action(
-                    cost, gift_code=code, gift_name=lbl, default_msg=desc
-                ),
-                font=("Segoe UI", 8, "bold"),
-                bg=btn_bg,
-                fg="#fde047" if is_special else "#eca133",
-                relief="flat",
+                bg=card_bg,
                 highlightthickness=1,
-                highlightbackground=btn_border,
-                pady=3,
+                highlightbackground=card_border,
+                padx=8,
+                pady=5,
                 cursor="hand2",
             )
-            g_btn.grid(row=r_i, column=c_i, sticky="ew", padx=3, pady=3)
-            self._bind_hover(g_btn, btn_bg, "#2f2216", "#fde047" if is_special else "#eca133", "#ffffff")
+            g_card.grid(row=r_i, column=c_i, sticky="ew", padx=3, pady=3)
+
+            ico_l = tk.Label(
+                g_card,
+                text=g_ico,
+                font=("Segoe UI Emoji", 16),
+                fg="#fbbf24",
+                bg=card_bg,
+                cursor="hand2",
+            )
+            ico_l.pack(side="left", padx=(2, 8))
+
+            txt_stack = tk.Frame(g_card, bg=card_bg, cursor="hand2")
+            txt_stack.pack(side="left", fill="x", expand=True)
+
+            name_l = tk.Label(
+                txt_stack,
+                text=g_title,
+                font=("Segoe UI", 8, "bold"),
+                fg="#f8fafc",
+                bg=card_bg,
+                anchor="w",
+                cursor="hand2",
+            )
+            name_l.pack(anchor="w")
+
+            cost_l = tk.Label(
+                txt_stack,
+                text=f"{g_cost} ⭐",
+                font=("Segoe UI", 9, "bold"),
+                fg="#fbbf24",
+                bg=card_bg,
+                anchor="w",
+                cursor="hand2",
+            )
+            cost_l.pack(anchor="w")
+
+            def _bind_gift_click(
+                widgets,
+                code=g_code,
+                cost=g_cost,
+                lbl=f"{g_ico} {g_title}",
+                desc=g_desc,
+                c_frame=g_card,
+                nbg=card_bg,
+            ):
+                for w in widgets:
+                    w.bind(
+                        "<Button-1>",
+                        lambda _e: self.send_star_gift_action(cost, gift_code=code, gift_name=lbl, default_msg=desc),
+                    )
+                    w.bind("<Enter>", lambda _e: c_frame.configure(highlightbackground="#eca133"))
+                    w.bind("<Leave>", lambda _e: c_frame.configure(highlightbackground=card_border))
+
+            _bind_gift_click([g_card, ico_l, txt_stack, name_l, cost_l])
 
         # Hàng nút Tặng Sao nhanh (+1, +10, +50, +100 Sao)
-        quick_star_row = tk.Frame(aoe_gift_panel, bg="#131821")
+        quick_star_row = tk.Frame(aoe_gift_panel, bg="#131720")
         quick_star_row.pack(fill="x")
         for c_i in range(4):
             quick_star_row.columnconfigure(c_i, weight=1, uniform="qstar_col")
 
-        for idx, (amt, lbl_txt) in enumerate([(1, "⭐ +1 Sao"), (10, "🌟 +10 Sao"), (50, "💎 +50 Sao"), (100, "🔥 +100 Sao")]):
+        for idx, (amt, lbl_txt) in enumerate(
+            [(1, "★ +1 Sao"), (10, "☀️ +10 Sao"), (50, "💎 +50 Sao"), (100, "💠 +100 Sao")]
+        ):
             b = tk.Button(
                 quick_star_row,
                 text=lbl_txt,
                 command=lambda a=amt: self.send_star_gift_action(a),
                 font=("Segoe UI", 8, "bold"),
-                bg="#11151b",
-                fg="#f8fafc",
+                bg="#171c26",
+                fg="#e2e8f0",
                 relief="flat",
                 highlightthickness=1,
-                highlightbackground="#334155",
-                pady=2,
+                highlightbackground="#283142",
+                pady=3,
                 cursor="hand2",
             )
             b.grid(row=0, column=idx, sticky="ew", padx=3, pady=(2, 0))
-            self._bind_hover(b, "#11151b", "#222b38", "#f8fafc", "#eca133")
+            self._bind_hover(b, "#171c26", "#242c3d", "#e2e8f0", "#fbbf24")
 
-        # 4. Khung Tin Nhắn Dọc ở Giữa (Pack side="top", fill="both", expand=True CUỐI CÙNG để co giãn linh hoạt như chat-overlay)
-        chat_feed_wrap = tk.Frame(chat_card, bg="#0d1118", highlightthickness=1, highlightbackground="#2b3541")
+        # 7. Khung Tin Nhắn Dọc ở Giữa Khu Vực D (Phân cấp Thời gian / Admin / Người dùng / Quà tặng / Hệ thống)
+        chat_feed_wrap = tk.Frame(chat_card, bg="#0e121a", highlightthickness=1, highlightbackground="#232a36")
         chat_feed_wrap.pack(side="top", fill="both", expand=True, pady=(0, 2))
 
         chat_scroll = tk.Scrollbar(chat_feed_wrap, orient="vertical")
@@ -2727,40 +3248,47 @@ class AOETrackerApp:
 
         self.chat_box = tk.Text(
             chat_feed_wrap,
-            bg="#0d1118",
-            fg="#e7ebf0",
+            bg="#0e121a",
+            fg="#e2e8f0",
             font=("Segoe UI", 9),
             relief="flat",
             width=36,
-            height=12,
+            height=11,
             padx=10,
             pady=8,
             wrap="word",
+             spacing1=2,
+            spacing3=2,
             state="disabled",
             yscrollcommand=chat_scroll.set,
         )
         self.chat_box.pack(side="left", fill="both", expand=True)
         chat_scroll.config(command=self.chat_box.yview)
-        self.chat_box.tag_config("SENDER", foreground="#eca133", font=("Segoe UI", 9, "bold"))
+        self.chat_box.tag_config("TIME", foreground="#64748b", font=("Consolas", 8))
+        self.chat_box.tag_config("ADMIN_BADGE", foreground="#fde047", background="#3b1d1d", font=("Segoe UI", 8, "bold"))
+        self.chat_box.tag_config("STREAMER_BADGE", foreground="#34d399", background="#0e2920", font=("Segoe UI", 8, "bold"))
+        self.chat_box.tag_config("SENDER", foreground="#f8fafc", font=("Segoe UI", 9, "bold"))
+        self.chat_box.tag_config("ADMIN_SENDER", foreground="#fbbf24", font=("Segoe UI", 9, "bold"))
         self.chat_box.tag_config("FB_SENDER", foreground="#60a5fa", font=("Segoe UI", 9, "bold"))
-        self.chat_box.tag_config("STAR", foreground="#fbbf24", background="#241a0e", font=("Segoe UI", 9, "bold"))
-        self.chat_box.tag_config("AOE_GIFT", foreground="#fde68a", background="#2b1d0e", font=("Segoe UI", 9, "bold"))
-        self.chat_box.tag_config("MSG", foreground="#e7ebf0")
+        self.chat_box.tag_config("STAR", foreground="#fbbf24", background="#231a0e", font=("Segoe UI", 9, "bold"))
+        self.chat_box.tag_config("AOE_GIFT", foreground="#fde047", background="#281d0e", font=("Segoe UI", 9, "bold"))
+        self.chat_box.tag_config("SYS_EVENT", foreground="#93c5fd", background="#111a2e", font=("Segoe UI", 8, "bold"))
+        self.chat_box.tag_config("MSG", foreground="#cbd5e1")
 
         # ----------------------------------------------------------------------
         # TAB 2: TÙY CHỈNH CÀI ĐẶT VIP & KẾT NỐI MÁY CHỦ (SETTINGS TAB)
         # ----------------------------------------------------------------------
         vip_card = tk.Frame(
             self.settings_tab_frame,
-            bg="#181e28",
+            bg="#131720",
             highlightthickness=1,
-            highlightbackground="#2b3541",
+            highlightbackground="#232a36",
             padx=22,
             pady=18,
         )
         vip_card.pack(fill="x", padx=14, pady=(6, 10))
 
-        vip_hdr = tk.Frame(vip_card, bg="#181e28")
+        vip_hdr = tk.Frame(vip_card, bg="#131720")
         vip_hdr.pack(fill="x", pady=(0, 12))
 
         tk.Label(
@@ -2768,7 +3296,7 @@ class AOETrackerApp:
             text="⚙️ Tùy chỉnh Cài đặt VIP Overlay & Hệ thống",
             font=("Segoe UI", 12, "bold"),
             fg="#e7ebf0",
-            bg="#181e28",
+            bg="#131720",
         ).pack(side="left")
 
         tk.Button(
@@ -2791,11 +3319,11 @@ class AOETrackerApp:
             text="Phân quyền Hạng VIP: 🥈 Hạng Bạc (Chạm X, Hiện ngày góc phải)  •  🥇 Hạng Vàng (Tùy chỉnh dòng chữ chạy)  •  💎 Hạng Kim Cương (Đánh theo C - Séc 1, 2, 3)",
             font=("Segoe UI", 9, "bold"),
             fg="#8e99a7",
-            bg="#181e28",
+            bg="#131720",
         ).pack(anchor="w", pady=(0, 14))
 
         # Mục 1: Kèo chạm & Tùy chọn hiển thị
-        vip_row1 = tk.Frame(vip_card, bg="#181e28")
+        vip_row1 = tk.Frame(vip_card, bg="#131720")
         vip_row1.pack(fill="x", pady=6)
 
         tk.Label(
@@ -2803,7 +3331,7 @@ class AOETrackerApp:
             text="Kèo đấu chạm bao nhiêu (🥈 Bạc+):",
             font=("Segoe UI", 10, "bold"),
             fg="#e7ebf0",
-            bg="#181e28",
+            bg="#131720",
         ).pack(side="left")
 
         tk.Entry(
@@ -2826,9 +3354,9 @@ class AOETrackerApp:
             variable=self.show_date_var,
             font=("Segoe UI", 10, "bold"),
             fg="#e7ebf0",
-            bg="#181e28",
+            bg="#131720",
             selectcolor="#11151b",
-            activebackground="#181e28",
+            activebackground="#131720",
             activeforeground="#e7ebf0",
             cursor="hand2",
         ).pack(side="left", padx=(0, 22))
@@ -2839,15 +3367,15 @@ class AOETrackerApp:
             variable=self.c_mode_var,
             font=("Segoe UI", 10, "bold"),
             fg="#e7ebf0",
-            bg="#181e28",
+            bg="#131720",
             selectcolor="#11151b",
-            activebackground="#181e28",
+            activebackground="#131720",
             activeforeground="#eca133",
             cursor="hand2",
         ).pack(side="left")
 
         # Mục 1b: Khung bảng quân ảo căn chỉnh OBS khi chưa có trận
-        vip_row_preview = tk.Frame(vip_card, bg="#181e28")
+        vip_row_preview = tk.Frame(vip_card, bg="#131720")
         vip_row_preview.pack(fill="x", pady=(4, 6))
 
         tk.Checkbutton(
@@ -2856,15 +3384,15 @@ class AOETrackerApp:
             variable=self.show_idle_preview_var,
             font=("Segoe UI", 10, "bold"),
             fg="#34d399",
-            bg="#181e28",
+            bg="#131720",
             selectcolor="#11151b",
-            activebackground="#181e28",
+            activebackground="#131720",
             activeforeground="#34d399",
             cursor="hand2",
         ).pack(side="left")
 
         # Mục 2: Chế độ dòng chữ chạy
-        vip_row2 = tk.Frame(vip_card, bg="#181e28")
+        vip_row2 = tk.Frame(vip_card, bg="#131720")
         vip_row2.pack(fill="x", pady=10)
 
         tk.Label(
@@ -2872,7 +3400,7 @@ class AOETrackerApp:
             text="Chế độ dòng chữ chạy (🥇 Vàng+):",
             font=("Segoe UI", 10, "bold"),
             fg="#e7ebf0",
-            bg="#181e28",
+            bg="#131720",
         ).pack(side="left")
 
         self.marquee_combo = self.ttk.Combobox(
@@ -2891,7 +3419,7 @@ class AOETrackerApp:
             text="Nội dung chữ tùy chỉnh:",
             font=("Segoe UI", 10, "bold"),
             fg="#e7ebf0",
-            bg="#181e28",
+            bg="#131720",
         ).pack(side="left")
 
         tk.Entry(
@@ -2907,7 +3435,7 @@ class AOETrackerApp:
         ).pack(side="left", fill="x", expand=True, padx=(8, 0), ipady=5)
 
         # Mục 3: Cấu hình Server URL nâng cao trong Tab Cài đặt
-        vip_row3 = tk.Frame(vip_card, bg="#181e28")
+        vip_row3 = tk.Frame(vip_card, bg="#131720")
         vip_row3.pack(fill="x", pady=(10, 6))
 
         tk.Label(
@@ -2915,7 +3443,7 @@ class AOETrackerApp:
             text="Địa chỉ máy chủ (Server URL):",
             font=("Segoe UI", 9, "bold"),
             fg="#8e99a7",
-            bg="#181e28",
+            bg="#131720",
         ).pack(side="left")
 
         tk.Entry(
@@ -2959,22 +3487,31 @@ class AOETrackerApp:
         if tab_name == "SETTINGS":
             self.battle_tab_frame.pack_forget()
             self.settings_tab_frame.pack(fill="both", expand=True)
-            self.tab_settings_btn.configure(bg="#eca133", fg="#11151b", highlightthickness=0)
-            self.tab_battle_btn.configure(bg="#11151b", fg="#e7ebf0", highlightthickness=1, highlightbackground="#2b3541")
+            self.tab_settings_btn.configure(fg="#fbbf24")
+            self.tab_battle_btn.configure(fg="#94a3b8")
+            if hasattr(self, "tab_settings_underline"):
+                self.tab_settings_underline.configure(bg="#eca133")
+            if hasattr(self, "tab_battle_underline"):
+                self.tab_battle_underline.configure(bg="#131720")
         else:
             self.settings_tab_frame.pack_forget()
             self.battle_tab_frame.pack(fill="both", expand=True)
-            self.tab_battle_btn.configure(bg="#eca133", fg="#11151b", highlightthickness=0)
-            self.tab_settings_btn.configure(bg="#11151b", fg="#e7ebf0", highlightthickness=1, highlightbackground="#2b3541")
+            self.tab_battle_btn.configure(fg="#fbbf24")
+            self.tab_settings_btn.configure(fg="#94a3b8")
+            if hasattr(self, "tab_battle_underline"):
+                self.tab_battle_underline.configure(bg="#eca133")
+            if hasattr(self, "tab_settings_underline"):
+                self.tab_settings_underline.configure(bg="#131720")
 
     def toggle_log_drawer(self):
         self.log_drawer_open = not self.log_drawer_open
         if self.log_drawer_open:
-            self.log_drawer_frame.pack(fill="x", side="bottom", pady=(4, 0))
-            self.btn_toggle_log.configure(text="📜 Ẩn Nhật ký ▼", fg="#eca133")
+            self.log_drawer_frame.pack(fill="x", side="bottom", pady=(6, 0))
+            self.btn_toggle_log.configure(text="📜 Ẩn Nhật ký ▼", fg="#fbbf24")
+            self.log_box.see("end")
         else:
             self.log_drawer_frame.pack_forget()
-            self.btn_toggle_log.configure(text="📜 Xem chi tiết Nhật ký ▲", fg="#e7ebf0")
+            self.btn_toggle_log.configure(text="📜 Xem chi tiết Nhật ký", fg="#fbbf24")
 
     def toggle_expand_log_height(self):
         if not self.log_drawer_open:
@@ -3020,12 +3557,12 @@ class AOETrackerApp:
             if not self.running:
                 return
             try:
-                now_str = time.strftime("📅 %d/%m/%Y • %H:%M:%S")
+                now_str = time.strftime("🕒 %H:%M:%S - %d/%m/%Y")
                 self.date_corner_lbl.configure(text=now_str)
                 if self.is_logged_in:
-                    self.pulse_dot.configure(fg="#34d399", text="● Đã kết nối")
+                    self.pulse_dot.configure(fg="#34d399", bg="#0e261e", text="🟢 Đã kết nối •")
                 else:
-                    self.pulse_dot.configure(fg="#eca133", text="● Chờ đăng nhập")
+                    self.pulse_dot.configure(fg="#fbbf24", bg="#231a0e", text="🟡 Chờ đăng nhập •")
             except Exception:
                 pass
             self.root.after(1000, _tick)
@@ -4682,14 +5219,17 @@ class AOETrackerApp:
             return self.active_lobby_streamer.strip()
         return self.player_name_var.get().strip() or "XO"
 
-    def enter_friend_live_lobby(self, streamer_name: str):
+    def enter_friend_live_lobby(self, streamer_name: str, match_id: str = ""):
         clean_target = (streamer_name or "").strip()
         self.active_lobby_streamer = clean_target
+        self.selected_match_id = (match_id or "").strip()
         target_display = self.get_active_lobby_streamer()
         if clean_target:
-            self.log(f"🏟️ Đã vào Sảnh Live của '{target_display}'! Bạn có thể bình luận và tặng Sao cổ vũ.", "TEAM")
+            self.log(f"🏟️ Đã chuyển sang theo dõi Sảnh & Scoreboard của '{target_display}'!", "TEAM")
         else:
             self.log(f"🏠 Đã quay về Sảnh Live của bạn ('{target_display}').", "DEFAULT")
+        if getattr(self, "_cached_social_data", None):
+            self._update_friends_and_social_ui(self._cached_social_data)
         threading.Thread(target=self.refresh_initial_state, daemon=True).start()
 
     def refresh_initial_state(self):
@@ -4731,27 +5271,52 @@ class AOETrackerApp:
                 if has_bogus:
                     my_live_match = None
 
-            if my_live_match:
-                self.current_match = my_live_match
-                self._update_battle_arena_ui(my_live_match, is_spectating=False)
+            sel_id = getattr(self, "selected_match_id", "")
+            selected_match_obj = next((m for m in all_matches if str(m.get("id", "")) == sel_id), None) if sel_id else None
+
+            if selected_match_obj and (
+                str(selected_match_obj.get("streamerName", "")).lower() != name.lower()
+                or selected_match_obj.get("status") != "LIVE"
+            ):
+                self._update_battle_arena_ui(
+                    selected_match_obj,
+                    is_spectating=(str(selected_match_obj.get("streamerName", "")).lower() != name.lower()),
+                )
             elif lobby_target.lower() != name.lower():
                 watched_match = next(
                     (m for m in all_matches if m.get("status") == "LIVE" and str(m.get("streamerName", "")).lower() == lobby_target.lower()),
                     None,
+                ) or next(
+                    (m for m in all_matches if str(m.get("streamerName", "")).lower() == lobby_target.lower()),
+                    None,
                 )
                 if watched_match:
-                    self.current_match = None
                     self._update_battle_arena_ui(watched_match, is_spectating=True)
                 elif time.time() - getattr(self, "_last_diplomacy_push_ts", 0.0) > 10.0:
-                    self.current_match = None
                     self._reset_battle_arena_ui(f"Đang theo dõi Sảnh {lobby_target} (Chưa có kèo Live)")
+            elif my_live_match:
+                self.current_match = my_live_match
+                self._update_battle_arena_ui(my_live_match, is_spectating=False)
             elif time.time() - getattr(self, "_last_diplomacy_push_ts", 0.0) > 10.0:
                 self.current_match = None
                 self._reset_battle_arena_ui()
         except Exception:
             pass
 
+    def _condense_spam_text(self, text: str) -> str:
+        """Thu gọn tin nhắn lặp từ kiểu 'hay hay hay hay...' thành 'hay (xN)'."""
+        words = (text or "").strip().split()
+        if len(words) >= 4:
+            first_w = words[0].lower()
+            if all(w.lower() == first_w for w in words):
+                return f"{words[0]} (x{len(words)})"
+            if len(words) >= 6 and len(set(w.lower() for w in words)) <= 2:
+                pair = " ".join(words[:2])
+                return f"{pair} (x{len(words) // 2})"
+        return text
+
     def _update_friends_and_social_ui(self, data: dict):
+        self._cached_social_data = data
         my_name = self.player_name_var.get().strip()
         players = data.get("players") or []
         matches = data.get("matches") or []
@@ -4761,86 +5326,118 @@ class AOETrackerApp:
                 self.my_friends = me.get("friends")
             self.my_stars_balance = int(me.get("starsBalance") or 0)
 
-        # 1. Cập nhật danh sách Bạn bè & Trạng thái Live + Nút bấm vào Sảnh Live của bạn bè
+        # 1. Cập nhật danh sách Bạn bè & Trạng thái Online
         friend_badges = []
-        live_friends_list = []
+        online_count = 0
         for f_name in self.my_friends:
             fp = next((p for p in players if str(p.get("name", "")).lower() == str(f_name).lower()), None)
             if fp and fp.get("isLive"):
-                friend_badges.append(f"🔴 {fp.get('name')} (Đang LIVE {fp.get('liveMatchMode') or ''})")
-                live_friends_list.append(fp)
+                online_count += 1
+                friend_badges.append(f"🔴 {fp.get('name')} (LIVE)")
             elif fp and fp.get("isOnline"):
+                online_count += 1
                 friend_badges.append(f"🟢 {fp.get('name')} (Online)")
             else:
                 friend_badges.append(f"⚫ {f_name} (Offline)")
 
-        # Bổ sung các kèo đang LIVE khác trên hệ thống để người chơi tiện vào sảnh giao lưu
-        live_matches_on_system = [m for m in matches if m.get("status") == "LIVE"]
-        for m in live_matches_on_system:
-            s_name = m.get("streamerName")
-            if s_name and not any(str(x.get("name", "")).lower() == str(s_name).lower() for x in live_friends_list):
-                live_friends_list.append({"name": s_name, "liveMatchMode": m.get("mode", "4v4"), "isLive": True})
-
         if friend_badges:
-            friends_txt = "👥 Bạn bè: " + "  •  ".join(friend_badges)
+            friends_txt = f"👥 Bạn bè: {online_count} online  •  " + "  •  ".join(friend_badges)
         else:
             live_now = [p.get("name") for p in players if p.get("isLive")]
+            online_all = sum(1 for p in players if p.get("isOnline") or p.get("isLive"))
             if live_now:
-                friends_txt = f"👥 Bạn bè: Chưa kết bạn  |  Đang LIVE: 🔴 {', '.join(live_now)}"
+                friends_txt = f"👥 Hệ thống: {online_all} online  •  Đang LIVE: 🔴 {', '.join(live_now)}"
             else:
-                friends_txt = "👥 Bạn bè: Nhập tên Player vào ô bên trên rồi bấm '+ Kết bạn / Hủy'."
+                friends_txt = f"👥 Bạn bè: {online_all} online  •  Nhập tên Player rồi bấm '+ Kết bạn'"
 
-        # 2. Tìm kèo đấu của Sảnh đang chọn (Sảnh của bạn bè hoặc Sảnh của mình)
+        # 2. Tìm kèo đấu của Sảnh đang chọn
         lobby_target = self.get_active_lobby_streamer()
-        lobby_match = next(
+        sel_id = getattr(self, "selected_match_id", "")
+        lobby_match = (
+            next((m for m in matches if str(m.get("id", "")) == sel_id), None)
+            if sel_id
+            else None
+        ) or next(
             (m for m in matches if m.get("status") == "LIVE" and str(m.get("streamerName", "")).lower() == lobby_target.lower()),
+            None,
+        ) or next(
+            (m for m in matches if str(m.get("streamerName", "")).lower() == lobby_target.lower()),
             None,
         ) or data.get("currentMatch")
 
         if lobby_match and str(lobby_match.get("streamerName", "")).lower() == lobby_target.lower():
             chats = lobby_match.get("chatMessages") or []
             stars_total = lobby_match.get("starsCount") or 0
+            pinned_chat = lobby_match.get("pinnedChat")
         else:
             all_recent = data.get("recentChat") or []
             chats = [c for c in all_recent if str(c.get("streamerName", "")).lower() == lobby_target.lower()]
             target_p = next((p for p in players if str(p.get("name", "")).lower() == lobby_target.lower()), None)
             stars_total = (target_p.get("starsReceived") if target_p else 0) or 0
+            pinned_chat = None
+
+        # Lọc danh sách trận đấu cho Khu vực C
+        f_mode = getattr(self, "match_filter_mode", "ALL")
+        q_match = (self.match_search_var.get() if hasattr(self, "match_search_var") else "").strip().lower()
+        filtered_matches = []
+        for m in matches:
+            r_team = m.get("redTeam") or []
+            b_team = m.get("blueTeam") or []
+            if any(str(x).strip() in ("Red 1", "Blue 1") for x in (r_team + b_team)):
+                continue
+            st = m.get("status", "LIVE")
+            if f_mode == "LIVE" and st != "LIVE":
+                continue
+            if f_mode == "FINISHED" and st == "LIVE":
+                continue
+            if q_match:
+                haystack = " ".join([str(m.get("streamerName", "")), str(m.get("mode", ""))] + [str(x) for x in r_team + b_team]).lower()
+                if q_match not in haystack:
+                    continue
+            filtered_matches.append(m)
 
         def _render():
             try:
                 if hasattr(self, "my_stars_badge_lbl"):
-                    self.my_stars_badge_lbl.config(text=f"💰 Quỹ Sao: {self.my_stars_balance} ⭐")
+                    self.my_stars_badge_lbl.config(text=f"👑 Quỹ Sao: {self.my_stars_balance} ⭐")
                 if hasattr(self, "chat_wallet_lbl"):
                     self.chat_wallet_lbl.config(text=f"💰 Quỹ Sao của bạn: {self.my_stars_balance} ⭐ (Trừ trực tiếp khi tặng)")
                 if hasattr(self, "chat_lobby_stars_lbl"):
-                    self.chat_lobby_stars_lbl.config(text=f"🎁 Sảnh {lobby_target}: {stars_total} ⭐")
+                    self.chat_lobby_stars_lbl.config(text=f"🎁 Phiên Live: {stars_total} ⭐")
 
                 self.friends_status_lbl.config(text=friends_txt)
                 self.lobby_badge_lbl.config(
-                    text=f"💬 Sảnh Chat Live · Máy {lobby_target}",
-                    fg="#eca133" if lobby_target.lower() != my_name.lower() else "#e7ebf0",
+                    text=f"💬 SẢNH CHAT LIVE - MÁY {lobby_target.upper()}",
+                    fg="#eca133" if lobby_target.lower() != my_name.lower() else "#f8fafc",
                 )
                 self.stars_counter_lbl.config(text=f"⭐ {stars_total} sao tại sảnh {lobby_target}")
 
-                # Render danh sách các trận đấu đang LIVE trên hệ thống (Sảnh Live chuẩn UI/UX Pro Max)
+                # Render danh sách Card Trận Đấu tại Khu vực C
                 if hasattr(self, "live_matches_list_frame"):
                     for child in self.live_matches_list_frame.winfo_children():
                         child.destroy()
 
-                    if not live_matches_on_system:
+                    if not filtered_matches:
+                        empty_msg = (
+                            "🔍 Không tìm thấy trận đấu phù hợp với bộ lọc."
+                            if (q_match or f_mode != "ALL")
+                            else "🛡️ Hiện chưa có trận đấu nào trên sảnh.\nKhi bấm F2 (Diplomacy) trong game, trận đấu sẽ xuất hiện tại đây!"
+                        )
                         self.tk.Label(
                             self.live_matches_list_frame,
-                            text="🛡️ Hiện chưa có sảnh nào đang LIVE trên hệ thống.\nKhi bạn hoặc bạn bè bấm F2 (Diplomacy) trong game, sảnh Live sẽ tự động mở tại đây để mọi người vào xem & chat!",
+                            text=empty_msg,
                             font=("Segoe UI", 8, "bold"),
-                            fg="#cbd5e1",
-                            bg="#11151b",
+                            fg="#94a3b8",
+                            bg="#11151d",
                             justify="left",
                             anchor="w",
                         ).pack(anchor="w", pady=4)
                     else:
-                        for lm in live_matches_on_system[:5]:
+                        for lm in filtered_matches[:4]:
+                            m_id = str(lm.get("id", ""))
                             s_name = lm.get("streamerName") or "XO"
                             m_mode = lm.get("mode") or "4v4"
+                            m_status = lm.get("status", "LIVE")
                             m_games = lm.get("games") or []
                             m_stars = lm.get("starsCount") or 0
                             rw = sum(1 for g in m_games if g.get("winner") == "RED")
@@ -4851,39 +5448,55 @@ class AOETrackerApp:
                                 r_names += "..."
                             if len(lm.get("blueTeam") or []) > 2:
                                 b_names += "..."
-                            is_watching = s_name.lower() == lobby_target.lower()
-                            row_bg = "#1b2434" if is_watching else "#131821"
+
+                            is_watching = (sel_id == m_id) if sel_id else (s_name.lower() == lobby_target.lower() and m_status == "LIVE")
+                            row_bg = "#171d28" if is_watching else "#141923"
 
                             row_f = self.tk.Frame(
                                 self.live_matches_list_frame,
                                 bg=row_bg,
                                 highlightthickness=1,
-                                highlightbackground="#38bdf8" if is_watching else "#2b3541",
+                                highlightbackground="#e6a336" if is_watching else "#252d3d",
                                 padx=8,
                                 pady=5,
                             )
                             row_f.pack(fill="x", pady=2)
 
-                            info_txt = f"🔴 Máy {s_name} [{m_mode}]  •  {r_names}  ({rw} - {bw})  {b_names}  •  ⭐{m_stars}"
+                            # Badge LIVE / XONG
+                            is_live_m = m_status == "LIVE"
                             self.tk.Label(
+                                row_f,
+                                text="LIVE" if is_live_m else "XONG",
+                                font=("Segoe UI", 7, "bold"),
+                                fg="#34d399" if is_live_m else "#94a3b8",
+                                bg="#0d2e22" if is_live_m else "#1e293b",
+                                padx=5,
+                                pady=1,
+                            ).pack(side="left", padx=(0, 6))
+
+                            info_txt = f"Máy {s_name} [{m_mode}]  •  {r_names} ({rw} - {bw}) {b_names}  •  ⭐ {m_stars}"
+                            info_lbl = self.tk.Label(
                                 row_f,
                                 text=info_txt,
                                 font=("Segoe UI", 8, "bold"),
                                 fg="#f8fafc",
                                 bg=row_bg,
                                 anchor="w",
-                            ).pack(side="left", fill="x", expand=True)
+                                cursor="hand2",
+                            )
+                            info_lbl.pack(side="left", fill="x", expand=True)
+                            info_lbl.bind("<Button-1>", lambda _e, st=s_name, mid=m_id: self.enter_friend_live_lobby(st, mid))
 
                             act_btn = self.tk.Button(
                                 row_f,
-                                text="✓ Đang xem" if is_watching else "👁️ Vào Sảnh",
-                                command=lambda st=s_name: self.enter_friend_live_lobby(st),
+                                text="📌 Đang xem" if is_watching else "👁️ Xem trận",
+                                command=lambda st=s_name, mid=m_id: self.enter_friend_live_lobby(st, mid),
                                 font=("Segoe UI", 8, "bold"),
-                                bg="#eca133" if is_watching else "#11151b",
-                                fg="#11151b" if is_watching else "#38bdf8",
+                                bg="#e6a336" if is_watching else "#1c222e",
+                                fg="#11151d" if is_watching else "#e2e8f0",
                                 relief="flat",
                                 highlightthickness=0 if is_watching else 1,
-                                highlightbackground="#38bdf8",
+                                highlightbackground="#334155",
                                 padx=8,
                                 pady=1,
                                 cursor="hand2",
@@ -4892,24 +5505,24 @@ class AOETrackerApp:
 
                             voi_btn = self.tk.Button(
                                 row_f,
-                                text="🐘 22⭐",
-                                command=lambda st=s_name: (
-                                    self.enter_friend_live_lobby(st),
-                                    self.send_star_gift_action(22, gift_code="ELEPHANT", gift_name="Con Voi Điên", default_msg="Thả Voi Điên húc bay nhà địch!"),
+                                text="🐘 22",
+                                command=lambda st=s_name, mid=m_id: (
+                                    self.enter_friend_live_lobby(st, mid),
+                                    self.send_star_gift_action(22, gift_code="ELEPHANT", gift_name="Con Voi", default_msg="Thả Con Voi 22 sao húc bay nhà địch!"),
                                 ),
                                 font=("Segoe UI", 8, "bold"),
-                                bg="#241911",
-                                fg="#fde047",
+                                bg="#171d28",
+                                fg="#cbd5e1",
                                 relief="flat",
                                 highlightthickness=1,
-                                highlightbackground="#d98f26",
+                                highlightbackground="#252d3d",
                                 padx=6,
                                 pady=1,
                                 cursor="hand2",
                             )
                             voi_btn.pack(side="right", padx=(6, 0))
 
-                # Cập nhật Bảng Vinh Danh Hoàng Gia trên đỉnh Hộp Chat Đứng nếu có lượt tặng Sao / Vật phẩm mới nhất
+                # Cập nhật Bảng Vinh Danh Hoàng Gia trên đỉnh Hộp Chat
                 latest_star_chat = next(
                     (c for c in reversed(chats) if c.get("type") in ("STAR", "STAR_GIFT")),
                     None,
@@ -4923,38 +5536,99 @@ class AOETrackerApp:
                         h_msg = latest_star_chat.get("text") or latest_star_chat.get("message") or ""
                         h_gift_txt = f"{h_icon} {h_name} (+{h_stars}⭐)" if h_name else f"+{h_stars}⭐"
                         self.chat_honor_lbl.config(
-                            text=f"👑 VINH DANH: {h_sender} tặng {h_gift_txt} — \"{h_msg[:58]}\"",
+                            text=f"👑 VINH DANH SẢNH {lobby_target.upper()}: {h_sender} tặng {h_gift_txt} — \"{h_msg[:48]}\"",
                             fg="#fef08a",
                         )
                     else:
                         self.chat_honor_lbl.config(
-                            text=f"👑 VINH DANH SẢNH {lobby_target}: Thả 🐘 Con Voi (22⭐) hoặc ⚡ Phù Thủy (100⭐) để lên bảng vàng!",
+                            text=f"👑 VINH DANH SẢNH {lobby_target.upper()}: Thả 🐘 Con Voi (22 ⭐) hoặc ⚡ Phù Thủy (100 ⭐) để lên bảng vàng!",
                             fg="#fde047",
                         )
 
+                # Cập nhật Ghim bình luận
+                if hasattr(self, "pinned_chat_lbl"):
+                    if pinned_chat and isinstance(pinned_chat, dict) and (pinned_chat.get("text") or pinned_chat.get("message")):
+                        p_sender = pinned_chat.get("senderName", "Admin")
+                        p_txt = pinned_chat.get("text") or pinned_chat.get("message") or ""
+                        self.pinned_chat_lbl.config(
+                            text=f"📌 GHIM [{p_sender}]: {p_txt[:68]}",
+                            fg="#fef08a",
+                        )
+                    else:
+                        self.pinned_chat_lbl.config(
+                            text="📌 Chưa có bình luận ghim (Bấm '📌 Ghim mới nhất' để ghim tin nhắn đầu sảnh)",
+                            fg="#93c5fd",
+                        )
+
+                # Lọc & hiển thị Live Chat tại Khu vực D
+                c_tab = getattr(self, "chat_filter_tab", "ALL")
+                q_chat = (self.chat_search_var.get() if hasattr(self, "chat_search_var") else "").strip().lower()
+                antispam = bool(self.chat_antispam_var.get()) if hasattr(self, "chat_antispam_var") else True
+
                 self.chat_box.configure(state="normal")
                 self.chat_box.delete("1.0", "end")
-                if not chats:
+
+                filtered_chats = []
+                prev_sig = None
+                for c in chats[-50:]:
+                    c_type = c.get("type", "CHAT")
+                    sender = str(c.get("senderName", "Player"))
+                    raw_msg = str(c.get("text") or c.get("message") or "")
+                    if c_tab == "CHAT" and c_type in ("STAR", "STAR_GIFT", "SYSTEM"):
+                        continue
+                    if c_tab == "GIFT" and c_type not in ("STAR", "STAR_GIFT"):
+                        continue
+                    if c_tab == "SYSTEM" and c_type != "SYSTEM":
+                        continue
+                    if q_chat and (q_chat not in sender.lower() and q_chat not in raw_msg.lower()):
+                        continue
+                    disp_msg = self._condense_spam_text(raw_msg) if antispam and c_type == "CHAT" else raw_msg
+                    if antispam and c_type == "CHAT":
+                        sig = f"{sender.lower()}::{disp_msg.lower()}"
+                        if sig == prev_sig:
+                            continue
+                        prev_sig = sig
+                    filtered_chats.append((c, disp_msg))
+
+                if not filtered_chats:
                     self.chat_box.insert(
                         "end",
-                        f"Đang ở sảnh Live của {lobby_target}. Chưa có bình luận nào — hãy chat hoặc tặng Vật Phẩm Đế Chế / Sao cổ vũ!\n",
+                        f"Đang ở sảnh Live của {lobby_target}. Chưa có tin nhắn phù hợp — hãy chat hoặc tặng Vật Phẩm Đế Chế!\n",
                         "MSG",
                     )
                 else:
-                    for c in chats[-35:]:
+                    for c, msg in filtered_chats[-35:]:
                         sender = c.get("senderName", "Player")
-                        msg = c.get("text") or c.get("message") or ""
-                        if c.get("type") in ("STAR", "STAR_GIFT"):
+                        c_type = c.get("type", "CHAT")
+                        ts_raw = str(c.get("timestamp") or "")
+                        hhmm = ""
+                        if "T" in ts_raw and len(ts_raw) >= 16:
+                            try:
+                                dt_utc = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+                                hhmm = dt_utc.astimezone().strftime("%H:%M ")
+                            except Exception:
+                                hhmm = ts_raw[11:16] + " "
+
+                        if hhmm:
+                            self.chat_box.insert("end", hhmm, "TIME")
+
+                        if c_type == "SYSTEM":
+                            self.chat_box.insert("end", f"⚙️ [HỆ THỐNG] {msg}\n", "SYS_EVENT")
+                        elif c_type in ("STAR", "STAR_GIFT"):
                             g_icon = c.get("giftIcon") or "🌟"
                             g_name = c.get("giftName") or ""
                             star_amt = c.get("starCount") or c.get("stars") or 1
                             tag_to_use = "AOE_GIFT" if c.get("giftCode") else "STAR"
-                            prefix = f"👑 {g_icon} [{g_name} • +{star_amt}⭐]" if g_name else f"👑 🌟 [+{star_amt}⭐]"
+                            prefix = f"🎁 {g_icon} [{g_name} • +{star_amt}⭐]" if g_name else f"🎁 🌟 [+{star_amt}⭐]"
                             self.chat_box.insert("end", f"{prefix} {sender}: {msg}\n", tag_to_use)
                         elif c.get("source") == "FACEBOOK" or c.get("senderTier") == "FACEBOOK":
                             self.chat_box.insert("end", f"🔵 [FB] {sender}: ", "FB_SENDER")
                             self.chat_box.insert("end", f"{msg}\n", "MSG")
                         else:
+                            if c.get("isAdmin") or str(sender).lower() == "xo":
+                                self.chat_box.insert("end", "🛡️ ADMIN ", "ADMIN_BADGE")
+                            elif c.get("isStreamer") or str(sender).lower() == lobby_target.lower():
+                                self.chat_box.insert("end", "🎥 HOST ", "STREAMER_BADGE")
                             self.chat_box.insert("end", f"{sender}: ", "SENDER")
                             self.chat_box.insert("end", f"{msg}\n", "MSG")
                 self.chat_box.see("end")
@@ -4963,6 +5637,50 @@ class AOETrackerApp:
                 pass
 
         self.root.after(0, _render)
+
+    def pin_chat_message_action(self, unpin: bool = False):
+        if not self.is_logged_in:
+            self.messagebox.showwarning("Chưa đăng nhập", "Vui lòng đăng nhập trước khi ghim bình luận!")
+            return
+        target_streamer = self.get_active_lobby_streamer()
+        chat_id = ""
+        if not unpin and getattr(self, "_cached_social_data", None):
+            matches = self._cached_social_data.get("matches") or []
+            lm = next(
+                (m for m in matches if m.get("status") == "LIVE" and str(m.get("streamerName", "")).lower() == target_streamer.lower()),
+                None,
+            ) or self._cached_social_data.get("currentMatch")
+            if lm and lm.get("chatMessages"):
+                non_sys = [c for c in lm.get("chatMessages") if c.get("type") != "SYSTEM"]
+                if non_sys:
+                    chat_id = non_sys[-1].get("id", "")
+
+        def _task():
+            try:
+                res = requests.post(
+                    self.get_api_endpoint(),
+                    json={
+                        "action": "pinChatMessage",
+                        "streamerName": target_streamer,
+                        "playerName": self.player_name_var.get().strip(),
+                        "password": self._get_effective_player_password(),
+                        "isAdmin": self.is_admin,
+                        "adminPassword": self.admin_password,
+                        "chatId": chat_id,
+                        "unpin": unpin,
+                    },
+                    timeout=10,
+                )
+                data = res.json()
+                if data.get("status") == "success":
+                    self.log(f"✅ 📌 {data.get('message', 'Đã cập nhật ghim bình luận!')}", "SUCCESS")
+                    self.refresh_initial_state()
+                else:
+                    self.log(f"⚠️ {data.get('message', 'Không thể ghim bình luận')}", "WARN")
+            except Exception as e:
+                self.log(f"❌ Lỗi ghim bình luận: {e}", "ERROR")
+
+        threading.Thread(target=_task, daemon=True).start()
 
     def toggle_friend_action(self):
         if not self.is_logged_in:
@@ -5108,17 +5826,25 @@ class AOETrackerApp:
             sets.append(f"Séc {idx}: {cur_r}-{cur_b}")
         return f"🏆 Tỉ số C: {c_r} - {c_b}  |  " + " • ".join(sets)
 
-    def _reset_battle_arena_ui(self, summary_text: str = "Ấn F2 trong game để bắt đầu"):
+    def _reset_battle_arena_ui(self, summary_text: str = "Ấn F2 trong game để bắt đầu\nTổng 0 trận"):
         def _render():
             try:
-                t_score = self.target_score_var.get() or 100
-                self.match_mode_lbl.config(text=f"Chạm {t_score} • Chờ kèo Live")
-                self.score_lbl.config(text="0 - 0")
+                t_score = self.target_score_var.get() or 7
+                self.match_mode_lbl.config(text=f"Kèo 1v1 - Chạm {t_score}")
+                self.score_lbl.config(text="0 : 0")
                 self.c_mode_summary_lbl.config(text=summary_text)
-                self.red_roster_lbl.config(text="Chưa có đội hình Team Đỏ\n(Ấn F2 Diplomacy trong game)")
-                self.blue_roster_lbl.config(text="Chưa có đội hình Team Xanh\n(Ấn F2 Diplomacy trong game)")
-                self.red_count_lbl.config(text="0 người")
-                self.blue_count_lbl.config(text="0 người")
+                if hasattr(self, "match_history_lbl"):
+                    self.match_history_lbl.config(text="Lịch sử ván: Chưa có ván đấu", fg="#64748b")
+                if hasattr(self, "red_primary_player_lbl"):
+                    self.red_primary_player_lbl.config(text=self.player_name_var.get().strip() or "Chủ nhà")
+                if hasattr(self, "blue_primary_player_lbl"):
+                    self.blue_primary_player_lbl.config(text="Đội khách")
+                self.red_roster_lbl.config(text="[Chưa chọn quân] (Chờ F2)")
+                self.blue_roster_lbl.config(text="[Chưa chọn quân] (Chờ F2)")
+                self.red_count_lbl.config(text="")
+                self.blue_count_lbl.config(text="")
+                if hasattr(self, "scoreboard_live_badge"):
+                    self.scoreboard_live_badge.config(text="LIVE", fg="#34d399", bg="#0d2e22")
             except Exception:
                 pass
 
@@ -5131,9 +5857,10 @@ class AOETrackerApp:
         red_w = sum(1 for g in games if g.get("winner") == "RED")
         blue_w = sum(1 for g in games if g.get("winner") == "BLUE")
         mode = match.get("mode", "4v4")
+        m_status = match.get("status", "LIVE")
         streamer_owner = match.get("streamerName") or "XO"
         ov_cfg = match.get("overlayConfig") or {}
-        target_score = ov_cfg.get("targetScore") or self.target_score_var.get() or 100
+        target_score = ov_cfg.get("targetScore") or self.target_score_var.get() or 7
         c_enabled = bool(ov_cfg.get("cModeEnabled", self.c_mode_var.get()))
 
         last_game = games[-1] if games else {}
@@ -5144,41 +5871,97 @@ class AOETrackerApp:
         red_colors = last_game.get("redColors") or match.get("redColors") or []
         blue_colors = last_game.get("blueColors") or match.get("blueColors") or []
 
-        red_lines = []
-        for i, p in enumerate(red_players):
-            civ = red_civs[i] if i < len(red_civs) else "---"
-            col_idx = red_colors[i] if i < len(red_colors) else i
+        if len(red_players) == 1:
+            red_primary = str(red_players[0])
+            civ = red_civs[0] if red_civs else "---"
+            col_idx = red_colors[0] if red_colors else 0
             col_name = COLOR_NAMES_VI.get(col_idx, f"Màu {col_idx + 1}")
-            red_lines.append(f"• {p:<10} [{civ:<7}] ({col_name})")
+            red_text = f"[{civ}] ({col_name})"
+            red_cnt_txt = ""
+        else:
+            red_primary = " • ".join(str(x) for x in red_players[:2]) + ("..." if len(red_players) > 2 else "")
+            if not red_primary:
+                red_primary = "Chủ nhà"
+            red_lines = []
+            for i, p in enumerate(red_players):
+                civ = red_civs[i] if i < len(red_civs) else "---"
+                col_idx = red_colors[i] if i < len(red_colors) else i
+                col_name = COLOR_NAMES_VI.get(col_idx, f"Màu {col_idx + 1}")
+                red_lines.append(f"{p} [{civ}] ({col_name})")
+            red_text = "\n".join(red_lines) if red_lines else "[Chưa có dữ liệu]"
+            red_cnt_txt = f"{len(red_players)} người chơi"
 
-        blue_lines = []
-        for i, p in enumerate(blue_players):
-            civ = blue_civs[i] if i < len(blue_civs) else "---"
-            col_idx = blue_colors[i] if i < len(blue_colors) else i + 4
+        if len(blue_players) == 1:
+            blue_primary = str(blue_players[0])
+            civ = blue_civs[0] if blue_civs else "---"
+            col_idx = blue_colors[0] if blue_colors else 1
             col_name = COLOR_NAMES_VI.get(col_idx, f"Màu {col_idx + 1}")
-            blue_lines.append(f"• {p:<10} [{civ:<7}] ({col_name})")
+            blue_text = f"[{civ}] ({col_name})"
+            blue_cnt_txt = ""
+        else:
+            blue_primary = " • ".join(str(x) for x in blue_players[:2]) + ("..." if len(blue_players) > 2 else "")
+            if not blue_primary:
+                blue_primary = "Đội khách"
+            blue_lines = []
+            for i, p in enumerate(blue_players):
+                civ = blue_civs[i] if i < len(blue_civs) else "---"
+                col_idx = blue_colors[i] if i < len(blue_colors) else i + 4
+                col_name = COLOR_NAMES_VI.get(col_idx, f"Màu {col_idx + 1}")
+                blue_lines.append(f"{p} [{civ}] ({col_name})")
+            blue_text = "\n".join(blue_lines) if blue_lines else "[Chưa có dữ liệu]"
+            blue_cnt_txt = f"{len(blue_players)} người chơi"
 
-        red_text = "\n".join(red_lines) if red_lines else "Chưa có dữ liệu Team Đỏ"
-        blue_text = "\n".join(blue_lines) if blue_lines else "Chưa có dữ liệu Team Xanh"
+        # Lịch sử kết quả từng ván
+        hist_parts = []
+        for idx, g in enumerate(games[-6:], start=max(1, len(games) - 5)):
+            gw = g.get("winner")
+            if gw == "RED":
+                hist_parts.append(f"V{idx}: 🔴 Đỏ")
+            elif gw == "BLUE":
+                hist_parts.append(f"V{idx}: 🔵 Xanh")
+            else:
+                hist_parts.append(f"V{idx}: ⏳")
+        hist_txt = ("Lịch sử: " + " • ".join(hist_parts)) if hist_parts else "Lịch sử ván: Chưa có ván đấu"
+        hist_fg = "#94a3b8"
+
+        is_finished = m_status != "LIVE" or (int(target_score) < 50 and (red_w >= int(target_score) or blue_w >= int(target_score)))
+        if is_finished:
+            win_team = "TEAM ĐỎ CHIẾN THẮNG 🏆" if red_w > blue_w else ("TEAM XANH CHIẾN THẮNG 🏆" if blue_w > red_w else "HÒA KÈO 🤝")
+            hist_txt = f"🎉 {win_team}  |  {hist_txt}"
+            hist_fg = "#fbbf24"
 
         if is_spectating:
-            hdr_txt = f"👁️ Đang xem Máy {streamer_owner} ({mode})"
-            summary_txt = f"Trận #{len(games)} • Chạm {target_score}"
+            hdr_txt = f"Kèo {mode} - Chạm {target_score} (Máy {streamer_owner})"
+            summary_txt = f"Trận #{len(games)} đang diễn ra\nTổng {len(games)} trận"
         elif c_enabled:
             summary_txt = self._compute_c_mode_summary(games, int(ov_cfg.get("cTargetWins") or 3))
-            hdr_txt = f"Kèo {mode} • Đánh C (Chạm 3)"
+            hdr_txt = f"Kèo {mode} - Đánh C (Chạm 3)"
         else:
-            summary_txt = f"Trận #{len(games)} đang diễn ra • Tổng {len(games)} trận"
-            hdr_txt = f"Kèo {mode} • Chạm {target_score}"
+            summary_txt = f"Trận #{max(1, len(games))} {'đã kết thúc' if is_finished else 'đang diễn ra'}\nTổng {len(games)} trận"
+            hdr_txt = f"Kèo {mode} - Chạm {target_score}"
 
         def _render():
-            self.match_mode_lbl.config(text=hdr_txt)
-            self.score_lbl.config(text=f"{red_w} - {blue_w}")
-            self.c_mode_summary_lbl.config(text=summary_txt)
-            self.red_roster_lbl.config(text=red_text)
-            self.blue_roster_lbl.config(text=blue_text)
-            self.red_count_lbl.config(text=f"{len(red_players)} người")
-            self.blue_count_lbl.config(text=f"{len(blue_players)} người")
+            try:
+                self.match_mode_lbl.config(text=hdr_txt)
+                self.score_lbl.config(text=f"{red_w} : {blue_w}")
+                self.c_mode_summary_lbl.config(text=summary_txt)
+                if hasattr(self, "match_history_lbl"):
+                    self.match_history_lbl.config(text=hist_txt, fg=hist_fg)
+                if hasattr(self, "red_primary_player_lbl"):
+                    self.red_primary_player_lbl.config(text=red_primary)
+                if hasattr(self, "blue_primary_player_lbl"):
+                    self.blue_primary_player_lbl.config(text=blue_primary)
+                self.red_roster_lbl.config(text=red_text)
+                self.blue_roster_lbl.config(text=blue_text)
+                self.red_count_lbl.config(text=red_cnt_txt)
+                self.blue_count_lbl.config(text=blue_cnt_txt)
+                if hasattr(self, "scoreboard_live_badge"):
+                    if is_finished:
+                        self.scoreboard_live_badge.config(text="KẾT THÚC", fg="#fbbf24", bg="#2a1f10")
+                    else:
+                        self.scoreboard_live_badge.config(text="LIVE", fg="#34d399", bg="#0d2e22")
+            except Exception:
+                pass
 
         self.root.after(0, _render)
 
@@ -5679,10 +6462,41 @@ class AOETrackerApp:
                     if data.get("match"):
                         self.current_match = data["match"]
                         self._update_battle_arena_ui(data["match"])
+                    self.refresh_initial_state()
                 else:
                     self.log(f"⚠️ {data.get('message', 'Không thể cập nhật tỉ số')}", "WARN")
             except Exception as e:
                 self.log(f"❌ Lỗi cập nhật tỉ số: {e}", "ERROR")
+
+        threading.Thread(target=_task, daemon=True).start()
+
+    def undo_last_winner(self):
+        def _task():
+            try:
+                api_url = self.get_api_endpoint()
+                res = requests.post(
+                    api_url,
+                    json={
+                        "action": "undoLastWinner",
+                        "streamerName": self.player_name_var.get().strip(),
+                        "updatedBy": self.player_name_var.get().strip(),
+                        "password": self._get_effective_player_password(),
+                        "isAdmin": self.is_admin,
+                        "adminPassword": self.admin_password,
+                    },
+                    timeout=10,
+                )
+                data = res.json()
+                if data.get("status") == "success":
+                    self.log(f"✅ ↩️ {data.get('message', 'Đã hoàn tác kết quả ván vừa rồi!')}", "SUCCESS")
+                    if data.get("match"):
+                        self.current_match = data["match"]
+                        self._update_battle_arena_ui(data["match"])
+                    self.refresh_initial_state()
+                else:
+                    self.log(f"⚠️ {data.get('message', 'Không thể hoàn tác kết quả')}", "WARN")
+            except Exception as e:
+                self.log(f"❌ Lỗi hoàn tác kết quả: {e}", "ERROR")
 
         threading.Thread(target=_task, daemon=True).start()
 
