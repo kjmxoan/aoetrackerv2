@@ -47,8 +47,8 @@ aoe-tracker/
    - **Chỉ quét khi có sự kiện mở Diplomacy**: Tool lắng nghe sự kiện khi người chơi thực sự **click chuột trái vào nút `Diplomacy` trên thanh HUD phía trên trong game** hoặc nhấn phím tắt **`F2` / `Alt+D`** (hoặc bấm nút quét thủ công trên Tool), tuyệt đối không quét ngầm vô điều kiện gây bắt nhầm màn hình kết thúc trận đấu.
    - **Bắt buộc đầy đủ thông tin Người chơi & Quân của cả 2 đội**: Chỉ trích xuất và gửi lên Server khi hộp thoại `DIPLOMACY` có đầy đủ nút `OK` + `Cancel`, tiêu đề cột `Name` / `Civilization` / `Ally` / `Neutral` / `Enemy`, số người chơi 2 đội cân bằng (`1v1`, `2v2`, `3v3`, `4v4`), tất cả các dòng đều đọc được tên người chơi hợp lệ (loại bỏ hoàn toàn tên giả `Player 1..8`, `Red 1`, `Blue 1`) và tên Quân hợp lệ (không đoán mò quân theo độ rộng pixel).
    - **Nguyên tắc tính trận đấu mới (`TRẬN X`)**: Khi bảng quân hợp lệ có **sự thay đổi quân (`đổi quân`)** hoặc trận trước đã có kết quả thắng/thua thì hệ thống mới tính sang **ván đấu mới (`+1 TRẬN`)**. Nếu đổi thể thức (ví dụ từ `2v2` sang `1v1` hoặc `3v3`), hệ thống tự động kết thúc kèo cũ và tạo kèo mới bắt đầu từ `TRẬN 1`.
-5. **Thanh Nhật Ký 1 Dòng Gọn Gàng (`Collapsible Battle Log`)**:
-   - Thu gọn thành 1 dòng trạng thái ở đáy cửa sổ; bấm **`📜 Chi tiết ▴`** khi cần mở rộng xem lịch sử hệ thống.
+5. **Bảng Nhật Ký Điều Tra Mở Rộng (`Expanded Diagnostic Log Panel`)**:
+   - Hiển thị sẵn bảng Nhật ký rộng rãi (`10 dòng` kèm thanh cuộn dọc) ngay khi mở Tool; tích hợp nút **`🔎 Phóng to Log (18 dòng)`** để mở rộng tối đa vùng điều tra, nút **`📋 Copy Log`** để sao chép nhanh toàn bộ lịch sử log và ghi rõ chi tiết tọa độ khung hộp thoại, độ phân giải chụp được cũng như nguyên nhân từ chối (nếu có) ở từng bước quét `F2`.
 
 ---
 
@@ -233,4 +233,9 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
       - Kích hoạt `SetProcessDpiAwareness(2)` ngay khi mở Tool để `ImageGrab` chụp đúng 100% độ phân giải vật lý của màn hình mà không bị Windows DPI Scaling (125%/150%) cắt góc.
       - Gỡ bỏ rào cản Windows UIPI khi game `EMPIRESX.EXE` chạy quyền Administrator (không bị chặn khi chờ `GetAsyncKeyState`), đồng thời hỗ trợ tự động cắt khung cửa sổ game hoặc khung con `(0, 0)` khi chỉnh `Screen Size` nhỏ hơn màn hình chính.
       - Nâng cấp bộ lọc `verify_is_diplomacy_dialog` kiểm tra đủ bộ 3 nút đáy đặc trưng của bảng `DIPLOMACY` (`OK` vàng bên trái, `CLEAR TRIBUTES` trắng ở giữa, `CANCEL` trắng bên phải), loại bỏ tuyệt đối bảng `GAME SETTINGS` hoặc `MENU`.
-      - Chuẩn hóa baseline cố định `11px` cho bộ mẫu chữ 2D (`CIV_TEMPLATES` & `AI_NAME_TEMPLATES`), mở rộng vùng cắt tên từ `x=8` (không cắt mất chữ cái đầu), khử vân gỗ trên/dưới dòng chữ và bổ sung đầy đủ danh sách tên AI chuẩn của 16 loại quân AOE 1 ROR (`Gortys`, `Aeacus`, `Vaballathus`, ...).
+      - Chuẩn hóa baseline cố định `11px` cho bộ mẫu chữ 2D (`CIV_TEMPLATES` & `AI_NAME_TEMPLATES`), mở rộng vùng cắt tên từ `x=8` (không cắt mất chữ cái đầu), khử vân gỗ trên/dưới dòng chữ và bổ sung đầy đủ danh sách tên AI chuẩn của 16 loại quân AOE 1 ROR (`Gortys`, `Aeacus`, `Vaballathus`, `Philo`, `Dido`, `Hatshepsut`, ...).
+    - **Hỗ trợ đồng thời cả 2 giao diện hộp thoại AOE 1 (`Light Grey Marble` của quân Greek/Roman/Minoan & `Tan Wood` của quân Yamato/Shang) + Nới rộng Bảng Log Điều Tra**:
+      - Khắc phục triệt để lỗi bảng `DIPLOMACY` nền **Đá Cẩm Thạch Xám Sáng (`Light Grey Marble`, `R=G=B=150..205`)** khi cầm quân `Greek`, `Roman`, `Minoan`, `Phoenician`... bị từ chối ở bước kiểm tra nền thanh tiêu đề (`w_left`/`w_right` và `white_title_px`) hoặc bị vân đá xám ở các dòng trống (`r=4..7`) làm lệch số dòng người chơi.
+      - Áp dụng bộ lọc tương phản bóng đổ chữ trắng (`Drop-Shadow Contrast: min_rgb - shadow_rgb > 40`) giúp tách biệt tuyệt đối chữ trắng thật trên dòng người chơi với vân đá cẩm thạch xám sáng trên dòng trống.
+      - Bổ sung ngưỡng khớp ký tự tối thiểu (`raw_sim >= 0.48`) trong `clean_and_match_player_name` trước khi cộng điểm thưởng AI theo quân, giữ nguyên chính xác tên người chơi thật hoặc tên AI ngắn (`Philo`, `Dido`) mà không bị ghi đè nhầm.
+      - Nới rộng khung Nhật ký (`10 dòng` mặc định + thanh cuộn dọc + nút **`🔎 Phóng to Log (18 dòng)`** + nút **`📋 Copy Log`**) và hiển thị log chẩn đoán chi tiết tọa độ khung/độ phân giải/lý do từ chối khi bấm `F2` hoặc `Quét F2 ngay`.

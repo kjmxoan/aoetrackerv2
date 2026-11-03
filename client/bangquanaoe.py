@@ -106,7 +106,7 @@ COLOR_HEX = {
 CIV_AI_NAMES = {
     "Assyrian": ["Ashurbanipal", "Sargon", "Sennacherib", "Shalmaneser", "Tiglath-Pileser", "Tukulti-Ninurta", "Adad-nirari", "Esarhaddon", "Nimrod", "Semiramis", "Ashurnasirpal", "Shamshi-Adad"],
     "Babylonian": ["Nabonidus", "Hammurabi", "Nebuchadnezzar", "Tiglath-Pileser", "Sumu-abum", "Samsu-iluna", "Burna-Buriash", "Nabopolassar", "Belshazzar", "Marduk", "Neriglissar", "Rim-Sin"],
-    "Carthaginian": ["Hamilcar Barca", "Matho", "Hannibal", "Hasdrubal", "Hanno", "Mago", "Gisco", "Bomilcar", "Spendius", "Adherbal", "Himilco", "Maharbal", "Xanthippus"],
+    "Carthaginian": ["Hamilcar Barca", "Matho", "Hannibal", "Hasdrubal", "Hanno", "Mago", "Gisco", "Gisgo", "Bomilcar", "Spendius", "Adherbal", "Himilco", "Maharbal", "Xanthippus", "Dido"],
     "Choson": ["Hyon", "Dangun", "Gwanggaeto", "Jumong", "Kija", "Ugeo", "Wiman", "Ulji Mundok", "Koi", "Piru", "Kunchogo", "Sosurim", "Kwanggaeto", "Changsu"],
     "Egyptian": ["Amenophis", "Ramses", "Cleopatra", "Hatshepsut", "Khufu", "Nefertiti", "Ptolemy", "Seti", "Thutmose", "Tutankhamun", "Akhenaten", "Cheops", "Menes", "Necho", "Psamtik", "Sneferu", "Zoser"],
     "Greek": ["Leonidas", "Erythrus", "Pericles", "Alexander", "Hippocrates", "Themistocles", "Pyrrhus", "Lysander", "Alcibiades", "Agamemnon", "Achilles", "Odysseus", "Miltiades", "Cimon", "Epaminondas", "Pelopidas", "Xenophon"],
@@ -115,7 +115,7 @@ CIV_AI_NAMES = {
     "Minoan": ["Gortys", "Aeacus", "Erythrus", "Minos", "Asterion", "Deucalion", "Idomeneus", "Rhadamanthus", "Sarpedon", "Talos", "Phaestus", "Knossos", "Cydon", "Catres", "Tylus", "Lyctus", "Mallia", "Zakros"],
     "Palmyran": ["Zobdas", "Syphax", "Jugurtha", "Zenobia", "Odaenathus", "Vaballathus", "Hairan", "Longinus", "Maeonius", "Zabdas", "Antiochus", "Septimius", "Vorodes"],
     "Persian": ["Astyages", "Cyrus", "Mithridates", "Darius", "Xerxes", "Cambyses", "Artaxerxes", "Shapur", "Tigranes", "Ardashir", "Bardiya", "Chosroes", "Hystaspes", "Phraates", "Tissaphernes"],
-    "Phoenician": ["Ahiram", "Hiram", "Abibaal", "Dido", "Ethbaal", "Ittobaal", "Pygmalion", "Zakarbaal", "Azemilcus", "Baal", "Eshmunazar", "Luli", "Rib-Addi", "Strato", "Tabnit"],
+    "Phoenician": ["Ahiram", "Hiram", "Abibaal", "Dido", "Philo", "Boodes", "Gisgo", "Hanno", "Mago", "Malchus", "Ethbaal", "Ittobaal", "Pygmalion", "Zakarbaal", "Azemilcus", "Baal", "Eshmunazar", "Luli", "Rib-Addi", "Strato", "Tabnit"],
     "Roman": ["Marcus Aurelius", "Caesar", "Augustus", "Pompey", "Scipio", "Sulla", "Trajan", "Crassus", "Marius", "Cicero", "Constantine", "Fabius", "Germanicus", "Hadrian", "Mark Antony", "Nero", "Tiberius", "Vespasian"],
     "Shang": ["Zhou Xin", "Tang", "Wu Ding", "Pan Geng", "Tai Jia", "Zu Yi", "Di Yi", "Tai Wu", "Bu Bing", "Wai Ren", "Zhong Ding", "Zu Geng", "Zu Jia", "Lin Xin", "Geng Ding"],
     "Sumerian": ["Enmerkar", "Gilgamesh", "Sargon", "Ur-Nammu", "Shulgi", "Eannatum", "Gudea", "Lugal-zage-si", "Aka", "Dungi", "Enmebaragesi", "Ibbi-Sin", "Lugalbanda", "Mesilim", "Urukagina", "Utu-hegal"],
@@ -248,23 +248,27 @@ class DiplomacyScanner:
             best_local_sc = -1.0
             best_local_box = None
             for hw in range(max(50, hw_cand - 3), hw_cand + 4):
-                hh = int(round(hw * (301.0 / 468.0)))
-                x1, x2 = int(round(cx - hw)), int(round(cx + hw))
-                y1, y2 = int(round(cy - hh)), int(round(cy + hh))
-                if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
-                    continue
-                left_line = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
-                right_line = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
-                top_line = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
-                bot_line = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
-                sc = (
-                    min(left_line, right_line) * 2.0
-                    + min(top_line, bot_line) * 2.0
-                    + (left_line + right_line + top_line + bot_line) * 0.5
-                )
-                if sc > best_local_sc:
-                    best_local_sc = sc
-                    best_local_box = (x1, y1, x2, y2)
+                hh_base = int(round(hw * (301.0 / 468.0)))
+                for dh in (-1, 0, 1):
+                    hh = hh_base + dh
+                    for dy in (-2, -1, 0, 1, 2):
+                        for dx in (-1, 0, 1):
+                            x1, x2 = int(round(cx + dx - hw)), int(round(cx + dx + hw))
+                            y1, y2 = int(round(cy + dy - hh)), int(round(cy + dy + hh))
+                            if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
+                                continue
+                            left_line = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
+                            right_line = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
+                            top_line = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
+                            bot_line = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
+                            sc = (
+                                min(left_line, right_line) * 2.0
+                                + min(top_line, bot_line) * 2.0
+                                + (left_line + right_line + top_line + bot_line) * 0.5
+                            )
+                            if sc > best_local_sc:
+                                best_local_sc = sc
+                                best_local_box = (x1, y1, x2, y2)
 
             if best_local_box is not None:
                 bx1, by1, bx2, by2 = best_local_box
@@ -396,22 +400,29 @@ class DiplomacyScanner:
 
         return None, best_score
 
+    last_verify_reason = ""
+
     @staticmethod
     def verify_is_diplomacy_dialog(norm_624x400: np.ndarray) -> bool:
         # 1. Check tiêu đề DIPLOMACY chữ trắng nằm ở chính giữa thanh tiêu đề trên cùng (y: 6..32, x: 230..400)
         title_crop = norm_624x400[6:32, 230:400]
         min_t = np.min(title_crop, axis=2).astype(np.float32)
         max_t = np.max(title_crop, axis=2).astype(np.float32)
-        white_title_px = int(np.sum((min_t > 155) & ((max_t - min_t) < 50)))
-        if white_title_px < 100 or white_title_px > 2600:
+        wh_t = min_t - 0.55 * (max_t - min_t)
+        bg_t = float(np.percentile(wh_t, 55))
+        white_title_px = int(np.sum((wh_t > max(bg_t + 16.0, 150.0)) & ((max_t - min_t) < 55)))
+        if white_title_px < 80 or white_title_px > 2600:
+            DiplomacyScanner.last_verify_reason = f"Tiêu đề DIPLOMACY không khớp (white_title_px={white_title_px})"
             return False
 
-        # Hai bên trái/phải của chữ DIPLOMACY trên thanh tiêu đề phải là nền đá/gỗ trống (không phải trang web trắng hoặc thanh tiêu đề chữ dài)
+        # Hai bên trái/phải của chữ DIPLOMACY trên thanh tiêu đề phải là nền đá cẩm thạch xám (<=215) hoặc gỗ nâu,
+        # không phải trang web nền trắng tinh (>225)
         left_slab = norm_624x400[8:30, 40:190]
         right_slab = norm_624x400[8:30, 435:585]
-        w_left = int(np.sum((np.min(left_slab, axis=2) > 170) & ((np.max(left_slab, axis=2).astype(np.int16) - np.min(left_slab, axis=2).astype(np.int16)) < 40)))
-        w_right = int(np.sum((np.min(right_slab, axis=2) > 170) & ((np.max(right_slab, axis=2).astype(np.int16) - np.min(right_slab, axis=2).astype(np.int16)) < 40)))
-        if w_left > 120 or w_right > 120:
+        w_left = int(np.sum((np.min(left_slab, axis=2) > 225) & ((np.max(left_slab, axis=2).astype(np.int16) - np.min(left_slab, axis=2).astype(np.int16)) < 30)))
+        w_right = int(np.sum((np.min(right_slab, axis=2) > 225) & ((np.max(right_slab, axis=2).astype(np.int16) - np.min(right_slab, axis=2).astype(np.int16)) < 30)))
+        if w_left > 180 or w_right > 180:
+            DiplomacyScanner.last_verify_reason = f"Thanh tiêu đề quá trắng như trang web (w_left={w_left}, w_right={w_right})"
             return False
 
         # 2. Check bộ 3 nút đặc trưng riêng của bảng DIPLOMACY ở đáy hộp thoại (y: 368..396):
@@ -422,6 +433,7 @@ class DiplomacyScanner:
         b_ok, g_ok, r_ok = cv2.split(ok_crop)
         yellow_ok_px = int(np.sum((r_ok > 140) & (g_ok > 130) & (b_ok < 115) & ((r_ok.astype(np.int16) - b_ok.astype(np.int16)) > 55)))
         if yellow_ok_px < 12:
+            DiplomacyScanner.last_verify_reason = f"Không thấy chữ OK màu vàng ở góc dưới trái (yellow_ok_px={yellow_ok_px})"
             return False
 
         clear_crop = norm_624x400[368:396, 230:395]
@@ -429,6 +441,7 @@ class DiplomacyScanner:
         max_cl = np.max(clear_crop, axis=2).astype(np.float32)
         white_clear_px = int(np.sum((min_cl > 150) & ((max_cl - min_cl) < 55)))
         if white_clear_px < 140:
+            DiplomacyScanner.last_verify_reason = f"Không thấy nút CLEAR TRIBUTES ở đáy giữa (white_clear_px={white_clear_px})"
             return False
 
         cancel_crop = norm_624x400[368:396, 470:560]
@@ -436,6 +449,7 @@ class DiplomacyScanner:
         max_ca = np.max(cancel_crop, axis=2).astype(np.float32)
         white_cancel_px = int(np.sum((min_ca > 150) & ((max_ca - min_ca) < 55)))
         if white_cancel_px < 60:
+            DiplomacyScanner.last_verify_reason = f"Không thấy nút CANCEL ở đáy phải (white_cancel_px={white_cancel_px})"
             return False
 
         # 3. Check hàng tiêu đề cột 'Name' / 'Civilization' (y: 52..74, x: 10..240) và 'Ally' / 'Neutral' / 'Enemy' (x: 235..430)
@@ -444,6 +458,7 @@ class DiplomacyScanner:
         max_h = np.max(hdr_crop, axis=2).astype(np.float32)
         white_hdr_px = int(np.sum((min_h > 150) & ((max_h - min_h) < 55)))
         if white_hdr_px < 35:
+            DiplomacyScanner.last_verify_reason = f"Không thấy tiêu đề cột Name/Civilization (white_hdr_px={white_hdr_px})"
             return False
 
         stance_hdr_crop = norm_624x400[52:74, 235:430]
@@ -451,8 +466,10 @@ class DiplomacyScanner:
         max_sh = np.max(stance_hdr_crop, axis=2).astype(np.float32)
         white_stance_hdr_px = int(np.sum((min_sh > 150) & ((max_sh - min_sh) < 55)))
         if white_stance_hdr_px < 30:
+            DiplomacyScanner.last_verify_reason = f"Không thấy tiêu đề cột Ally/Neutral/Enemy (white_stance_hdr_px={white_stance_hdr_px})"
             return False
 
+        DiplomacyScanner.last_verify_reason = "OK"
         return True
 
     @staticmethod
@@ -735,12 +752,13 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         known_players=None,
     ):
         yc = int(round(95.0 + row_idx * 29.8))
-        name_crop = norm_624x400[yc - 9:yc + 7, 14:134]
+        name_crop = norm_624x400[yc - 8:yc + 5, 8:134]
         min_n = np.min(name_crop, axis=2).astype(np.float32)
         max_n = np.max(name_crop, axis=2).astype(np.float32)
+        sh_n = np.minimum(np.roll(min_n, -1, axis=0), np.roll(np.roll(min_n, -1, axis=0), -1, axis=1))
         wh_n = min_n - 0.55 * (max_n - min_n)
-        bg_n = float(np.percentile(wh_n, 55))
-        mask_n = wh_n > max(bg_n + 18.0, 138.0)
+        bg_n = float(np.percentile(wh_n, 65))
+        mask_n = (wh_n > max(bg_n + 20.0, 140.0)) & ((min_n - sh_n) > 40.0)
         if int(np.sum(mask_n)) < 10:
             return None
 
@@ -802,8 +820,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         if best_raw:
             all_candidates.insert(0, best_raw)
 
-        # Đo chiều rộng thực tế (nw) và trích xuất đặc trưng 2D của chữ tên người chơi trên dòng hiện tại (từ x=9 để không cắt mất chữ cái đầu ở x=11)
-        crop = norm_624x400[yc - 7:yc + 4, 9:120]
+        # Đo chiều rộng thực tế (nw) và trích xuất đặc trưng 2D của chữ tên người chơi trên dòng hiện tại (từ x=11 để tránh viền khung trái ở x=9..10)
+        crop = norm_624x400[yc - 7:yc + 4, 11:120]
         min_rgb = np.min(crop, axis=2).astype(np.float32)
         max_rgb = np.max(crop, axis=2).astype(np.float32)
         sh_rgb = np.roll(np.roll(min_rgb, -1, axis=0), -1, axis=1)
@@ -823,23 +841,36 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 empty_run = 0
             else:
                 empty_run += 1
-                if empty_run >= 5 and (xmax - xmin) >= 12:
+                if empty_run >= 7 and (xmax - xmin) >= 12:
                     break
         nw_obs = max(1, int(round((xmax - xmin + 1) * 1.0))) if xmax > xmin + 6 else 0
 
-        # Tính trước độ tương quan mẫu chữ 2D chuẩn hóa theo chiều rộng (width-normalized 2D correlation)
+        # Tính trước độ tương quan mẫu chữ 2D chuẩn hóa theo chiều rộng (hỗ trợ dịch chuyển nhẹ dy, dx để chống lệch sub-pixel giữa các độ phân giải)
         tmpl_corr_map = {}
         if AI_NAME_TEMPLATES and xmax > xmin + 6:
-            patch = val[:, xmin:xmax + 1]
             for ai_name in pool:
                 if ai_name not in AI_NAME_TEMPLATES:
                     continue
                 tmpl, tw = AI_NAME_TEMPLATES[ai_name]
                 t_patch = tmpl[:, :tw]
-                p_res = cv2.resize(patch, (tw, 12), interpolation=cv2.INTER_LINEAR)
-                num = float(np.sum((p_res - p_res.mean()) * (t_patch - t_patch.mean())))
-                den = float(np.sqrt(np.sum((p_res - p_res.mean()) ** 2) * np.sum((t_patch - t_patch.mean()) ** 2))) + 1e-6
-                tmpl_corr_map[ai_name] = max(0.0, num / den)
+                t_zero = t_patch - t_patch.mean()
+                t_norm = float(np.sqrt(np.sum(t_zero ** 2))) + 1e-6
+                best_mc = 0.0
+                for dx_s in (0, 1, 2):
+                    x_s = min(xmin + dx_s, xmax - 4)
+                    sub_p = val[:, x_s:xmax + 1]
+                    if sub_p.shape[1] < 4:
+                        continue
+                    p_res = cv2.resize(sub_p, (tw, 12), interpolation=cv2.INTER_LINEAR)
+                    for dy_s in (-1, 0, 1):
+                        p_sh = np.roll(p_res, dy_s, axis=0) if dy_s != 0 else p_res
+                        p_zero = p_sh - p_sh.mean()
+                        num = float(np.sum(p_zero * t_zero))
+                        den = float(np.sqrt(np.sum(p_zero ** 2))) * t_norm + 1e-6
+                        mc_val = num / den
+                        if mc_val > best_mc:
+                            best_mc = mc_val
+                tmpl_corr_map[ai_name] = best_mc
 
         best_match_name = None
         best_sim = 0.0
@@ -851,15 +882,18 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             for target in pool:
                 target_alpha = normalize_name_token(target)
                 target_i = target_alpha.replace("l", "i")
-                sim = max(
+                raw_sim = max(
                     difflib.SequenceMatcher(None, cand_alpha, target_alpha).ratio(),
                     difflib.SequenceMatcher(None, cand_i, target_i).ratio(),
                 )
                 if len(cand_i) >= 3 and (target_i.endswith(cand_i) or target_i.startswith(cand_i)):
                     len_ratio = min(len(cand_i), len(target_i)) / max(len(cand_i), len(target_i))
-                    sim = max(sim, 0.74 + 0.18 * len_ratio)
+                    raw_sim = max(raw_sim, 0.74 + 0.18 * len_ratio)
                 if "ll" in cand_alpha and "ll" in target_alpha:
-                    sim += 0.18
+                    raw_sim += 0.18
+                if raw_sim < 0.48:
+                    continue
+                sim = raw_sim
                 # Điểm thưởng lớn nếu tên AI thuộc đúng loại quân (full_civ) của dòng này
                 if target in civ_specific_ai:
                     sim += 0.22
@@ -915,8 +949,10 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         """
         Trích xuất toàn bộ thông tin từ ảnh chụp màn hình có mở bảng DIPLOMACY.
         """
+        self.last_reject_reason = ""
         box, box_score = self.find_diplomacy_box(img_bgr)
         if box is None:
+            self.last_reject_reason = f"Không tìm thấy khung viền hộp thoại Diplomacy (best_score={box_score:.1f})"
             return None
 
         x1, y1, x2, y2 = box
@@ -924,6 +960,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         norm = cv2.resize(crop, (624, 400), interpolation=cv2.INTER_CUBIC)
 
         if not self.verify_is_diplomacy_dialog(norm):
+            self.last_reject_reason = f"Khung ({x1},{y1})-({x2},{y2}) không qua bước xác thực: {self.last_verify_reason}"
             return None
 
         sig = self.compute_dialog_signature(norm)
@@ -957,12 +994,23 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         for r in range(8):
             yc = int(round(95.0 + r * 29.8))
-            name_crop_check = norm[yc - 9:yc + 7, 8:134]
+            name_crop_check = norm[yc - 8:yc + 5, 8:134]
             min_nc = np.min(name_crop_check, axis=2).astype(np.float32)
             max_nc = np.max(name_crop_check, axis=2).astype(np.float32)
+            sh_nc = np.minimum(np.roll(min_nc, -1, axis=0), np.roll(np.roll(min_nc, -1, axis=0), -1, axis=1))
             wh_nc = min_nc - 0.55 * (max_nc - min_nc)
-            bg_nc = float(np.percentile(wh_nc, 55))
-            mask_nc = wh_nc > max(bg_nc + 18.0, 138.0)
+            bg_nc = float(np.percentile(wh_nc, 65))
+            mask_nc = (wh_nc > max(bg_nc + 20.0, 140.0)) & ((min_nc - sh_nc) > 40.0)
+
+            civ_crop_check = norm[yc - 8:yc + 5, 140:235]
+            min_cc = np.min(civ_crop_check, axis=2).astype(np.float32)
+            max_cc = np.max(civ_crop_check, axis=2).astype(np.float32)
+            sh_cc = np.minimum(np.roll(min_cc, -1, axis=0), np.roll(np.roll(min_cc, -1, axis=0), -1, axis=1))
+            wh_cc = min_cc - 0.55 * (max_cc - min_cc)
+            bg_cc = float(np.percentile(wh_cc, 65))
+            mask_cc = (wh_cc > max(bg_cc + 22.0, 145.0)) & ((min_cc - sh_cc) > 45.0)
+            if np.sum(mask_cc) < 12 or np.sum(mask_nc) < 10:
+                continue
 
             civ_crop = norm[yc - 9:yc + 9, 140:235]
             min_c = np.min(civ_crop, axis=2).astype(np.float32)
@@ -970,8 +1018,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             wh_c = min_c - 0.55 * (max_c - min_c)
             bg_c = float(np.percentile(wh_c, 55))
             mask_c = wh_c > max(bg_c + 20.0, 140.0)
-            if np.sum(mask_c) < 12 or np.sum(mask_nc) < 10:
-                continue
 
             col_counts = np.sum(mask_c, axis=0)
             valid_xs = np.where(col_counts >= 1)[0]
@@ -1051,6 +1097,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 (người mở F2) bắt buộc phải có mặt
         if len(active_rows) < 2 or len(active_rows) % 2 != 0 or active_rows[0]["row_idx"] != 0:
+            self.last_reject_reason = f"Số dòng người chơi không hợp lệ ({len(active_rows)} dòng: {[r['row_idx'] for r in active_rows]})"
             return None
 
         # Đảm bảo dòng người chơi đầu tiên luôn thuộc phe ALLY (Team Đỏ)
@@ -1092,12 +1139,14 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
             full_civ, short_civ = self.match_civ_for_row(norm, r, civ_strs, item["w_obs"])
             if not full_civ or not short_civ:
+                self.last_reject_reason = f"Dòng {r+1} không nhận diện được tên Quân (OCR={civ_strs}, w_obs={item['w_obs']})"
                 return None
 
             player_name = self.clean_and_match_player_name(
                 norm, name_strs, r, full_civ, streamer_name, known_players
             )
             if not player_name:
+                self.last_reject_reason = f"Dòng {r+1} ({full_civ}) không nhận diện được tên Player (OCR={name_strs})"
                 return None
 
             item["name"] = player_name
@@ -1107,6 +1156,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         # Nếu OCR không đọc được chữ tiêu đề hộp thoại và cũng không đọc được chữ tên Quân nào -> loại bỏ cảnh giả
         if not has_hdr_keyword and sum(1 for it in active_rows if it.get("has_ocr_civ")) < max(1, len(active_rows) // 2):
+            self.last_reject_reason = f"OCR không xác thực được tiêu đề hoặc tên Quân (hdr='{hdr_joined}')"
             return None
 
         red_rows = [item for item in active_rows if item["stance"] == "ALLY"]
@@ -1119,6 +1169,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         # Bắt buộc 2 đội phải cân bằng số lượng người chơi (1v1, 2v2, 3v3, 4v4) và có đủ tên + quân
         if not red_rows or not blue_rows or len(red_rows) != len(blue_rows):
+            self.last_reject_reason = f"Số người chơi 2 phe không cân bằng (Đỏ={len(red_rows)}, Xanh={len(blue_rows)})"
             return None
 
         # Chỉ lưu chữ ký sau khi đã nhận diện thành công đầy đủ cả 2 đội
@@ -1127,6 +1178,9 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         return {
             "status": "ok",
+            "box": box,
+            "box_score": round(float(box_score), 1),
+            "img_size": (int(img_bgr.shape[1]), int(img_bgr.shape[0])),
             "redPlayers": [r["name"] for r in red_rows],
             "redCivs": [r["civ_short"] for r in red_rows],
             "redColors": [r["color_id"] for r in red_rows],
@@ -1349,7 +1403,10 @@ class AOETrackerApp:
         self._update_obs_preview_entry()
 
         self.active_tab = "BATTLE"
-        self.log_drawer_open = False
+        self.log_drawer_open = True
+        self.log_expanded = False
+        self._last_auto_diag_log_ts = 0.0
+        self._last_auto_diag_reason = ""
 
         # ======================================================================
         # 1. MÀN HÌNH ĐĂNG NHẬP RIÊNG KHI BẮT ĐẦU CHẠY TOOL (LOGIN SCREEN)
@@ -1748,9 +1805,9 @@ class AOETrackerApp:
 
         # ======================================================================
         # VÙNG CHỨA CÁC TAB CHÍNH (TAB 1: BẢNG ĐIỀU KHIỂN | TAB 2: CÀI ĐẶT VIP)
+        # (Sẽ được pack sau thanh Log ở đáy để khung Log luôn hiển thị rộng rãi, không bị ép nhỏ)
         # ======================================================================
         self.tab_container = tk.Frame(self.main_app_frame, bg="#080c16")
-        self.tab_container.pack(fill="both", expand=True)
 
         self.battle_tab_frame = tk.Frame(self.tab_container, bg="#080c16")
         self.settings_tab_frame = tk.Frame(self.tab_container, bg="#080c16")
@@ -2481,38 +2538,8 @@ class AOETrackerApp:
         self._bind_hover(self.apply_vip_btn, "#eca133", "#d98f26", "#11151b", "#11151b")
 
         # ======================================================================
-        # 3. THANH TRẠNG THÁI NHẬT KÝ 1 DÒNG Ở ĐÁY + NÚT MỞ XEM CHI TIẾT LOG
+        # 3. THANH TRẠNG THÁI NHẬT KÝ Ở ĐÁY + BẢNG LOG MỞ RỘNG KÈM THANH CUỘN ĐIỀU TRA
         # ======================================================================
-        self.log_drawer_frame = tk.Frame(
-            self.main_app_frame,
-            bg="#181e28",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=12,
-            pady=8,
-        )
-
-        self.log_box = tk.Text(
-            self.log_drawer_frame,
-            bg="#11151b",
-            fg="#e7ebf0",
-            font=("Consolas", 9),
-            relief="flat",
-            height=6,
-            padx=10,
-            pady=6,
-            insertbackground="#eca133",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-        )
-        self.log_box.pack(fill="both", expand=True)
-        self.log_box.tag_config("TIME", foreground="#6f7986")
-        self.log_box.tag_config("DEFAULT", foreground="#e7ebf0")
-        self.log_box.tag_config("SUCCESS", foreground="#34d399")
-        self.log_box.tag_config("WARN", foreground="#eca133")
-        self.log_box.tag_config("ERROR", foreground="#f0657b")
-        self.log_box.tag_config("TEAM", foreground="#eca133")
-
         self.status_log_bar = tk.Frame(
             self.main_app_frame,
             bg="#181e28",
@@ -2525,7 +2552,7 @@ class AOETrackerApp:
 
         self.latest_log_lbl = tk.Label(
             self.status_log_bar,
-            text="📜 Sẵn sàng — Khi đóng Tool, kèo đấu đang LIVE sẽ tự động kết thúc.",
+            text="📜 Sẵn sàng — Bảng Nhật ký Điều tra đã được nới rộng.",
             font=("Consolas", 9),
             fg="#8e99a7",
             bg="#181e28",
@@ -2535,11 +2562,11 @@ class AOETrackerApp:
 
         self.btn_toggle_log = tk.Button(
             self.status_log_bar,
-            text="📜 Xem chi tiết Nhật ký ▲",
+            text="📜 Ẩn Nhật ký ▼",
             command=self.toggle_log_drawer,
             font=("Segoe UI", 8, "bold"),
             bg="#11151b",
-            fg="#e7ebf0",
+            fg="#eca133",
             relief="flat",
             highlightthickness=1,
             highlightbackground="#2b3541",
@@ -2547,8 +2574,81 @@ class AOETrackerApp:
             pady=2,
             cursor="hand2",
         )
-        self.btn_toggle_log.pack(side="right")
-        self._bind_hover(self.btn_toggle_log, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
+        self.btn_toggle_log.pack(side="right", padx=(6, 0))
+        self._bind_hover(self.btn_toggle_log, "#11151b", "#222b38", "#eca133", "#ffffff")
+
+        self.btn_expand_log = tk.Button(
+            self.status_log_bar,
+            text="🔎 Phóng to Log (18 dòng)",
+            command=self.toggle_expand_log_height,
+            font=("Segoe UI", 8, "bold"),
+            bg="#152238",
+            fg="#60a5fa",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2563eb",
+            padx=10,
+            pady=2,
+            cursor="hand2",
+        )
+        self.btn_expand_log.pack(side="right", padx=(6, 0))
+        self._bind_hover(self.btn_expand_log, "#152238", "#1d4ed8", "#60a5fa", "#ffffff")
+
+        self.btn_copy_log = tk.Button(
+            self.status_log_bar,
+            text="📋 Copy Log",
+            command=self.copy_all_logs_to_clipboard,
+            font=("Segoe UI", 8, "bold"),
+            bg="#11151b",
+            fg="#e7ebf0",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+            padx=9,
+            pady=2,
+            cursor="hand2",
+        )
+        self.btn_copy_log.pack(side="right", padx=(6, 0))
+        self._bind_hover(self.btn_copy_log, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
+
+        self.log_drawer_frame = tk.Frame(
+            self.main_app_frame,
+            bg="#181e28",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+            padx=10,
+            pady=6,
+        )
+        self.log_drawer_frame.pack(fill="x", side="bottom", padx=14, pady=(2, 2))
+
+        self.log_scrollbar = tk.Scrollbar(self.log_drawer_frame, orient="vertical")
+        self.log_scrollbar.pack(side="right", fill="y")
+
+        self.log_box = tk.Text(
+            self.log_drawer_frame,
+            bg="#11151b",
+            fg="#e7ebf0",
+            font=("Consolas", 9),
+            relief="flat",
+            height=10,
+            padx=10,
+            pady=6,
+            insertbackground="#eca133",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+            yscrollcommand=self.log_scrollbar.set,
+        )
+        self.log_box.pack(side="left", fill="both", expand=True)
+        self.log_scrollbar.config(command=self.log_box.yview)
+        self.log_box.tag_config("TIME", foreground="#6f7986")
+        self.log_box.tag_config("DEFAULT", foreground="#e7ebf0")
+        self.log_box.tag_config("SUCCESS", foreground="#34d399")
+        self.log_box.tag_config("WARN", foreground="#eca133")
+        self.log_box.tag_config("ERROR", foreground="#f0657b")
+        self.log_box.tag_config("TEAM", foreground="#eca133")
+
+        # Pack vùng chứa Tab chính sau khi đã cố định khung Log ở đáy để Log luôn hiển thị đầy đủ
+        self.tab_container.pack(fill="both", expand=True)
 
         # Mặc định hiển thị Tab Bảng Điều Khiển bên trong Main Frame, nhưng mở Tool sẽ vào Màn hình Đăng nhập trước
         self.battle_tab_frame.pack(fill="both", expand=True)
@@ -2573,11 +2673,32 @@ class AOETrackerApp:
     def toggle_log_drawer(self):
         self.log_drawer_open = not self.log_drawer_open
         if self.log_drawer_open:
-            self.log_drawer_frame.pack(fill="x", side="bottom", padx=14, pady=(2, 2), before=self.status_log_bar)
+            self.log_drawer_frame.pack(fill="x", side="bottom", padx=14, pady=(2, 2), before=self.tab_container)
             self.btn_toggle_log.configure(text="📜 Ẩn Nhật ký ▼", fg="#eca133")
         else:
             self.log_drawer_frame.pack_forget()
             self.btn_toggle_log.configure(text="📜 Xem chi tiết Nhật ký ▲", fg="#e7ebf0")
+
+    def toggle_expand_log_height(self):
+        if not self.log_drawer_open:
+            self.toggle_log_drawer()
+        self.log_expanded = not self.log_expanded
+        if self.log_expanded:
+            self.log_box.configure(height=18)
+            self.btn_expand_log.configure(text="🔽 Thu nhỏ Log (10 dòng)", fg="#eca133")
+        else:
+            self.log_box.configure(height=10)
+            self.btn_expand_log.configure(text="🔎 Phóng to Log (18 dòng)", fg="#60a5fa")
+        self.log_box.see("end")
+
+    def copy_all_logs_to_clipboard(self):
+        try:
+            content = self.log_box.get("1.0", "end-1c")
+            self.root.clipboard_clear()
+            self.root.clipboard_append(content)
+            self.log("✅ 📋 Đã copy toàn bộ nội dung Nhật ký vào Clipboard!", "SUCCESS")
+        except Exception as e:
+            self.log(f"⚠️ Không thể copy Log: {e}", "WARN")
 
     def show_main_dashboard_screen(self):
         self.login_screen_frame.pack_forget()
@@ -4920,7 +5041,12 @@ class AOETrackerApp:
             f"{p} [{c} - {COLOR_NAMES_VI.get(col, col)}]"
             for p, c, col in zip(parsed["bluePlayers"], parsed["blueCivs"], parsed["blueColors"])
         )
-        self.log("🎯 Đã quét bảng quân Diplomacy:", "TEAM")
+        box_info = ""
+        if parsed.get("box") and parsed.get("img_size"):
+            bx = parsed["box"]
+            iw, ih = parsed["img_size"]
+            box_info = f" [Màn {iw}x{ih} • Khung ({bx[0]},{bx[1]})-({bx[2]},{bx[3]}) • Điểm={parsed.get('box_score', 0)}]"
+        self.log(f"🎯 Đã quét bảng quân Diplomacy{box_info}:", "TEAM")
         self.log(f"   🔴 Team Đỏ  : {red_str}", "TEAM")
         self.log(f"   🔵 Team Xanh: {blue_str}", "TEAM")
 
@@ -5024,7 +5150,10 @@ class AOETrackerApp:
         def _task():
             try:
                 frames = self._grab_all_monitors_bgr()
-                for img_bgr in frames:
+                sizes_str = ", ".join(f"{f.shape[1]}x{f.shape[0]}" for f in frames)
+                self.log(f"🔍 [Điều tra Quét F2] Đang quét {len(frames)} khung hình ({sizes_str})...", "DEFAULT")
+                reasons = []
+                for idx, img_bgr in enumerate(frames):
                     res = self.scanner.parse_diplomacy_from_image(
                         img_bgr,
                         streamer_name=self.player_name_var.get().strip(),
@@ -5034,7 +5163,10 @@ class AOETrackerApp:
                     if res and res.get("status") == "ok":
                         self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
                         return
-                self.log("⚠️ Không tìm thấy bảng DIPLOMACY (F2) trên màn hình hiện tại!", "WARN")
+                    if self.scanner.last_reject_reason:
+                        reasons.append(f"Khung #{idx+1} ({img_bgr.shape[1]}x{img_bgr.shape[0]}): {self.scanner.last_reject_reason}")
+                detail = " | ".join(reasons) if reasons else "Không phát hiện hộp thoại Diplomacy"
+                self.log(f"⚠️ Không tìm thấy bảng DIPLOMACY (F2): {detail}", "WARN")
             except Exception as e:
                 self.log(f"❌ Lỗi quét màn hình: {e}", "ERROR")
 
@@ -5052,6 +5184,13 @@ class AOETrackerApp:
             try:
                 raw_bytes = np.fromfile(file_path, dtype=np.uint8)
                 img_bgr = cv2.imdecode(raw_bytes, cv2.IMREAD_COLOR)
+                if img_bgr is None:
+                    self.log(f"❌ Không thể giải mã file ảnh '{os.path.basename(file_path)}'!", "ERROR")
+                    return
+                self.log(
+                    f"🖼️ [Điều tra Ảnh] Đang phân tích '{os.path.basename(file_path)}' ({img_bgr.shape[1]}x{img_bgr.shape[0]})...",
+                    "DEFAULT",
+                )
                 res = self.scanner.parse_diplomacy_from_image(
                     img_bgr,
                     streamer_name=self.player_name_var.get().strip(),
@@ -5059,7 +5198,8 @@ class AOETrackerApp:
                     force=True,
                 )
                 if not res or res.get("status") != "ok":
-                    self.log(f"⚠️ Ảnh '{os.path.basename(file_path)}' không chứa bảng DIPLOMACY hợp lệ!", "WARN")
+                    reason = self.scanner.last_reject_reason or "Không chứa bảng DIPLOMACY hợp lệ"
+                    self.log(f"⚠️ Ảnh '{os.path.basename(file_path)}' bị từ chối: {reason}", "WARN")
                     return
                 self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
             except Exception as e:
@@ -5233,6 +5373,9 @@ class AOETrackerApp:
 
                     if triggered:
                         self._diplomacy_trigger_reason = reason
+                        if time.time() - getattr(self, "_last_trigger_log_ts", 0.0) > 2.5:
+                            self._last_trigger_log_ts = time.time()
+                            self.log(f"🔍 [Sự kiện {reason}] Phát hiện thao tác mở Diplomacy — đang quét bảng quân...", "DEFAULT")
                         # Đợi 0.18s để hộp thoại Diplomacy kịp hiển thị sắc nét rồi mở cửa sổ quét 2.4 giây
                         time.sleep(0.18)
                         self._diplomacy_scan_window_until = time.time() + 2.4
@@ -5252,6 +5395,7 @@ class AOETrackerApp:
                 if self.is_logged_in and self.auto_scan_var.get():
                     frames = self._grab_all_monitors_bgr()
                     force_scan = self.current_match is None
+                    in_hotkey_window = time.time() < self._diplomacy_scan_window_until
                     for img_bgr in frames:
                         res = self.scanner.parse_diplomacy_from_image(
                             img_bgr,
@@ -5266,6 +5410,18 @@ class AOETrackerApp:
                         elif res and res.get("status") == "unchanged":
                             self._diplomacy_scan_window_until = 0.0
                             break
+                        else:
+                            rej = self.scanner.last_reject_reason
+                            # Ghi log điều tra nếu có hộp thoại ứng viên bị từ chối ở bước OCR/Dòng hoặc vừa bấm F2/Click Diplomacy
+                            if rej and (in_hotkey_window or "Dòng " in rej or "Số dòng" in rej or "Số người chơi" in rej):
+                                now_ts = time.time()
+                                if (now_ts - self._last_auto_diag_log_ts > 4.0) or (rej != self._last_auto_diag_reason):
+                                    self._last_auto_diag_log_ts = now_ts
+                                    self._last_auto_diag_reason = rej
+                                    self.log(
+                                        f"🔎 [Điều tra Auto-Scan {img_bgr.shape[1]}x{img_bgr.shape[0]}] {rej}",
+                                        "WARN",
+                                    )
 
                 # Định kỳ đồng bộ trạng thái Bạn bè Live, Khung Chat & Sao mỗi 8 giây
                 if self.is_logged_in and (time.time() - last_social_sync > 8.0):
