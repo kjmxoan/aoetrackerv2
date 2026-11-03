@@ -43,6 +43,45 @@ def parse_version_tuple(v_str: str) -> tuple:
         return (0,)
     return tuple(int(x) for x in nums[:4])
 
+
+def is_windows_process_admin() -> bool:
+    """Kiểm tra xem tiến trình hiện tại có đang chạy với quyền Administrator (High Integrity) để bắt phím xuyên Game AOE hay không."""
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def ensure_windows_admin_for_ingame_hotkeys():
+    """
+    Tự động nâng quyền Administrator (UAC 'runas') nếu người dùng mở Tool ở quyền thường.
+    Lý do: Game Đế Chế (EMPIRESX.EXE) trên Windows 10/11 luôn chạy ở mức High Integrity (Administrator)
+    do DirectPlay shim. Nếu Tool chạy ở Medium Integrity, Windows UIPI sẽ chặn toàn bộ phím F2, F5, F6, F8 khi đang trong màn hình Game.
+    """
+    if os.name != "nt":
+        return
+    if "--no-elevate" in sys.argv or "--test" in sys.argv:
+        return
+    if is_windows_process_admin():
+        return
+    try:
+        import ctypes
+        exe_path = sys.executable
+        if getattr(sys, "frozen", False):
+            args_list = [a for a in sys.argv[1:] if a != "--no-elevate"] + ["--no-elevate"]
+        else:
+            script_path = os.path.abspath(sys.argv[0])
+            args_list = [script_path] + [a for a in sys.argv[1:] if a != "--no-elevate"] + ["--no-elevate"]
+        params = subprocess.list2cmdline(args_list)
+        ret = ctypes.windll.shell32.ShellExecuteW(None, "runas", exe_path, params, os.getcwd(), 1)
+        if int(ret) > 32:
+            sys.exit(0)
+    except Exception:
+        pass
+
 # ==============================================================================
 # 1. DANH SÁCH 16 QUÂN AOE 1 & BẢNG MÀU CHUẨN TRONG BẢNG DIPLOMACY
 # ==============================================================================
@@ -3543,6 +3582,16 @@ class AOETrackerApp:
         self.login_screen_frame.pack(fill="both", expand=True)
 
         self.log(f"Khởi động {APP_TITLE} ({APP_VERSION}) thành công.", "DEFAULT")
+        if is_windows_process_admin():
+            self.log(
+                "🛡️ Đã kích hoạt Quyền Administrator & Hook Bàn Phím Tầng Thấp (WH_KEYBOARD_LL): Phím tắt F2, F5, F6, F8 hoạt động xuyên màn hình Game AOE!",
+                "SUCCESS",
+            )
+        elif os.name == "nt":
+            self.log(
+                "⚠️ Tool đang chạy chưa có quyền Administrator — nếu Game AOE chặn phím F5/F6/F8 (do UIPI), hãy chuột phải chọn 'Run as administrator'.",
+                "WARN",
+            )
         self.log("Hãy đăng nhập tài khoản Player và ấn F2 (Diplomacy) trong game để tự động lên bảng quân.", "TEAM")
 
     def switch_main_tab(self, tab_name: str):
@@ -6876,9 +6925,11 @@ class AOETrackerApp:
 
     def _monitor_diplomacy_events(self):
         """
-        Bắt sự kiện toàn cục (Global Hook / Key State) ngay cả khi người chơi đang ở trong màn hình Game AOE:
-        1. Phím tắt F5 (Team Đỏ thắng +1), F6 (Team Xanh thắng +1) hoạt động trực tiếp trong Game.
-        2. Nút Diplomacy trên HUD, phím F2 hoặc tổ hợp Alt+D kích hoạt cửa sổ quét bảng quân.
+        Bắt sự kiện bàn phím & chuột toàn cục 3 tầng (3-Layer In-Game Hotkey Engine)
+        ngay cả khi người chơi đang ở trong màn hình Game AOE (EMPIRESX.EXE Fullscreen / Windowed):
+        - Tầng 1: Windows Low-Level Keyboard Hook (SetWindowsHookExW WH_KEYBOARD_LL = 13) bắt phím trực tiếp từ Kernel Input Queue trước DirectInput.
+        - Tầng 2: GetAsyncKeyState (kiểm tra cả bit giữ 0x8000 lẫn bit gõ nhanh 0x0001 ở chu kỳ 20ms không nghẽn).
+        - Tầng 3: RegisterHotKey (WM_HOTKEY) kèm vòng lặp bơm thông điệp chuẩn (PeekMessageW + TranslateMessage + DispatchMessageW).
         """
         if os.name != "nt":
             return
@@ -6887,6 +6938,8 @@ class AOETrackerApp:
             from ctypes import wintypes
 
             user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
+
             VK_LBUTTON = 0x01
             VK_F2 = 0x71
             VK_F5 = 0x74
@@ -6896,11 +6949,98 @@ class AOETrackerApp:
             VK_D = 0x44
             MOD_NOREPEAT = 0x4000
             WM_HOTKEY = 0x0312
+            WM_KEYDOWN = 0x0100
+            WM_SYSKEYDOWN = 0x0104
+            WH_KEYBOARD_LL = 13
             HOTKEY_ID_F5 = 505
             HOTKEY_ID_F6 = 506
             HOTKEY_ID_F8 = 508
 
-            # Đăng ký thêm OS Hotkey F5/F6/F8 để vượt qua UIPI ngay cả khi Game chạy quyền Administrator
+            # Bộ chống dội phím (debounce) chung cho cả 3 tầng để mỗi lần bấm chỉ kích hoạt đúng 1 lần
+            last_fire_ts = {"F2": 0.0, "F5": 0.0, "F6": 0.0, "F8": 0.0}
+            hook_f2_pending = [False]
+
+            def _fire_f5():
+                if not self.is_logged_in:
+                    return
+                now_t = time.time()
+                if now_t - last_fire_ts["F5"] < 0.45:
+                    return
+                last_fire_ts["F5"] = now_t
+                self.root.after(0, lambda: self._trigger_global_winner_hotkey("RED", "F5 (In-Game)"))
+
+            def _fire_f6():
+                if not self.is_logged_in:
+                    return
+                now_t = time.time()
+                if now_t - last_fire_ts["F6"] < 0.45:
+                    return
+                last_fire_ts["F6"] = now_t
+                self.root.after(0, lambda: self._trigger_global_winner_hotkey("BLUE", "F6 (In-Game)"))
+
+            def _fire_f8():
+                if not self.is_logged_in:
+                    return
+                now_t = time.time()
+                if now_t - last_fire_ts["F8"] < 0.45:
+                    return
+                last_fire_ts["F8"] = now_t
+                self.root.after(0, lambda: self._trigger_global_hype_hotkey("F8 (In-Game)"))
+
+            # --- TẦNG 1: CÀI ĐẶT LOW-LEVEL KEYBOARD HOOK (WH_KEYBOARD_LL = 13) ---
+            LRESULT = ctypes.c_ssize_t
+            HOOKPROC = ctypes.WINFUNCTYPE(LRESULT, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
+
+            class KBDLLHOOKSTRUCT(ctypes.Structure):
+                _fields_ = [
+                    ("vkCode", wintypes.DWORD),
+                    ("scanCode", wintypes.DWORD),
+                    ("flags", wintypes.DWORD),
+                    ("time", wintypes.DWORD),
+                    ("dwExtraInfo", ctypes.c_size_t),
+                ]
+
+            user32.SetWindowsHookExW.argtypes = [ctypes.c_int, HOOKPROC, wintypes.HINSTANCE, wintypes.DWORD]
+            user32.SetWindowsHookExW.restype = ctypes.c_void_p
+            user32.CallNextHookEx.argtypes = [ctypes.c_void_p, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM]
+            user32.CallNextHookEx.restype = LRESULT
+            user32.UnhookWindowsHookEx.argtypes = [ctypes.c_void_p]
+            user32.UnhookWindowsHookEx.restype = wintypes.BOOL
+            kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+            kernel32.GetModuleHandleW.restype = wintypes.HMODULE
+
+            def _ll_keyboard_callback(nCode, wParam, lParam):
+                try:
+                    if nCode >= 0 and wParam in (WM_KEYDOWN, WM_SYSKEYDOWN) and lParam:
+                        kb = ctypes.cast(lParam, ctypes.POINTER(KBDLLHOOKSTRUCT)).contents
+                        vk = kb.vkCode
+                        if vk == VK_F5:
+                            _fire_f5()
+                        elif vk == VK_F6:
+                            _fire_f6()
+                        elif vk == VK_F8:
+                            _fire_f8()
+                        elif vk == VK_F2:
+                            now_t = time.time()
+                            if now_t - last_fire_ts["F2"] >= 0.45:
+                                last_fire_ts["F2"] = now_t
+                                hook_f2_pending[0] = True
+                except Exception:
+                    pass
+                return user32.CallNextHookEx(None, nCode, wParam, lParam)
+
+            # Giữ tham chiếu cứng trên self để Garbage Collector không thu hồi callback C
+            self._ll_keyboard_hook_proc = HOOKPROC(_ll_keyboard_callback)
+            hook_id = None
+            try:
+                hmod = kernel32.GetModuleHandleW(None)
+                hook_id = user32.SetWindowsHookExW(WH_KEYBOARD_LL, self._ll_keyboard_hook_proc, hmod, 0)
+                if not hook_id:
+                    hook_id = user32.SetWindowsHookExW(WH_KEYBOARD_LL, self._ll_keyboard_hook_proc, None, 0)
+            except Exception:
+                hook_id = None
+
+            # --- TẦNG 3: ĐĂNG KÝ OS HOTKEY (WM_HOTKEY) DỰ PHÒNG ---
             try:
                 user32.RegisterHotKey(None, HOTKEY_ID_F5, MOD_NOREPEAT, VK_F5)
                 user32.RegisterHotKey(None, HOTKEY_ID_F6, MOD_NOREPEAT, VK_F6)
@@ -6918,41 +7058,49 @@ class AOETrackerApp:
 
             while self.running:
                 try:
-                    # 1. Đọc hàng đợi WM_HOTKEY của Windows (bắt nhạy F5/F6/F8 trong Game)
-                    while user32.PeekMessageW(ctypes.byref(msg), None, WM_HOTKEY, WM_HOTKEY, 1):
+                    # 1. Bơm toàn bộ hàng đợi thông điệp Windows (bắt buộc cho cả WH_KEYBOARD_LL và WM_HOTKEY)
+                    while user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1):
                         if self.is_logged_in and msg.message == WM_HOTKEY:
                             if msg.wParam == HOTKEY_ID_F5:
-                                self.root.after(0, lambda: self._trigger_global_winner_hotkey("RED", "F5 (In-Game)"))
+                                _fire_f5()
                             elif msg.wParam == HOTKEY_ID_F6:
-                                self.root.after(0, lambda: self._trigger_global_winner_hotkey("BLUE", "F6 (In-Game)"))
+                                _fire_f6()
                             elif msg.wParam == HOTKEY_ID_F8:
-                                self.root.after(0, lambda: self._trigger_global_hype_hotkey("F8 (In-Game)"))
+                                _fire_f8()
+                        user32.TranslateMessage(ctypes.byref(msg))
+                        user32.DispatchMessageW(ctypes.byref(msg))
 
                     if not self.is_logged_in:
-                        time.sleep(0.1)
+                        time.sleep(0.04)
                         continue
 
-                    # 2. Kiểm tra trực tiếp trạng thái phím F5 / F6 / F8 bằng GetAsyncKeyState (dự phòng kép)
-                    f5_down = (user32.GetAsyncKeyState(VK_F5) & 0x8000) != 0
-                    f6_down = (user32.GetAsyncKeyState(VK_F6) & 0x8000) != 0
-                    f8_down = (user32.GetAsyncKeyState(VK_F8) & 0x8000) != 0
+                    # 2. TẦNG 2: Kiểm tra trực tiếp trạng thái phím F5 / F6 / F8 bằng GetAsyncKeyState
+                    # Kết hợp cả bit 0x8000 (đang giữ phím) và bit 0x0001 (vừa gõ nhanh giữa 2 nhịp quét)
+                    s_f5 = user32.GetAsyncKeyState(VK_F5)
+                    s_f6 = user32.GetAsyncKeyState(VK_F6)
+                    s_f8 = user32.GetAsyncKeyState(VK_F8)
+                    f5_down = (s_f5 & 0x8000) != 0
+                    f6_down = (s_f6 & 0x8000) != 0
+                    f8_down = (s_f8 & 0x8000) != 0
 
-                    if f5_down and not prev_f5:
-                        self.root.after(0, lambda: self._trigger_global_winner_hotkey("RED", "F5 (In-Game)"))
-                    if f6_down and not prev_f6:
-                        self.root.after(0, lambda: self._trigger_global_winner_hotkey("BLUE", "F6 (In-Game)"))
-                    if f8_down and not prev_f8:
-                        self.root.after(0, lambda: self._trigger_global_hype_hotkey("F8 (In-Game)"))
+                    if (f5_down and not prev_f5) or ((s_f5 & 0x0001) != 0 and not prev_f5):
+                        _fire_f5()
+                    if (f6_down and not prev_f6) or ((s_f6 & 0x0001) != 0 and not prev_f6):
+                        _fire_f6()
+                    if (f8_down and not prev_f8) or ((s_f8 & 0x0001) != 0 and not prev_f8):
+                        _fire_f8()
 
                     prev_f5 = f5_down
                     prev_f6 = f6_down
                     prev_f8 = f8_down
 
                     if not self.auto_scan_var.get():
-                        time.sleep(0.04)
+                        hook_f2_pending[0] = False
+                        time.sleep(0.02)
                         continue
 
-                    f2_down = (user32.GetAsyncKeyState(VK_F2) & 0x8000) != 0
+                    s_f2 = user32.GetAsyncKeyState(VK_F2)
+                    f2_down = (s_f2 & 0x8000) != 0
                     alt_down = (user32.GetAsyncKeyState(VK_MENU) & 0x8000) != 0
                     d_down = (user32.GetAsyncKeyState(VK_D) & 0x8000) != 0
                     alt_d_down = alt_down and d_down
@@ -6961,7 +7109,8 @@ class AOETrackerApp:
                     triggered = False
                     reason = ""
 
-                    if f2_down and not prev_f2:
+                    if hook_f2_pending[0] or (f2_down and not prev_f2) or ((s_f2 & 0x0001) != 0 and not prev_f2):
+                        hook_f2_pending[0] = False
                         triggered = True
                         reason = "F2"
                     elif alt_d_down and not prev_alt_d:
@@ -6997,12 +7146,17 @@ class AOETrackerApp:
                         if time.time() - getattr(self, "_last_trigger_log_ts", 0.0) > 2.5:
                             self._last_trigger_log_ts = time.time()
                             self.log(f"🔍 [Sự kiện {reason}] Phát hiện thao tác mở Diplomacy — đang quét bảng quân...", "DEFAULT")
-                        # Đợi 0.18s để hộp thoại Diplomacy kịp hiển thị sắc nét rồi mở cửa sổ quét 2.4 giây
-                        time.sleep(0.18)
-                        self._diplomacy_scan_window_until = time.time() + 2.4
+                        # Không dùng time.sleep() ở đây để tránh làm nghẽn vòng lặp bắt phím F5/F6/F8
+                        self._diplomacy_scan_window_until = time.time() + 2.6
                 except Exception:
                     pass
-                time.sleep(0.025)
+                time.sleep(0.02)
+
+            if hook_id:
+                try:
+                    user32.UnhookWindowsHookEx(hook_id)
+                except Exception:
+                    pass
             try:
                 user32.UnregisterHotKey(None, HOTKEY_ID_F5)
                 user32.UnregisterHotKey(None, HOTKEY_ID_F6)
@@ -7089,6 +7243,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
         run_cli_self_test(sys.argv[2:])
     else:
+        ensure_windows_admin_for_ingame_hotkeys()
         import tkinter as tk
         root = tk.Tk()
         app = AOETrackerApp(root)
