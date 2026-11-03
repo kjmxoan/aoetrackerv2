@@ -162,13 +162,13 @@ Trong phần mềm **OBS Studio**, tại mục **Sources (Nguồn)** bấm dấu
 > [!TIP]
 > **Tính năng Khung Ảo Căn Chỉnh OBS (`showIdlePreview`) cho cả Bảng Quân (`550 x 210`) & Khung Chat (`380 x 450`)**:
 > - Khi bạn chưa vào trận đấu (`match === null`), cả 2 link `/overlay.html?streamer=TEN_MAY` và `/chat-overlay.html?streamer=TEN_MAY` đều tự động hiển thị **Khung Ảo Căn OBS** (viền nét đứt vàng + 4 góc xanh ngọc) đúng kích thước thật để bạn kéo thả căn vị trí trên OBS trước khi vào game.
-> - Ngay khi vào trận và bấm **`F2 (Diplomacy)`** (hoặc có bình luận mới), khung ảo sẽ tự động biến mất và chuyển sang **Bảng Quân & Khung Chat thực tế** theo thời gian thực! (Có thể bật/tắt khung ảo bất kỳ lúc nào trong tab **⚙️ Cài đặt VIP** hoặc thêm `&preview=1` vào cuối link).
+> - Ngay khi vào trận và **ấn nút `Diplomacy` trong game** để mở bảng quân (hoặc có bình luận mới), khung ảo sẽ tự động biến mất và chuyển sang **Bảng Quân & Khung Chat thực tế** theo thời gian thực! (Có thể bật/tắt khung ảo bất kỳ lúc nào trong tab **⚙️ Cài đặt VIP** hoặc thêm `&preview=1` vào cuối link).
 
 ---
 
-### 3.2. Hướng Dẫn Chạy Quyền Administrator (`Run as administrator`) & Sử Dụng Phím Tắt Trong Game (`F2 - F5 - F6 - F8`)
+### 3.2. Hướng Dẫn Ấn Nút `Diplomacy` Đọc Bảng Quân, Chạy Quyền Administrator (`Run as administrator`) & Sử Dụng Phím Tắt (`F5 - F6 - F8`)
 
-Trên Windows 10/11, game Đế Chế (`EMPIRESX.EXE`) luôn chạy dưới quyền **Administrator** (do cơ chế DirectPlay). Vì vậy, để các phím tắt **`F2` / `F5` / `F6` / `F8`** hoạt động xuyên qua cửa sổ game, bạn cần mở `TOOL_BANG_QUAN_AOE_BY_XO.exe` với quyền **Administrator**:
+Trên Windows 10/11, game Đế Chế (`EMPIRESX.EXE`) luôn chạy dưới quyền **Administrator** (do cơ chế DirectPlay). Vì vậy, để các phím tắt **`F5` / `F6` / `F8`** hoạt động xuyên qua cửa sổ game, bạn cần mở `TOOL_BANG_QUAN_AOE_BY_XO.exe` với quyền **Administrator**:
 
 1. **Cách 1 — Mở nhanh mỗi lần chơi**:
    - Nhấp **chuột phải** vào file `TOOL_BANG_QUAN_AOE_BY_XO.exe` $\rightarrow$ chọn **`Run as administrator`** $\rightarrow$ bấm **`Yes`** ở bảng hỏi UAC của Windows.
@@ -176,11 +176,11 @@ Trên Windows 10/11, game Đế Chế (`EMPIRESX.EXE`) luôn chạy dưới quy�
    - Nhấp **chuột phải** vào file `TOOL_BANG_QUAN_AOE_BY_XO.exe` $\rightarrow$ chọn **`Properties`**.
    - Chuyển sang tab **`Compatibility`** $\rightarrow$ tích chọn ô **`☑ Run this program as an administrator`** $\rightarrow$ bấm **`Apply`** $\rightarrow$ **`OK`**.
 
-| Phím tắt trong Game | Chức năng | Quy tắc & Lưu ý |
+| Thao tác / Phím tắt | Chức năng | Quy tắc & Lưu ý |
 | :--- | :--- | :--- |
-| **`F2`** *(hoặc click nút `Diplomacy`)* | **Tự động quét Bảng Quân & Màu Cờ** | Mở bảng `Diplomacy` trong game khoảng `1 giây` để Tool chụp và đồng bộ quân 2 đội lên Web & OBS. Nếu mở lại `F2` trong cùng trận mà bộ quân không đổi, hệ thống giữ nguyên trận hiện tại (không bị nhảy sang trận mới). |
-| **`F5`** | **🔴 Team Đỏ thắng ván này (`+1`)** | Chỉ cộng điểm khi trận hiện tại **đã quét quân hợp lệ** và **chưa có đội thắng** (mỗi trận chỉ có 1 đội thắng duy nhất). Phát âm báo `Beep` xác nhận. |
-| **`F6`** | **🔵 Team Xanh thắng ván này (`+1`)** | Chỉ cộng điểm khi trận hiện tại **đã quét quân hợp lệ** và **chưa có đội thắng**. Muốn chấm ván tiếp theo, hãy vào trận mới và ấn `F2` quét quân trước. |
+| **Ấn nút `Diplomacy` trong game** | **Đọc Bảng Quân & Màu Cờ** | **Bắt buộc ấn nút `Diplomacy`** (ở góc trên màn hình game) để mở bảng danh sách người chơi & quân khoảng `1 giây` thì Tool mới đọc được bảng quân và đồng bộ lên Web & OBS. Nếu mở lại `Diplomacy` trong cùng trận mà bộ quân không đổi, hệ thống giữ nguyên trận hiện tại. |
+| **`F5`** | **🔴 Team Đỏ thắng ván này (`+1`)** | Chỉ cộng điểm khi trận hiện tại **đã ấn `Diplomacy` để hiện quân** và **chưa có đội thắng** (mỗi trận chỉ có 1 đội thắng duy nhất). Phát âm báo `Beep` xác nhận. |
+| **`F6`** | **🔵 Team Xanh thắng ván này (`+1`)** | Chỉ cộng điểm khi trận hiện tại **đã ấn `Diplomacy` để hiện quân** và **chưa có đội thắng**. Muốn chấm ván tiếp theo, hãy vào trận mới và ấn nút `Diplomacy` đọc quân trước. |
 | **`F8`** | **🙌 Bắn hiệu ứng `"Tay đâu, tayyyy đâuuuuu"`** | Làm mờ bảng quân & khung chat OBS, đồng thời bung bảng hiệu ứng lửa vàng rung lắc + mưa icon `🙌 🔥 👏` trên khung **Link OBS Bảng Quân** trong `6.5 giây`. |
 | **`F3`** / **`F7`** | **Test ảnh mẫu** / **Kết thúc kèo đấu** | Dùng khi đang mở cửa sổ Tool PC để kiểm tra nhanh hoặc kết thúc kèo hiện tại. |
 
@@ -366,14 +366,15 @@ Copy-Item "$src\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\TOOL_BANG_QUAN_AOE_BY_XO.exe
             - Khi Streamer **chưa có trận `LIVE`** và **chưa có bình luận / quà tặng mới trong 3 phút gần nhất**, [`public/chat-overlay.html`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/chat-overlay.html) hiển thị **Khung Chat Ảo** đúng kích thước nguồn Browser OBS **`380 x 450`**: viền nét đứt vàng, 4 góc xanh ngọc, huy hiệu `KHUNG ẢO CĂN OBS CHAT`, tên máy, và 4 dòng mẫu đúng kiểu chữ thật (Chat thường, `🔵 [FB]`, Tặng Vật phẩm `🐘 Con Voi (+22⭐) ➔ XO`, Sự kiện Hệ thống) để Streamer kéo thả / căn chỉnh vị trí trong OBS trước khi vào trận.
             - Ngay khi có trận `LIVE` (ấn `F2` trong game) hoặc có bình luận / quà tặng mới, khung ảo tự chuyển sang **Chat thật trong suốt**; khung ảo không bị tự làm mờ 80% sau 5 giây (để dễ căn chỉnh).
             - Dùng chung tùy chọn **`📐 Hiện Khung Ảo căn OBS (Bảng Quân + Khung Chat)`** (`showIdlePreview`, mặc định Bật) trên Web / App PC; thêm `&preview=1` vào link (VD: `/chat-overlay.html?streamer=XO&preview=1`) để luôn hiện khung ảo khi chưa có trận.
-          - **Cập nhật toàn diện Cửa Sổ Hướng Dẫn (`📖 Hướng dẫn` trên Web & App PC) — Bổ sung 6 Ảnh Minh Họa Trực Quan, Hướng Dẫn `Run as Administrator`, Phím Tắt `F2 / F5 / F6 / F8` & Tự Động Xuống Dòng Không Bao Giờ Mất Chữ**:
+          - **Cập nhật toàn diện Cửa Sổ Hướng Dẫn (`📖 Hướng dẫn` trên Web & App PC) — Yêu Cầu Ấn Nút `Diplomacy` Để Đọc Bảng Quân (Bỏ Hết `F2`), Bổ Sung 6 Ảnh Minh Họa Trực Quan, Hướng Dẫn `Run as Administrator`, Phím Tắt `F5 / F6 / F8` & Tự Động Xuống Dòng Không Bao Giờ Mất Chữ**:
+            - **Chuẩn hóa toàn bộ hướng dẫn thao tác trong game**: Loại bỏ hoàn toàn hướng dẫn bấm `F2`, yêu cầu người chơi **bắt buộc ấn nút `Diplomacy` trên thanh menu góc trên màn hình game** để mở bảng danh sách người chơi & quân thì Tool mới có thể đọc bảng quân và đồng bộ lên Web / OBS.
             - **Bộ 6 ảnh hướng dẫn trực quan trong [`public/guide/`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/guide/)**:
               1. `obs-add-browser.png`: Minh họa đánh số 1–5 từng bước bấm `[+]` trong `Sources` $\rightarrow$ chọn `Browser` $\rightarrow$ dán URL & nhập `550 x 210` / `380 x 450` $\rightarrow$ `OK`.
-              2. `obs-layout.png`: Sơ đồ bố cục đặt `Browser 1: Bảng Quân (550 x 210)` ở đáy giữa và `Browser 2: Khung Chat (380 x 450)` ở cạnh trái màn hình game AOE.
-              3. `overlay-virtual.png`: Ảnh chụp thực tế Khung Bảng Quân Ảo (`550 x 210`).
+              2. `obs-layout.png`: Sơ đồ bố cục đặt `Browser 1: Bảng Quân (550 x 210)` ở đáy giữa, `Browser 2: Khung Chat (380 x 450)` ở cạnh trái và vị trí nút `👆 Ấn nút Diplomacy` trên thanh HUD trong game AOE.
+              3. `overlay-virtual.png`: Ảnh chụp thực tế Khung Bảng Quân Ảo (`550 x 210` — `CHỜ MỞ DIPLOMACY` / `Vào game ấn Diplomacy sẽ tự lên bảng quân thật`).
               4. `chat-virtual.png`: Ảnh chụp thực tế Khung Chat Ảo (`380 x 450`).
-              5. `hotkeys.png`: Bảng trực quan các phím tắt trong game (`F2` Quét quân, `F5` Team Đỏ +1, `F6` Team Xanh +1, `F8` Hiệu ứng `"Tay đâu, tayyyy đâuuuuu"`, `F3` Test ảnh, `F7` Kết thúc kèo).
-              6. `run-admin.png`: Hướng dẫn 2 cách chạy quyền **Administrator** (Chuột phải $\rightarrow$ `Run as administrator`, hoặc `Properties` $\rightarrow$ `Compatibility` $\rightarrow$ tích `☑ Run this program as an administrator` để lưu vĩnh viễn) giúp phím tắt `F2 / F5 / F6 / F8` không bị Windows UIPI chặn khi đang trong game `EMPIRESX.EXE`.
+              5. `hotkeys.png`: Bảng trực quan thao tác **Ấn nút `Diplomacy` đọc bảng quân** và các phím tắt trong game (`F5` Team Đỏ +1, `F6` Team Xanh +1, `F8` Hiệu ứng `"Tay đâu, tayyyy đâuuuuu"`, `F3` Test ảnh, `F7` Kết thúc kèo).
+              6. `run-admin.png`: Hướng dẫn 2 cách chạy quyền **Administrator** (Chuột phải $\rightarrow$ `Run as administrator`, hoặc `Properties` $\rightarrow$ `Compatibility` $\rightarrow$ tích `☑ Run this program as an administrator` để lưu vĩnh viễn) giúp phím tắt `F5 / F6 / F8` không bị Windows UIPI chặn khi đang trong game `EMPIRESX.EXE`.
             - **Khắc phục triệt để lỗi chèn / cắt chữ trong cửa sổ Hướng dẫn trên cả Web và App PC**:
               - Trên **App PC ([`show_obs_guide_window`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/client/bangquanaoe.py#L3787-L4080))**: Thay thế cửa sổ cố định `740x610` không thanh cuộn bằng cửa sổ `1040x860` cho phép kéo giãn (`resizable`), tích hợp `Canvas + Scrollbar` hỗ trợ lăn chuột (`MouseWheel`), tự động tính lại `wraplength` của toàn bộ nhãn văn bản theo chiều rộng thực tế (`<Configure>`) đảm bảo `0` dòng chữ bị tràn hoặc cắt góc ở mọi mức DPI (`125%`, `150%`, `4K`), đồng thời tải và hiển thị trực tiếp 6 ảnh minh họa ngay trong App.
               - Trên **Web ([`public/index.html`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/index.html#L1246-L1415))**: Mở rộng modal lên `max-w-3xl`, áp dụng `break-words` + `[overflow-wrap:anywhere]`, thanh nhảy nhanh 6 mục (`① Link & Kích thước` $\rightarrow$ `⑥ Xử lý lỗi`), bảng kích thước chuẩn, 2 nút Copy Link nhanh và cho phép bấm vào từng ảnh minh họa để phóng to xem chi tiết.

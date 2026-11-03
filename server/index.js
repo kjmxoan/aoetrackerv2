@@ -1564,7 +1564,7 @@ app.post('/api', async (req, res) => {
         return res.json({ status: 'error', message: 'Không có quyền hoặc không tìm thấy kèo!' });
       }
       if (!Array.isArray(match.games) || match.games.length === 0) {
-        return res.json({ status: 'error', message: 'Chưa có bảng quân của trận đấu! Hãy ấn F2 (Diplomacy) trong game để hiển thị quân trước khi bấm F5/F6.' });
+        return res.json({ status: 'error', message: 'Chưa có bảng quân của trận đấu! Hãy ấn nút Diplomacy trong game để hiển thị quân trước khi bấm F5/F6.' });
       }
       deduplicateConsecutiveSameCivGames(match);
 
@@ -1584,7 +1584,7 @@ app.post('/api', async (req, res) => {
           const lastW = latestWinner === 'RED' ? 'Team Đỏ' : 'Team Xanh';
           return res.json({
             status: 'error',
-            message: `Trận #${match.games.length} đã ghi nhận ${lastW} chiến thắng! Mỗi trận đấu chỉ có 1 đội thắng duy nhất — hãy ấn F2 (Diplomacy) trong game để hiển thị quân trận mới trước khi bấm F5/F6.`
+            message: `Trận #${match.games.length} đã ghi nhận ${lastW} chiến thắng! Mỗi trận đấu chỉ có 1 đội thắng duy nhất — hãy ấn nút Diplomacy trong game để hiển thị quân trận mới trước khi bấm F5/F6.`
           });
         }
         gameIdx = latestIdx;
@@ -1601,7 +1601,7 @@ app.post('/api', async (req, res) => {
       if (!hasValidRedCivs || !hasValidBlueCivs) {
         return res.json({
           status: 'error',
-          message: 'Quân của trận đấu chưa hiển thị đầy đủ! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.'
+          message: 'Quân của trận đấu chưa hiển thị đầy đủ! Hãy ấn nút Diplomacy trong game để hiện bảng quân trước khi bấm F5/F6.'
         });
       }
 

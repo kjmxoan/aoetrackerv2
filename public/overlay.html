@@ -212,8 +212,8 @@
               {{ mainScoreDisplay.red }} <span class="text-slate-500 text-xl mx-0.5">-</span> {{ mainScoreDisplay.blue }}
             </div>
             <div class="w-full bg-slate-950/90 py-1 border-t border-slate-800">
-              <span v-if="isVirtualPreview" class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
-                CHỜ F2 VÀO TRẬN
+              <span v-if="isVirtualPreview" class="text-[9px] font-extrabold uppercase tracking-wider text-emerald-400">
+                CHỜ MỞ DIPLOMACY
               </span>
               <span v-else class="text-[11px] font-extrabold uppercase tracking-wider text-slate-200">
                 {{ overlayCfg.cModeEnabled ? ('C' + cModeData.currentSetNumber + ' • TRẬN ' + (activeMatch.games ? activeMatch.games.length : 1)) : ('TRẬN ' + (activeMatch.games ? activeMatch.games.length : 1)) }}
@@ -239,7 +239,7 @@
         <div v-if="isVirtualPreview"
              class="mt-1.5 px-3 py-1 rounded-lg bg-slate-950/90 border border-dashed border-amber-400/70 flex items-center justify-between text-[11px] font-bold text-amber-300 shadow-lg">
           <span>📐 Khung mẫu căn vị trí OBS (Size chuẩn: {{ overlayCfg.cModeEnabled ? '750 x 210' : '550 x 210' }})</span>
-          <span class="text-emerald-400">Vào game ấn F2 sẽ tự lên bảng quân thật</span>
+          <span class="text-emerald-400">Vào game ấn Diplomacy sẽ tự lên bảng quân thật</span>
         </div>
         </div><!-- Đóng khối làm mờ Bảng Quân khi ấn F8 -->
 
@@ -511,7 +511,7 @@
           }
 
           if (this.isVirtualPreview) {
-            return 'KHUNG BẢNG QUÂN ẢO ĐỂ CĂN VỊ TRÍ OBS • BẤM F2 (DIPLOMACY) TRONG GAME SẼ TỰ ĐỘNG HIỂN THỊ TRẬN ĐẤU THẬT';
+            return 'KHUNG BẢNG QUÂN ẢO ĐỂ CĂN VỊ TRÍ OBS • ẤN NÚT DIPLOMACY TRONG GAME SẼ TỰ ĐỘNG HIỂN THỊ TRẬN ĐẤU THẬT';
           }
 
           if (!this.activeMatch || !this.activeMatch.games || !this.activeMatch.games.length) {

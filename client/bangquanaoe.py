@@ -2231,7 +2231,7 @@ class AOETrackerApp:
 
         tk.Label(
             self.status_log_bar,
-            text="Phím tắt:  F2 Quét  |  F3 Test ảnh  |  F5 Thắng Đỏ  |  F6 Thắng Xanh  |  F7 Kết thúc  |  F8 Tay đâu!",
+            text="Thao tác:  Ấn Diplomacy đọc quân  |  F3 Test ảnh  |  F5 Thắng Đỏ  |  F6 Thắng Xanh  |  F7 Kết thúc  |  F8 Tay đâu!",
             font=("Segoe UI", 8, "bold"),
             fg="#cbd5e1",
             bg="#131720",
@@ -2307,7 +2307,7 @@ class AOETrackerApp:
         self.battle_tab_frame = tk.Frame(self.tab_container, bg="#0b0e14")
         self.settings_tab_frame = tk.Frame(self.tab_container, bg="#0b0e14")
 
-        # Thanh thao tác nhanh thứ hai (Gom gọn: Tự động quét F2 | Nút chính Quét F2 ngay | Test ảnh | Link OBS Bảng Quân)
+        # Thanh thao tác nhanh thứ hai (Gom gọn: Tự động quét Diplomacy | Nút chính Quét Diplomacy ngay | Test ảnh | Link OBS Bảng Quân)
         quick_bar = tk.Frame(
             self.battle_tab_frame,
             bg="#131720",
@@ -2320,7 +2320,7 @@ class AOETrackerApp:
 
         tk.Checkbutton(
             quick_bar,
-            text="Tự động quét F2",
+            text="Tự động quét Diplomacy",
             variable=self.auto_scan_var,
             command=self.save_current_config,
             font=("Segoe UI", 9, "bold"),
@@ -2334,7 +2334,7 @@ class AOETrackerApp:
 
         self.btn_scan_now = tk.Button(
             quick_bar,
-            text="🔍 Quét F2 ngay",
+            text="🔍 Quét Diplomacy ngay",
             command=self.manual_scan_screen,
             font=("Segoe UI", 9, "bold"),
             bg="#eca133",
@@ -2513,7 +2513,7 @@ class AOETrackerApp:
 
         self.red_roster_lbl = tk.Label(
             self.red_card,
-            text="Ấn F2 Diplomacy trong game",
+            text="Ấn nút Diplomacy trong game",
             font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
             bg="#18131a",
@@ -2563,7 +2563,7 @@ class AOETrackerApp:
 
         self.c_mode_summary_lbl = tk.Label(
             center_hud,
-            text="Ấn F2 trong game để bắt đầu",
+            text="Ấn nút Diplomacy trong game để bắt đầu",
             font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
             bg="#171c28",
@@ -2644,7 +2644,7 @@ class AOETrackerApp:
 
         self.blue_roster_lbl = tk.Label(
             self.blue_card,
-            text="Ấn F2 Diplomacy trong game",
+            text="Ấn nút Diplomacy trong game",
             font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
             bg="#121826",
@@ -3586,7 +3586,7 @@ class AOETrackerApp:
         self.log(f"Khởi động {APP_TITLE} ({APP_VERSION}) thành công.", "DEFAULT")
         if is_windows_process_admin():
             self.log(
-                "🛡️ Đã kích hoạt Quyền Administrator & Hook Bàn Phím Tầng Thấp (WH_KEYBOARD_LL): Phím tắt F2, F5, F6, F8 hoạt động xuyên màn hình Game AOE!",
+                "🛡️ Đã kích hoạt Quyền Administrator & Hook Bàn Phím Tầng Thấp (WH_KEYBOARD_LL): Phím tắt F5, F6, F8 hoạt động xuyên màn hình Game AOE!",
                 "SUCCESS",
             )
         elif os.name == "nt":
@@ -3594,7 +3594,7 @@ class AOETrackerApp:
                 "⚠️ Tool đang chạy chưa có quyền Administrator — nếu Game AOE chặn phím F5/F6/F8 (do UIPI), hãy chuột phải chọn 'Run as administrator'.",
                 "WARN",
             )
-        self.log("Hãy đăng nhập tài khoản Player và ấn F2 (Diplomacy) trong game để tự động lên bảng quân.", "TEAM")
+        self.log("Hãy đăng nhập tài khoản Player và ấn nút Diplomacy trong game để tự động đọc bảng quân.", "TEAM")
 
     def switch_main_tab(self, tab_name: str):
         self.active_tab = tab_name
@@ -3830,7 +3830,7 @@ class AOETrackerApp:
         ).pack(fill="x")
         sub_lbl = tk.Label(
             top,
-            text="Kèm phím tắt trong game (F2 / F5 / F6 / F8) và cách chạy Tool bằng quyền Administrator. Lăn chuột để xem toàn bộ hướng dẫn.",
+            text="Cách ấn nút Diplomacy để đọc bảng quân, phím tắt trong game (F5 / F6 / F8) và cách chạy Tool bằng quyền Administrator. Lăn chuột để xem toàn bộ hướng dẫn.",
             font=("Segoe UI", 9),
             fg=SUB,
             bg=CARD,
@@ -3964,7 +3964,7 @@ class AOETrackerApp:
         for line in (
             "•  Khi chưa có trận, cả 2 link tự hiện Khung Ảo viền nét đứt vàng đúng kích thước thật.",
             "•  Kéo khung đỏ của OBS tới vị trí mong muốn: Bảng Quân sát mép dưới / góc màn hình, Khung Chat bên trái hoặc phải.",
-            "•  Vào game ấn F2 (Diplomacy) → khung ảo tự chuyển sang dữ liệu thật. Khung Chat tự hiện chat thật khi có trận LIVE / bình luận mới.",
+            "•  Vào game bắt buộc ấn nút Diplomacy (trên thanh menu góc trên màn hình game) → Tool mới đọc được bảng quân và tự chuyển từ khung ảo sang dữ liệu thật. Khung Chat tự hiện chat thật khi có trận LIVE / bình luận mới.",
             "•  Bật / tắt tại tab ⚙️ Cài đặt VIP → 📐 Hiện Khung Ảo. Thêm &preview=1 vào link để luôn hiện khung ảo khi chưa có trận.",
         ):
             para(s3, line, fg=SUB, pady=(0, 2))
@@ -3972,12 +3972,12 @@ class AOETrackerApp:
         image(s3, "overlay-virtual.png", max_ratio=0.62, caption="Khung Bảng Quân Ảo (550 × 210)")
         image(s3, "chat-virtual.png", max_ratio=0.34, caption="Khung Chat Ảo (380 × 450)")
 
-        # ④ PHÍM TẮT
-        s4 = section("④ Phím tắt dùng ngay trong màn hình Game", color="#fbbf24")
+        # ④ CÁCH ĐỌC BẢNG QUÂN (ẤN DIPLOMACY) & PHÍM TẮT
+        s4 = section("④ Cách đọc Bảng Quân (Ấn Diplomacy) & Phím tắt trong Game", color="#fbbf24")
         image(s4, "hotkeys.png")
         for line, col in (
-            ("F2:  mở Diplomacy trong game → Tool tự quét và đưa bảng quân lên OBS.", SUB),
-            ("F5 / F6:  chấm Team Đỏ / Team Xanh thắng (+1). Chỉ nhận khi trận hiện tại ĐÃ HIỆN QUÂN và CHƯA CÓ ĐỘI THẮNG (mỗi trận chỉ 1 đội thắng).", SUB),
+            ("Ấn nút Diplomacy trong game:  khi bắt đầu trận đấu, người chơi PHẢI ấn vào nút Diplomacy (ở góc trên màn hình game) để mở bảng danh sách người chơi & quân → Tool mới có thể đọc bảng quân và đưa lên OBS.", "#fde68a"),
+            ("F5 / F6:  chấm Team Đỏ / Team Xanh thắng (+1). Chỉ nhận khi trận hiện tại ĐÃ ẤN DIPLOMACY ĐỂ HIỆN QUÂN và CHƯA CÓ ĐỘI THẮNG (mỗi trận chỉ 1 đội thắng).", SUB),
             ("F8:  bắn hiệu ứng \"Tay đâu, tayyyy đâuuuuu\" lên Link OBS Bảng Quân (Khung Chat tự mờ trong lúc chạy hiệu ứng).", SUB),
             ("F3 (Test ảnh) và F7 (Kết thúc kèo) dùng trên cửa sổ App. Đóng App cũng tự kết thúc kèo đấu đang LIVE.", SUB),
         ):
@@ -4009,7 +4009,7 @@ class AOETrackerApp:
         for q, a in (
             ("OBS không cập nhật / hiện bản cũ:", "chuột phải nguồn Browser → Properties → Refresh cache of current page."),
             ("Bảng quân bị cắt / thừa khoảng trống:", "kiểm tra lại Width / Height theo mục ①, không kéo giãn khung bằng chuột."),
-            ("Ấn F5 / F6 bị từ chối:", "trận hiện tại chưa hiện quân (hãy ấn F2 trong game) hoặc trận đã có đội thắng."),
+            ("Ấn F5 / F6 bị từ chối:", "trận hiện tại chưa hiện quân (hãy ấn mở nút Diplomacy trong game để đọc bảng quân) hoặc trận đã có đội thắng."),
             ("Ấn phím trong game không nhận:", "làm theo mục ⑤ (Run as administrator)."),
             ("Tắt App đột ngột:", "Server tự kết thúc kèo LIVE sau khoảng 3 phút mất tín hiệu."),
         ):
@@ -5684,7 +5684,7 @@ class AOETrackerApp:
                         empty_msg = (
                             "🔍 Không tìm thấy trận đấu phù hợp với bộ lọc."
                             if (q_match or f_mode != "ALL")
-                            else "🛡️ Hiện chưa có trận đấu nào trên sảnh.\nKhi bấm F2 (Diplomacy) trong game, trận đấu sẽ xuất hiện tại đây!"
+                            else "🛡️ Hiện chưa có trận đấu nào trên sảnh.\nKhi ấn nút Diplomacy trong game, trận đấu sẽ xuất hiện tại đây!"
                         )
                         self.tk.Label(
                             self.live_matches_list_frame,
@@ -6131,7 +6131,7 @@ class AOETrackerApp:
             sets.append(f"Séc {idx}: {cur_r}-{cur_b}")
         return f"🏆 Tỉ số C: {c_r} - {c_b}  |  " + " • ".join(sets)
 
-    def _reset_battle_arena_ui(self, summary_text: str = "Ấn F2 trong game để bắt đầu\nTổng 0 trận"):
+    def _reset_battle_arena_ui(self, summary_text: str = "Ấn nút Diplomacy trong game để bắt đầu\nTổng 0 trận"):
         def _render():
             try:
                 t_score = self.target_score_var.get() or 7
@@ -6144,8 +6144,8 @@ class AOETrackerApp:
                     self.red_primary_player_lbl.config(text=self.player_name_var.get().strip() or "Chủ nhà")
                 if hasattr(self, "blue_primary_player_lbl"):
                     self.blue_primary_player_lbl.config(text="Đội khách")
-                self.red_roster_lbl.config(text="[Chưa chọn quân] (Chờ F2)")
-                self.blue_roster_lbl.config(text="[Chưa chọn quân] (Chờ F2)")
+                self.red_roster_lbl.config(text="[Chưa chọn quân] (Chờ mở Diplomacy)")
+                self.blue_roster_lbl.config(text="[Chưa chọn quân] (Chờ mở Diplomacy)")
                 self.red_count_lbl.config(text="")
                 self.blue_count_lbl.config(text="")
                 if hasattr(self, "scoreboard_live_badge"):
@@ -6721,7 +6721,7 @@ class AOETrackerApp:
             try:
                 frames = self._grab_all_monitors_bgr()
                 sizes_str = ", ".join(f"{f.shape[1]}x{f.shape[0]}" for f in frames)
-                self.log(f"🔍 [Điều tra Quét F2] Đang quét {len(frames)} khung hình ({sizes_str})...", "DEFAULT")
+                self.log(f"🔍 [Điều tra Quét Diplomacy] Đang quét {len(frames)} khung hình ({sizes_str})...", "DEFAULT")
                 reasons = []
                 for idx, img_bgr in enumerate(frames):
                     res = self.scanner.parse_diplomacy_from_image(
@@ -6736,7 +6736,7 @@ class AOETrackerApp:
                     if self.scanner.last_reject_reason:
                         reasons.append(f"Khung #{idx+1} ({img_bgr.shape[1]}x{img_bgr.shape[0]}): {self.scanner.last_reject_reason}")
                 detail = " | ".join(reasons) if reasons else "Không phát hiện hộp thoại Diplomacy"
-                self.log(f"⚠️ Không tìm thấy bảng DIPLOMACY (F2): {detail}", "WARN")
+                self.log(f"⚠️ Không tìm thấy bảng DIPLOMACY: {detail}", "WARN")
             except Exception as e:
                 self.log(f"❌ Lỗi quét màn hình: {e}", "ERROR")
 
@@ -6868,13 +6868,13 @@ class AOETrackerApp:
         if not match or not isinstance(match, dict):
             return (
                 False,
-                "Quân của trận đấu chưa hiển thị! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.",
+                "Quân của trận đấu chưa hiển thị! Hãy ấn nút Diplomacy trong game để hiện bảng quân trước khi bấm F5/F6.",
             )
         games = match.get("games") or []
         if not games:
             return (
                 False,
-                "Chưa có bảng quân của trận đấu! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.",
+                "Chưa có bảng quân của trận đấu! Hãy ấn nút Diplomacy trong game để hiện bảng quân trước khi bấm F5/F6.",
             )
         latest_game = games[-1]
         latest_winner = str(latest_game.get("winner") or "PENDING").upper()
@@ -6882,7 +6882,7 @@ class AOETrackerApp:
             last_w = "Team Đỏ" if latest_winner == "RED" else "Team Xanh"
             return (
                 False,
-                f"Trận #{len(games)} đã ghi nhận {last_w} chiến thắng! Mỗi trận chỉ có 1 đội thắng duy nhất — hãy ấn F2 trong game để quét quân trận mới.",
+                f"Trận #{len(games)} đã ghi nhận {last_w} chiến thắng! Mỗi trận chỉ có 1 đội thắng duy nhất — hãy ấn nút Diplomacy trong game để đọc quân trận mới.",
             )
         red_civs = latest_game.get("redCivs") or []
         blue_civs = latest_game.get("blueCivs") or []
@@ -6891,7 +6891,7 @@ class AOETrackerApp:
         if not (has_valid_red and has_valid_blue):
             return (
                 False,
-                "Quân của trận đấu chưa hiển thị đầy đủ! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.",
+                "Quân của trận đấu chưa hiển thị đầy đủ! Hãy ấn nút Diplomacy trong game để hiện bảng quân trước khi bấm F5/F6.",
             )
         return (True, "")
 
@@ -7028,7 +7028,7 @@ class AOETrackerApp:
                     self.log("✅ 🏁 Đã kết thúc kèo đấu thành công!", "SUCCESS")
                     self.current_match = None
                     self.scanner.last_dialog_signature = None
-                    self._reset_battle_arena_ui("Kèo đấu đã kết thúc • Ấn F2 trong game để bắt đầu kèo mới")
+                    self._reset_battle_arena_ui("Kèo đấu đã kết thúc • Ấn nút Diplomacy trong game để bắt đầu kèo mới")
                 else:
                     self.log(f"⚠️ {data.get('message', 'Không thể kết thúc kèo')}", "WARN")
             except Exception as e:
