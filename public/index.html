@@ -599,7 +599,19 @@
                     <span class="text-slate-600 mx-1 sm:mx-2">-</span>
                     <span class="text-sky-400">{{ activeMatchScore.blue }}</span>
                   </div>
-                  <div v-if="showCivStats" class="text-[10px] sm:text-xs text-slate-400 mt-1">
+                  <div class="flex items-center justify-center gap-1.5 mt-1.5 flex-wrap">
+                    <button @click="setWinner(null, 'RED')"
+                            class="bg-red-600/90 hover:bg-red-500 text-white font-bold px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs shadow transition"
+                            title="Cập nhật Đội Đỏ thắng trận hiện tại & đồng bộ lên OBS Overlay">
+                      🔴 +1 Đỏ
+                    </button>
+                    <button @click="setWinner(null, 'BLUE')"
+                            class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs shadow transition"
+                            title="Cập nhật Đội Xanh thắng trận hiện tại & đồng bộ lên OBS Overlay">
+                      🔵 +1 Xanh
+                    </button>
+                  </div>
+                  <div v-if="showCivStats" class="text-[10px] sm:text-xs text-slate-400 mt-1.5">
                     <b class="text-sky-300">{{ activeMatchCivStats.cung }} Cung</b> &bull;
                     <b class="text-slate-200">{{ activeMatchCivStats.chem }} Chém</b>
                   </div>
@@ -661,9 +673,12 @@
                               class="px-2.5 py-1 rounded-lg text-xs transition">
                         🔵 Xanh Thắng
                       </button>
-                      <span v-if="g.winner === 'PENDING'" class="text-sky-300 font-medium bg-sky-950/60 border border-sky-800/50 px-2 py-0.5 rounded-lg text-[11px]">
+                      <button @click="setWinner(idx, 'PENDING')"
+                              :class="(!g.winner || g.winner === 'PENDING') ? 'text-sky-300 font-medium bg-sky-950/60 border border-sky-800/50' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'"
+                              class="px-2 py-0.5 rounded-lg text-[11px] transition"
+                              title="Đặt lại trận này về trạng thái Đang đấu">
                         ⏳ Đang đấu
-                      </span>
+                      </button>
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -682,7 +697,7 @@
                     <div class="team-red-box p-2 sm:p-3 rounded-xl space-y-1.5">
                       <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gr-'+pi" class="flex items-center justify-between gap-1 text-xs sm:text-sm">
                         <span class="font-semibold text-white truncate">
-                          {{ selectedMatch.redTeam[pi] || ('P' + (pi + 1)) }}
+                          {{ (g.redPlayers && g.redPlayers[pi]) || selectedMatch.redTeam[pi] || ('P' + (pi + 1)) }}
                         </span>
                         <span :class="getCivTypeClass(g.redCivs[pi])" class="px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold shrink-0 text-center">
                           {{ g.redCivs[pi] || '---' }}
@@ -693,7 +708,7 @@
                     <div class="team-blue-box p-2 sm:p-3 rounded-xl space-y-1.5">
                       <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gb-'+pi" class="flex items-center justify-between gap-1 text-xs sm:text-sm">
                         <span class="font-semibold text-white truncate">
-                          {{ selectedMatch.blueTeam[pi] || ('P' + (pi + 1)) }}
+                          {{ (g.bluePlayers && g.bluePlayers[pi]) || selectedMatch.blueTeam[pi] || ('P' + (pi + 1)) }}
                         </span>
                         <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold shrink-0 text-center">
                           {{ g.blueCivs[pi] || '---' }}
@@ -1625,11 +1640,12 @@
           },
           newPlayerForm: { name: '', password: '123', tier: 'GOLD', durationDays: 30, note: '' },
           showCivStats: localCivStats !== null ? (localCivStats === 'true') : true,
-          sessionPlayerName: sessionStorage.getItem('aoe_playerName') || '',
-          sessionPlayerPass: sessionStorage.getItem('aoe_playerPass') || '',
-          sessionPlayerExpires: sessionStorage.getItem('aoe_playerExpires') || '',
-          sessionPlayerTier: sessionStorage.getItem('aoe_playerTier') || 'BRONZE',
-          vipTargetPlayer: sessionStorage.getItem('aoe_playerName') || 'XO',
+          sessionPlayerName: sessionStorage.getItem('aoe_playerName') || localStorage.getItem('aoe_playerName') || '',
+          sessionPlayerPass: sessionStorage.getItem('aoe_playerPass') || localStorage.getItem('aoe_playerPass') || '',
+          sessionPlayerExpires: sessionStorage.getItem('aoe_playerExpires') || localStorage.getItem('aoe_playerExpires') || '',
+          sessionPlayerTier: sessionStorage.getItem('aoe_playerTier') || localStorage.getItem('aoe_playerTier') || 'BRONZE',
+          vipTargetPlayer: sessionStorage.getItem('aoe_playerName') || localStorage.getItem('aoe_playerName') || 'XO',
+          pendingWinnerAction: null,
           overlayConfigForm: {
             targetScore: 100,
             marqueeMode: 'ALL',
@@ -2199,7 +2215,17 @@
               sessionStorage.setItem('aoe_playerPass', this.sessionPlayerPass);
               sessionStorage.setItem('aoe_playerExpires', this.sessionPlayerExpires);
               sessionStorage.setItem('aoe_playerTier', this.sessionPlayerTier);
+              localStorage.setItem('aoe_playerName', this.sessionPlayerName);
+              localStorage.setItem('aoe_playerPass', this.sessionPlayerPass);
+              localStorage.setItem('aoe_playerExpires', this.sessionPlayerExpires);
+              localStorage.setItem('aoe_playerTier', this.sessionPlayerTier);
               this.showLoginUpdaterModal = false;
+              if (this.pendingWinnerAction) {
+                const pending = this.pendingWinnerAction;
+                this.pendingWinnerAction = null;
+                await this.setWinner(pending.gameIndex, pending.winnerTeam);
+                return;
+              }
               if (this.isAdmin) {
                 this.showPlayerManagerModal = true;
               }
@@ -2218,7 +2244,17 @@
               sessionStorage.setItem('aoe_playerPass', '111');
               sessionStorage.setItem('aoe_playerExpires', 'Vĩnh viễn');
               sessionStorage.setItem('aoe_playerTier', 'DIAMOND');
+              localStorage.setItem('aoe_playerName', 'XO');
+              localStorage.setItem('aoe_playerPass', '111');
+              localStorage.setItem('aoe_playerExpires', 'Vĩnh viễn');
+              localStorage.setItem('aoe_playerTier', 'DIAMOND');
               this.showLoginUpdaterModal = false;
+              if (this.pendingWinnerAction) {
+                const pending = this.pendingWinnerAction;
+                this.pendingWinnerAction = null;
+                await this.setWinner(pending.gameIndex, pending.winnerTeam);
+                return;
+              }
               this.showPlayerManagerModal = true;
               this.fetchInitialData();
               this.showNotify('🛡️ Đã đăng nhập quyền QUẢN TRỊ ADMIN XO (Full VIP Kim Cương)!');
@@ -2235,18 +2271,36 @@
           this.sessionPlayerExpires = '';
           this.sessionPlayerTier = 'BRONZE';
           sessionStorage.clear();
+          localStorage.removeItem('aoe_playerName');
+          localStorage.removeItem('aoe_playerPass');
+          localStorage.removeItem('aoe_playerExpires');
+          localStorage.removeItem('aoe_playerTier');
         },
         async setWinner(gameIndex, winnerTeam) {
+          if (!this.selectedMatch) return;
           if (!this.canModify(this.selectedMatch)) {
-            if (!this.sessionPlayerName) {
-              this.openLoginUpdaterModal();
-            } else {
-              this.showNotify('Chỉ người tạo kèo hoặc Admin mới có quyền đổi kết quả!', 'error');
-            }
+            this.pendingWinnerAction = { gameIndex, winnerTeam };
+            this.updaterNameInput = this.selectedMatch.streamerName || this.sessionPlayerName || 'XO';
+            this.updaterPassInput = '';
+            this.showLoginUpdaterModal = true;
+            this.showNotify(`Vui lòng đăng nhập tài khoản "${this.updaterNameInput}" để cập nhật tỉ số lên OBS!`, 'error');
             return;
           }
 
-          this.selectedMatch.games[gameIndex].winner = winnerTeam;
+          let targetIdx = gameIndex;
+          if (targetIdx === null || targetIdx === undefined) {
+            const games = this.selectedMatch.games || [];
+            const pendingIdx = games.findIndex(g => !g.winner || g.winner === 'PENDING');
+            targetIdx = pendingIdx !== -1 ? pendingIdx : games.length - 1;
+          }
+
+          if (!this.selectedMatch.games || !this.selectedMatch.games[targetIdx]) {
+            this.showNotify('Chưa có trận đấu nào để cập nhật tỉ số!', 'error');
+            return;
+          }
+
+          this.selectedMatch.games[targetIdx].winner = winnerTeam;
+          this.selectedMatch.status = 'LIVE';
           this.selectedMatch = { ...this.selectedMatch };
 
           try {
@@ -2256,7 +2310,8 @@
               body: JSON.stringify({
                 action: 'setWinner',
                 matchId: this.selectedMatch.id,
-                gameIndex: gameIndex,
+                streamerName: this.selectedMatch.streamerName,
+                gameIndex: targetIdx,
                 winner: winnerTeam,
                 isAdmin: this.isAdmin,
                 adminPassword: this.adminPasswordSession,
@@ -2266,9 +2321,23 @@
             });
             const data = await res.json();
             if (data.status === 'success') {
-              this.showNotify(`Đã cập nhật: ${winnerTeam === 'RED' ? '🔴 Team Đỏ Thắng' : '🔵 Team Xanh Thắng'}`);
+              if (data.match) {
+                this.selectedMatch = data.match;
+                const mIdx = this.matches.findIndex(m => m.id === data.match.id);
+                if (mIdx !== -1) {
+                  this.matches.splice(mIdx, 1, data.match);
+                }
+              }
+              const label =
+                winnerTeam === 'RED'
+                  ? `🔴 Team Đỏ Thắng (Trận #${targetIdx + 1})`
+                  : winnerTeam === 'BLUE'
+                  ? `🔵 Team Xanh Thắng (Trận #${targetIdx + 1})`
+                  : `⏳ Đặt lại Trận #${targetIdx + 1} về Đang đấu`;
+              this.showNotify(`Đã cập nhật & đồng bộ OBS: ${label}`);
             } else {
               this.showNotify(data.message || 'Lỗi cập nhật!', 'error');
+              this.fetchInitialData();
             }
           } catch (e) {
             this.showNotify('Lỗi kết nối khi lưu tỉ số!', 'error');
@@ -2338,7 +2407,7 @@
         async fetchInitialData() {
           this.isLoading = true;
           try {
-            const res = await fetch(API_URL + '?action=getInitialData');
+            const res = await fetch(`${API_URL}?action=getInitialData&_t=${Date.now()}`, { cache: 'no-store' });
             const data = await res.json();
             if (data.databaseMode) this.databaseMode = data.databaseMode;
             if (data.players) {

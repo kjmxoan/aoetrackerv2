@@ -377,19 +377,33 @@ class DiplomacyScanner:
         if w_left > 120 or w_right > 120:
             return False
 
-        # 2. Check chữ 'OK' màu vàng ở nút dưới bên trái (y: 368..396, x: 75..145)
-        ok_crop = norm_624x400[368:396, 75:145]
+        # 2. Check chữ 'OK' màu vàng ở nút dưới bên trái (y: 368..396, x: 65..155)
+        ok_crop = norm_624x400[368:396, 65:155]
         b_ok, g_ok, r_ok = cv2.split(ok_crop)
         yellow_ok_px = int(np.sum((r_ok > 140) & (g_ok > 130) & (b_ok < 110) & ((r_ok.astype(np.int16) - b_ok.astype(np.int16)) > 60)))
-        if yellow_ok_px < 12:
+        if yellow_ok_px < 10:
             return False
 
-        # 3. Check hàng tiêu đề cột 'Name' / 'Civilization' (y: 52..74, x: 10..240)
+        # 2b. Check chữ 'Cancel' màu vàng ở nút kế bên (y: 368..396, x: 185..295) - Đặc trưng riêng của hộp thoại Diplomacy
+        cancel_crop = norm_624x400[368:396, 185:295]
+        b_ca, g_ca, r_ca = cv2.split(cancel_crop)
+        yellow_cancel_px = int(np.sum((r_ca > 140) & (g_ca > 130) & (b_ca < 110) & ((r_ca.astype(np.int16) - b_ca.astype(np.int16)) > 60)))
+        if yellow_cancel_px < 12:
+            return False
+
+        # 3. Check hàng tiêu đề cột 'Name' / 'Civilization' (y: 52..74, x: 10..240) và 'Ally' / 'Neutral' / 'Enemy' (x: 235..430)
         hdr_crop = norm_624x400[52:74, 10:240]
         min_h = np.min(hdr_crop, axis=2).astype(np.float32)
         max_h = np.max(hdr_crop, axis=2).astype(np.float32)
         white_hdr_px = int(np.sum((min_h > 150) & ((max_h - min_h) < 55)))
         if white_hdr_px < 35:
+            return False
+
+        stance_hdr_crop = norm_624x400[52:74, 235:430]
+        min_sh = np.min(stance_hdr_crop, axis=2).astype(np.float32)
+        max_sh = np.max(stance_hdr_crop, axis=2).astype(np.float32)
+        white_stance_hdr_px = int(np.sum((min_sh > 150) & ((max_sh - min_sh) < 55)))
+        if white_stance_hdr_px < 30:
             return False
 
         return True
@@ -565,6 +579,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
     @staticmethod
     def match_civ_for_row(norm_624x400: np.ndarray, row_idx: int, ocr_civ_candidates, w_obs: int):
         scores = {full: 0.0 for full, _, _ in CIV_LIST}
+        overall_best_str_sim = 0.0
+        overall_best_tmpl_corr = 0.0
 
         for full, short, exp_w, norm_target, raw_target in NORM_CIV_TARGETS:
             if w_obs > 0:
@@ -594,6 +610,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
                 best_str_sim = max(best_str_sim, sim1, sim2, sim3)
 
+            overall_best_str_sim = max(overall_best_str_sim, best_str_sim)
             scores[full] += best_str_sim * 1.6 + prefix_bonus
 
         if CIV_TEMPLATES:
@@ -635,7 +652,12 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                             corr = num / den
                             if corr > max_corr:
                                 max_corr = corr
+                        overall_best_tmpl_corr = max(overall_best_tmpl_corr, max_corr)
                         scores[full] += max(0.0, max_corr) * 0.75
+
+        # Bắt buộc phải có độ khớp chữ OCR hoặc mẫu 2D đủ tin cậy (không đoán mò quân chỉ dựa vào độ rộng pixel)
+        if overall_best_str_sim < 0.50 and overall_best_tmpl_corr < 0.52:
+            return None, None
 
         best_full = max(scores, key=lambda k: scores[k])
         short_map = {full: short for full, short, _ in CIV_LIST}
@@ -650,6 +672,16 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         streamer_name: str,
         known_players=None,
     ):
+        yc = int(round(95.0 + row_idx * 29.8))
+        name_crop = norm_624x400[yc - 9:yc + 7, 14:134]
+        min_n = np.min(name_crop, axis=2).astype(np.float32)
+        max_n = np.max(name_crop, axis=2).astype(np.float32)
+        wh_n = min_n - 0.55 * (max_n - min_n)
+        bg_n = float(np.percentile(wh_n, 55))
+        mask_n = wh_n > max(bg_n + 18.0, 138.0)
+        if int(np.sum(mask_n)) < 10:
+            return None
+
         if row_idx == 0 and streamer_name and streamer_name.strip():
             return streamer_name.strip()
 
@@ -672,9 +704,14 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             cleaned = "".join(ch for ch in raw if ch.isascii() and (ch.isalnum() or ch in " _-")).strip(" _-")
             if len(cleaned) < 2:
                 continue
+            if re.match(r"^(player|red|blue)\s*\d*$", cleaned, flags=re.IGNORECASE):
+                continue
+            alpha_cnt = sum(1 for ch in cleaned if ch.isalpha())
+            if alpha_cnt < 2:
+                continue
             weird_count = sum(1 for ch in raw if not (ch.isascii() and (ch.isalnum() or ch in " _-")))
             exp_bonus = 2.0 if exp_idx == 0 else (1.0 if exp_idx == 1 else 0.0)
-            quality = sum(1.0 for ch in cleaned if ch.isalpha()) - weird_count * 2.5 + exp_bonus
+            quality = alpha_cnt * 1.0 - weird_count * 2.5 + exp_bonus
             if quality > best_quality:
                 best_quality = quality
                 best_raw = cleaned
@@ -722,7 +759,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         # Nếu phân vân giữa Kammu và Jimmu (cùng quân Yamato), kiểm tra độ rộng của cụm chữ đầu 'Ka' (rộng) so với 'Ji' (hẹp)
         if best_match_name in ("Kammu", "Jimmu") and full_civ == "Yamato":
-            yc = int(round(95.0 + row_idx * 29.8))
             fc_crop = norm_624x400[yc - 7:yc + 3, 14:65]
             wh_fc = np.min(fc_crop, axis=2).astype(np.float32) - 0.55 * (
                 np.max(fc_crop, axis=2).astype(np.float32) - np.min(fc_crop, axis=2).astype(np.float32)
@@ -737,7 +773,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         # Fallback thông minh cho dòng cờ Xám trắng (hoặc ảnh độ phân giải thấp) khi đấu với AI:
         # So khớp chiều rộng & mẫu chữ 2D với danh sách AI chuẩn của đúng loại quân (full_civ)
         if civ_specific_ai and AI_NAME_TEMPLATES:
-            yc = int(round(95.0 + row_idx * 29.8))
             crop = norm_624x400[yc - 7:yc + 3, 14:120]
             min_rgb = np.min(crop, axis=2).astype(np.float32)
             max_rgb = np.max(crop, axis=2).astype(np.float32)
@@ -798,7 +833,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 if best_ai_t and best_ai_sc >= 0.48:
                     return best_ai_t
 
-        return best_raw if best_raw else f"Player {row_idx + 1}"
+        return best_raw if best_raw else None
 
     def parse_diplomacy_from_image(self, img_bgr: np.ndarray, streamer_name: str = "XO", known_players=None, force: bool = False):
         """
@@ -823,17 +858,43 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         edges = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)) + np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
 
         active_rows = []
-        multi_canvas = np.full((8 * 70, 2420, 3), 255, dtype=np.uint8)
+        multi_canvas = np.full((9 * 70, 2420, 3), 255, dtype=np.uint8)
+
+        # Đặt tiêu đề DIPLOMACY và thanh cột Civilization/Ally/Neutral/Enemy vào dòng thứ 9 (row 8) để OCR xác thực
+        hdr_title = norm[6:30, 225:405]
+        hdr_up = cv2.resize(hdr_title, (0, 0), fx=2.0, fy=2.0, interpolation=cv2.INTER_LANCZOS4)
+        min_ht = np.min(hdr_up, axis=2).astype(np.float32)
+        max_ht = np.max(hdr_up, axis=2).astype(np.float32)
+        wh_ht = min_ht - 0.55 * (max_ht - min_ht)
+        a_ht = np.clip((wh_ht - 145.0) / 45.0, 0.0, 1.0)
+        ink_ht = cv2.cvtColor((255.0 * (1.0 - a_ht)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        multi_canvas[8 * 70 + 8:8 * 70 + 8 + ink_ht.shape[0], 20:20 + ink_ht.shape[1]] = ink_ht
+
+        hdr_cols = norm[50:74, 130:425]
+        hdr_cols_up = cv2.resize(hdr_cols, (0, 0), fx=2.0, fy=2.0, interpolation=cv2.INTER_LANCZOS4)
+        min_hc = np.min(hdr_cols_up, axis=2).astype(np.float32)
+        max_hc = np.max(hdr_cols_up, axis=2).astype(np.float32)
+        wh_hc = min_hc - 0.55 * (max_hc - min_hc)
+        a_hc = np.clip((wh_hc - 140.0) / 45.0, 0.0, 1.0)
+        ink_hc = cv2.cvtColor((255.0 * (1.0 - a_hc)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        multi_canvas[8 * 70 + 8:8 * 70 + 8 + ink_hc.shape[0], 500:500 + ink_hc.shape[1]] = ink_hc
 
         for r in range(8):
             yc = int(round(95.0 + r * 29.8))
+            name_crop_check = norm[yc - 9:yc + 7, 14:134]
+            min_nc = np.min(name_crop_check, axis=2).astype(np.float32)
+            max_nc = np.max(name_crop_check, axis=2).astype(np.float32)
+            wh_nc = min_nc - 0.55 * (max_nc - min_nc)
+            bg_nc = float(np.percentile(wh_nc, 55))
+            mask_nc = wh_nc > max(bg_nc + 18.0, 138.0)
+
             civ_crop = norm[yc - 9:yc + 9, 140:235]
             min_c = np.min(civ_crop, axis=2).astype(np.float32)
             max_c = np.max(civ_crop, axis=2).astype(np.float32)
             wh_c = min_c - 0.55 * (max_c - min_c)
             bg_c = float(np.percentile(wh_c, 55))
             mask_c = wh_c > max(bg_c + 20.0, 140.0)
-            if np.sum(mask_c) < 12:
+            if np.sum(mask_c) < 12 or np.sum(mask_nc) < 10:
                 continue
 
             col_counts = np.sum(mask_c, axis=0)
@@ -906,7 +967,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
 
-        if len(active_rows) < 2:
+        # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 (người mở F2) bắt buộc phải có mặt
+        if len(active_rows) < 2 or len(active_rows) % 2 != 0 or active_rows[0]["row_idx"] != 0:
             return None
 
         # Đảm bảo dòng người chơi đầu tiên luôn thuộc phe ALLY (Team Đỏ)
@@ -918,6 +980,13 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         ocr_words = self.run_windows_ocr_batch(multi_canvas)
 
+        # Kiểm tra xác thực tiêu đề DIPLOMACY / Civilization / Ally / Neutral / Enemy ở dòng thứ 9 (row 8)
+        hdr_texts = [str(w.get("text", "")).lower() for w in ocr_words if w.get("y", -1) >= 8 * 70]
+        hdr_joined = " ".join(hdr_texts)
+        has_hdr_keyword = any(
+            kw in hdr_joined for kw in ("diplom", "dipiom", "civil", "civii", "ally", "neutral", "enemy")
+        )
+
         for item in active_rows:
             r = item["row_idx"]
             row_y_min, row_y_max = r * 70, (r + 1) * 70
@@ -925,7 +994,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             civ_cands = [[], [], [], []]
             for w in ocr_words:
                 wy = w.get("y", -1)
-                if row_y_min <= wy <= row_y_max:
+                if row_y_min <= wy < row_y_max:
                     wx = w.get("x", 0)
                     exp_idx = wx // 600
                     if exp_idx > 3:
@@ -940,13 +1009,23 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             civ_strs = [" ".join(t for _, t in sorted(cand)) for cand in civ_cands if cand]
 
             full_civ, short_civ = self.match_civ_for_row(norm, r, civ_strs, item["w_obs"])
+            if not full_civ or not short_civ:
+                return None
+
             player_name = self.clean_and_match_player_name(
                 norm, name_strs, r, full_civ, streamer_name, known_players
             )
+            if not player_name:
+                return None
 
             item["name"] = player_name
             item["civ_full"] = full_civ
             item["civ_short"] = short_civ
+            item["has_ocr_civ"] = bool(civ_strs)
+
+        # Nếu OCR không đọc được chữ tiêu đề hộp thoại và cũng không đọc được chữ tên Quân nào -> loại bỏ cảnh giả
+        if not has_hdr_keyword and sum(1 for it in active_rows if it.get("has_ocr_civ")) < max(1, len(active_rows) // 2):
+            return None
 
         red_rows = [item for item in active_rows if item["stance"] == "ALLY"]
         blue_rows = [item for item in active_rows if item["stance"] != "ALLY"]
@@ -956,7 +1035,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             red_rows = active_rows[:half]
             blue_rows = active_rows[half:]
 
-        if not red_rows or not blue_rows:
+        # Bắt buộc 2 đội phải cân bằng số lượng người chơi (1v1, 2v2, 3v3, 4v4) và có đủ tên + quân
+        if not red_rows or not blue_rows or len(red_rows) != len(blue_rows):
             return None
 
         # Chỉ lưu chữ ký sau khi đã nhận diện thành công đầy đủ cả 2 đội
@@ -1075,6 +1155,8 @@ class AOETrackerApp:
         self.running = True
         self._did_finish_on_exit = False
         self._last_chat_id = None
+        self._diplomacy_scan_window_until = 0.0
+        self._diplomacy_trigger_reason = ""
         self.server_release_info = {
             "latestVersion": APP_VERSION_NUMBER,
             "downloadUrl": "/download-tool",
@@ -1086,12 +1168,12 @@ class AOETrackerApp:
         self._configure_ttk_styles()
         self._build_ui()
 
-        # Tự động kết thúc kèo đấu nếu người chơi tắt Tool
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        atexit.register(self._auto_finish_match_sync)
 
         self._start_clock_loop()
         threading.Thread(target=self._startup_version_check, daemon=True).start()
+        self.event_listener_thread = threading.Thread(target=self._monitor_diplomacy_events, daemon=True)
+        self.event_listener_thread.start()
         self.threading_loop = threading.Thread(target=self._background_worker, daemon=True)
         self.threading_loop.start()
 
@@ -4760,26 +4842,7 @@ class AOETrackerApp:
         self.log(f"   🔴 Team Đỏ  : {red_str}", "TEAM")
         self.log(f"   🔵 Team Xanh: {blue_str}", "TEAM")
 
-        preview_match = {
-            "mode": f"{len(parsed['redPlayers'])}v{len(parsed['bluePlayers'])}",
-            "redTeam": parsed["redPlayers"],
-            "blueTeam": parsed["bluePlayers"],
-            "redColors": parsed["redColors"],
-            "blueColors": parsed["blueColors"],
-            "games": (self.current_match.get("games", []) if self.current_match else [])
-            + [
-                {
-                    "redCivs": parsed["redCivs"],
-                    "blueCivs": parsed["blueCivs"],
-                    "redColors": parsed["redColors"],
-                    "blueColors": parsed["blueColors"],
-                    "winner": "PENDING",
-                }
-            ],
-        }
         self._last_diplomacy_push_ts = time.time()
-        self.current_match = preview_match
-        self._update_battle_arena_ui(preview_match)
 
         api_url = self.get_api_endpoint()
         payload = {
@@ -4890,7 +4953,7 @@ class AOETrackerApp:
                 if not res or res.get("status") != "ok":
                     self.log(f"⚠️ Ảnh '{os.path.basename(file_path)}' không chứa bảng DIPLOMACY hợp lệ!", "WARN")
                     return
-                self._send_parsed_diplomacy_to_server(res, allow_same_civ=True)
+                self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
             except Exception as e:
                 self.log(f"❌ Lỗi đọc ảnh: {e}", "ERROR")
 
@@ -4982,24 +5045,106 @@ class AOETrackerApp:
             pass
 
     def on_closing(self):
-        """Sự kiện đóng cửa sổ Tool: lưu cấu hình, tự động kết thúc kèo LIVE và thoát."""
+        """Sự kiện đóng cửa sổ Tool: lưu cấu hình và thoát (giữ nguyên kèo LIVE trên Web/OBS cho đến khi bấm Kết thúc kèo)."""
         self.running = False
         try:
             self.save_current_config()
         except Exception:
             pass
-        self._auto_finish_match_sync()
         try:
             self.root.destroy()
         except Exception:
             sys.exit(0)
+
+    def _monitor_diplomacy_events(self):
+        """
+        Bắt sự kiện khi người chơi thực sự click vào nút Diplomacy trên thanh HUD phía trên trong game
+        hoặc bấm phím tắt F2 / Alt+D. Chỉ khi có sự kiện này mới kích hoạt cửa sổ quét bảng quân.
+        """
+        if os.name != "nt":
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            user32 = ctypes.windll.user32
+            VK_LBUTTON = 0x01
+            VK_F2 = 0x71
+            VK_MENU = 0x12
+            VK_D = 0x44
+
+            prev_lbtn = False
+            prev_f2 = False
+            prev_alt_d = False
+
+            while self.running:
+                try:
+                    if not self.is_logged_in or not self.auto_scan_var.get():
+                        time.sleep(0.1)
+                        continue
+
+                    f2_down = (user32.GetAsyncKeyState(VK_F2) & 0x8000) != 0
+                    alt_down = (user32.GetAsyncKeyState(VK_MENU) & 0x8000) != 0
+                    d_down = (user32.GetAsyncKeyState(VK_D) & 0x8000) != 0
+                    alt_d_down = alt_down and d_down
+                    lbtn_down = (user32.GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0
+
+                    triggered = False
+                    reason = ""
+
+                    if f2_down and not prev_f2:
+                        triggered = True
+                        reason = "F2"
+                    elif alt_d_down and not prev_alt_d:
+                        triggered = True
+                        reason = "Alt+D"
+                    elif lbtn_down and not prev_lbtn:
+                        pt = wintypes.POINT()
+                        if user32.GetCursorPos(ctypes.byref(pt)):
+                            hwnd = user32.GetForegroundWindow()
+                            rect = wintypes.RECT()
+                            if hwnd and user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+                                w = max(1, rect.right - rect.left)
+                                h = max(1, rect.bottom - rect.top)
+                                rel_x = (pt.x - rect.left) / float(w)
+                                rel_y = (pt.y - rect.top) / float(h)
+                                # Thanh nút Diplomacy trong AOE nằm ở góc trên bên phải (rel_y <= 0.18, rel_x >= 0.42)
+                                if 0.0 <= rel_y <= 0.18 and 0.42 <= rel_x <= 0.99:
+                                    triggered = True
+                                    reason = "Click Diplomacy"
+                            else:
+                                scr_w = max(1, user32.GetSystemMetrics(0))
+                                scr_h = max(1, user32.GetSystemMetrics(1))
+                                if 0.0 <= (pt.y / float(scr_h)) <= 0.18 and (pt.x / float(scr_w)) >= 0.42:
+                                    triggered = True
+                                    reason = "Click Diplomacy"
+
+                    prev_f2 = f2_down
+                    prev_alt_d = alt_d_down
+                    prev_lbtn = lbtn_down
+
+                    if triggered:
+                        self._diplomacy_trigger_reason = reason
+                        # Đợi 0.18s để hộp thoại Diplomacy kịp hiển thị sắc nét rồi mở cửa sổ quét 2.4 giây
+                        time.sleep(0.18)
+                        self._diplomacy_scan_window_until = time.time() + 2.4
+                except Exception:
+                    pass
+                time.sleep(0.025)
+        except Exception:
+            pass
 
     def _background_worker(self):
         last_heartbeat = time.time()
         last_social_sync = time.time()
         while self.running:
             try:
-                if self.is_logged_in and self.auto_scan_var.get():
+                now = time.time()
+                if (
+                    self.is_logged_in
+                    and self.auto_scan_var.get()
+                    and now <= getattr(self, "_diplomacy_scan_window_until", 0.0)
+                ):
                     frames = self._grab_all_monitors_bgr()
                     force_scan = self.current_match is None
                     for img_bgr in frames:
@@ -5010,7 +5155,11 @@ class AOETrackerApp:
                             force=force_scan,
                         )
                         if res and res.get("status") == "ok":
+                            self._diplomacy_scan_window_until = 0.0
                             self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
+                            break
+                        elif res and res.get("status") == "unchanged":
+                            self._diplomacy_scan_window_until = 0.0
                             break
 
                 # Định kỳ đồng bộ trạng thái Bạn bè Live, Khung Chat & Sao mỗi 8 giây
@@ -5034,7 +5183,7 @@ class AOETrackerApp:
                         pass
             except Exception:
                 pass
-            time.sleep(0.8)
+            time.sleep(0.35)
 
 
 def run_cli_self_test(image_paths, streamer_name="XO"):

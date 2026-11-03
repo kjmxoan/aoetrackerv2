@@ -104,7 +104,7 @@
         <div class="flex items-stretch justify-between premium-panel text-slate-100 min-h-[118px] rounded-r-xl rounded-b-xl overflow-hidden">
           <!-- Đội Đỏ (Bên trái) -->
           <div class="flex-1 px-3.5 py-2 bg-[#161219]/90 flex flex-col justify-center border-r border-slate-700/70">
-            <div v-for="(player, index) in match.redTeam" :key="'red-'+index"
+            <div v-for="(player, index) in currentRedTeam" :key="'red-'+index"
                  class="flex justify-between items-center gap-2 text-[15px] font-bold leading-snug my-0.5">
               <span class="truncate text-left max-w-[112px]" :style="playerStyle(currentRedColors, index)">{{ player }}</span>
               <span class="uppercase text-right font-black flex items-center gap-1" :style="playerStyle(currentRedColors, index)">
@@ -132,7 +132,7 @@
 
           <!-- Đội Xanh (Bên phải) -->
           <div class="flex-1 px-3.5 py-2 bg-[#101929]/90 flex flex-col justify-center">
-            <div v-for="(player, index) in match.blueTeam" :key="'blue-'+index"
+            <div v-for="(player, index) in currentBlueTeam" :key="'blue-'+index"
                  class="flex justify-between items-center gap-2 text-[15px] font-bold leading-snug my-0.5">
               <span class="uppercase text-left font-black flex items-center gap-1" :style="playerStyle(currentBlueColors, index)">
                 <span class="text-[11px]">{{ getCivIcon(civAt(latestGame && latestGame.blueCivs, index)) }}</span>
@@ -254,6 +254,18 @@
           return this.match && this.match.games && this.match.games.length
             ? this.match.games[this.match.games.length - 1]
             : null;
+        },
+        currentRedTeam() {
+          if (this.latestGame && Array.isArray(this.latestGame.redPlayers) && this.latestGame.redPlayers.length) {
+            return this.latestGame.redPlayers;
+          }
+          return (this.match && this.match.redTeam) || [];
+        },
+        currentBlueTeam() {
+          if (this.latestGame && Array.isArray(this.latestGame.bluePlayers) && this.latestGame.bluePlayers.length) {
+            return this.latestGame.bluePlayers;
+          }
+          return (this.match && this.match.blueTeam) || [];
         },
         currentRedColors() {
           return (this.latestGame && this.latestGame.redColors) || (this.match && this.match.redColors) || [];
@@ -437,29 +449,31 @@
           this.playerOverride = query.get('streamer') || query.get('player') || '';
           const matchIdParam = query.get('matchId') || '';
           try {
-            const url = `${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.playerOverride)}`;
-            const response = await fetch(url);
+            const url = `${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.playerOverride)}&_t=${Date.now()}`;
+            const response = await fetch(url, { cache: 'no-store' });
             const data = await response.json();
             if (data.settings && data.settings.showCivStats !== undefined) {
               this.showCivStats = Boolean(data.settings.showCivStats);
             }
-            const matches = data.matches || [];
+            const rawMatches = data.matches || [];
+            const matches = [...rawMatches].sort(
+              (a, b) =>
+                Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+                Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+            );
             const players = data.players || [];
             let chosenMatch = null;
             if (matchIdParam) {
-              chosenMatch = matches.find(m => m.id === matchIdParam) || data.currentMatch || null;
+              chosenMatch = matches.find(m => m.id === matchIdParam) || null;
             } else if (this.playerOverride) {
               const target = this.playerOverride.trim().toLowerCase();
               chosenMatch =
                 matches.find(item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === target) ||
-                matches.find(item => String(item.streamerName || '').toLowerCase() === target) ||
-                data.currentMatch ||
                 null;
             } else {
               chosenMatch =
-                data.currentMatch ||
+                (data.currentMatch && data.currentMatch.status === 'LIVE' ? data.currentMatch : null) ||
                 matches.find(item => item.status === 'LIVE') ||
-                matches[0] ||
                 null;
             }
             if (chosenMatch) {
@@ -484,8 +498,34 @@
                 if (payload.type === 'star_gifted' && payload.gift) {
                   this.triggerStarGiftAnimation(payload.gift);
                 }
+                if (
+                  payload.match &&
+                  ['winner_updated', 'game_added', 'match_updated', 'match_saved'].includes(payload.type)
+                ) {
+                  const query = new URLSearchParams(location.search);
+                  const targetStreamer = (query.get('streamer') || query.get('player') || '').trim().toLowerCase();
+                  const matchIdParam = query.get('matchId') || '';
+                  const incomingStreamer = String(payload.match.streamerName || '').trim().toLowerCase();
+                  const matchesFilter =
+                    (matchIdParam && payload.match.id === matchIdParam) ||
+                    (!matchIdParam && targetStreamer && incomingStreamer === targetStreamer) ||
+                    (!matchIdParam && !targetStreamer);
+                  if (matchesFilter && (payload.match.status === 'LIVE' || matchIdParam)) {
+                    this.match = payload.match;
+                  }
+                }
+                if (payload.type === 'match_finished' && this.match && payload.matchId === this.match.id) {
+                  const query = new URLSearchParams(location.search);
+                  if (!query.get('matchId')) {
+                    this.match = null;
+                  }
+                }
               } catch (err) {}
               this.fetchMatch();
+            };
+            es.onerror = () => {
+              try { es.close(); } catch (e) {}
+              setTimeout(() => this.connectRealtimeStream(), 3000);
             };
           } catch (e) {
             // Fallback to polling

@@ -42,8 +42,12 @@ aoe-tracker/
    - **`🚪 Đăng xuất`**: Đăng xuất về màn hình đăng nhập.
 3. **Khu Vực Tỉ Số Trung Tâm & Nút Kết Thúc Kèo**:
    - Nút **`🗑 Kết thúc kèo đấu`** được đặt ngay ngắn ở đáy ô **Tỉ Số Trung Tâm**, nằm thẳng hàng ngang ở giữa 2 nút **`🔴 Team Đỏ thắng trận này (+1)`** và **`🔵 Team Xanh thắng trận này (+1)`**.
-   - Khi người chơi đóng phần mềm (`X`), Tool cũng tự động gửi lệnh kết thúc kèo đang `LIVE` lên máy chủ.
-4. **Thanh Nhật Ký 1 Dòng Gọn Gàng (`Collapsible Battle Log`)**:
+   - Kèo đấu đang `LIVE` sẽ được giữ nguyên trên Web và OBS cho đến khi người chơi chủ động bấm **`Kết thúc kèo`** (hoặc tự động đóng sau 4 giờ không hoạt động), giúp việc chấm tỉ số trên Web luôn đồng bộ tức thì với OBS Overlay.
+4. **Nguyên Tắc Bắt Sự Kiện Click Nút `Diplomacy` (`F2`) & Xác Thực Đầy Đủ Đội Hình/Quân**:
+   - **Chỉ quét khi có sự kiện mở Diplomacy**: Tool lắng nghe sự kiện khi người chơi thực sự **click chuột trái vào nút `Diplomacy` trên thanh HUD phía trên trong game** hoặc nhấn phím tắt **`F2` / `Alt+D`** (hoặc bấm nút quét thủ công trên Tool), tuyệt đối không quét ngầm vô điều kiện gây bắt nhầm màn hình kết thúc trận đấu.
+   - **Bắt buộc đầy đủ thông tin Người chơi & Quân của cả 2 đội**: Chỉ trích xuất và gửi lên Server khi hộp thoại `DIPLOMACY` có đầy đủ nút `OK` + `Cancel`, tiêu đề cột `Name` / `Civilization` / `Ally` / `Neutral` / `Enemy`, số người chơi 2 đội cân bằng (`1v1`, `2v2`, `3v3`, `4v4`), tất cả các dòng đều đọc được tên người chơi hợp lệ (loại bỏ hoàn toàn tên giả `Player 1..8`, `Red 1`, `Blue 1`) và tên Quân hợp lệ (không đoán mò quân theo độ rộng pixel).
+   - **Nguyên tắc tính trận đấu mới (`TRẬN X`)**: Khi bảng quân hợp lệ có **sự thay đổi quân (`đổi quân`)** hoặc trận trước đã có kết quả thắng/thua thì hệ thống mới tính sang **ván đấu mới (`+1 TRẬN`)**. Nếu đổi thể thức (ví dụ từ `2v2` sang `1v1` hoặc `3v3`), hệ thống tự động kết thúc kèo cũ và tạo kèo mới bắt đầu từ `TRẬN 1`.
+5. **Thanh Nhật Ký 1 Dòng Gọn Gàng (`Collapsible Battle Log`)**:
    - Thu gọn thành 1 dòng trạng thái ở đáy cửa sổ; bấm **`📜 Chi tiết ▴`** khi cần mở rộng xem lịch sử hệ thống.
 
 ---
@@ -220,3 +224,8 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
     - Bổ sung **Thanh Tab nhanh & Thanh điều hướng cố định dưới đáy (`Bottom Navigation Bar`)** trên điện thoại (`⚔️ Kèo Đấu` / `💬 Chat & Sao` / `👥 Bạn Bè` / `📊 Thống Kê`), ẩn các nút chỉ dành cho PC/OBS vào menu thu gọn `☰`.
     - Thiết kế lại **Thẻ Kèo Đấu & Bảng Tỉ Số nằm ngang (`Team Đỏ - Tỉ Số - Team Xanh` trên cùng 1 hàng)** giống ứng dụng Livescore, cùng danh sách quân từng trận xếp song song 2 cột gọn gàng trên màn hình điện thoại.
   - Nâng cấp toàn diện **Quản lý User & VIP** (tìm kiếm, lọc, chỉnh ngày tạo, ngày hết hạn, reset mật khẩu, nạp Sao, lịch sử Sao & VIP) và mục **Hồ sơ Tài khoản cá nhân** cho người chơi.
+  - **Sửa triệt để lỗi nhảy bảng quân sang trận đã kết thúc, sai số trận (`TRẬN X`) & đồng bộ tức thì tỉ số từ Web lên OBS Overlay**:
+    - **Cơ chế bắt sự kiện Click `Diplomacy` / `F2` (`_monitor_diplomacy_events`)**: Chỉ mở cửa sổ quét màn hình khi người chơi thực sự click vào nút `Diplomacy` trên thanh công cụ trong game hoặc bấm phím `F2` / `Alt+D`.
+    - **Kiểm duyệt nghiêm ngặt bảng quân & người chơi**: Bắt buộc hộp thoại có đủ cả nút `OK` và `Cancel` màu vàng, tiêu đề `DIPLOMACY` & `Civilization / Ally / Neutral / Enemy`, có mặt người chơi dòng 1 (`row 0`), đầy đủ tên người chơi thật và tên Quân hợp lệ cho toàn bộ thành viên 2 đội cân bằng (`1v1`, `2v2`, `3v3`, `4v4`); loại bỏ hoàn toàn việc tự sinh tên `Player 2..8`, `Red 1`, `Blue 1` hoặc quân `Random`.
+    - **Chuẩn hóa bộ đếm số trận (`TRẬN X`) & chống nhảy về kèo đã kết thúc**: Chỉ cộng ván đấu mới khi đổi quân (hoặc ván trước đã có đội thắng); tự động tách kèo mới về `TRẬN 1` nếu đổi thể thức (`1v1` $\leftrightarrow$ `2v2` $\leftrightarrow$ `3v3` $\leftrightarrow$ `4v4`); `overlay.html` chỉ hiển thị kèo đang `LIVE` (không bao giờ fallback về kèo `FINISHED` đã kết thúc).
+    - **Đồng bộ tức thì tỉ số từ Web lên OBS Overlay (`setWinner`)**: Bổ sung nút chấm nhanh `🔴 +1 Đỏ` / `🔵 +1 Xanh` trên bảng tỉ số trung tâm Web, lưu phiên đăng nhập bền vững (`localStorage` + tự động thực thi lệnh chấm điểm ngay sau khi đăng nhập), kích hoạt trạng thái `LIVE` cho kèo vừa chấm điểm và phát trực tiếp dữ liệu `match` qua luồng SSE (`winner_updated`) kèm chống cache (`Cache-Control: no-store`) giúp OBS Overlay nhảy tỉ số ngay lập tức.

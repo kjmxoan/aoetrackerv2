@@ -182,32 +182,98 @@ function isAdminAuthorized(data) {
   return false;
 }
 
+function isFakePlayerName(name) {
+  const s = String(name || '').trim();
+  if (!s) return true;
+  return /^(Red|Blue|Player)\s*\d+$/i.test(s);
+}
+
+function isBogusGame(game, fallbackRedTeam = [], fallbackBlueTeam = []) {
+  if (!game || typeof game !== 'object') return true;
+  const rCivs = Array.isArray(game.redCivs) ? game.redCivs : [];
+  const bCivs = Array.isArray(game.blueCivs) ? game.blueCivs : [];
+  if (!rCivs.length || !bCivs.length || rCivs.length !== bCivs.length) return true;
+  const allCivs = [...rCivs, ...bCivs];
+  if (allCivs.some(c => !c || String(c).trim().toLowerCase() === 'random')) return true;
+
+  const rPlayers = Array.isArray(game.redPlayers) && game.redPlayers.length ? game.redPlayers : fallbackRedTeam;
+  const bPlayers = Array.isArray(game.bluePlayers) && game.bluePlayers.length ? game.bluePlayers : fallbackBlueTeam;
+  if (!rPlayers.length || !bPlayers.length) return true;
+  if ([...rPlayers, ...bPlayers].some(isFakePlayerName)) return true;
+  return false;
+}
+
 async function checkAndAutoFinishDeadMatches() {
   const matches = await db.getMatches();
   const now = Date.now();
   const FOUR_HOURS = 4 * 60 * 60 * 1000;
   const bogusIds = [];
+  const liveByStreamer = new Map();
+
   for (const m of matches) {
     const rTeam = Array.isArray(m.redTeam) ? m.redTeam : [];
     const bTeam = Array.isArray(m.blueTeam) ? m.blueTeam : [];
     const games = Array.isArray(m.games) ? m.games : [];
-    const lastGame = games.length > 0 ? games[games.length - 1] : {};
-    const allCivs = [...(lastGame.redCivs || []), ...(lastGame.blueCivs || [])];
-    const isBogus =
-      rTeam.includes('Red 1') ||
-      bTeam.includes('Blue 1') ||
-      allCivs.some(c => String(c || '').toLowerCase() === 'random');
 
-    if (isBogus) {
+    const validGames = games.filter(g => !isBogusGame(g, rTeam, bTeam));
+    const hasFakeTeamHeader = [...rTeam, ...bTeam].some(isFakePlayerName);
+
+    if (validGames.length === 0 && (games.length > 0 || hasFakeTeamHeader)) {
       bogusIds.push(m.id);
       continue;
     }
 
+    let changed = false;
+    if (validGames.length !== games.length) {
+      m.games = validGames;
+      const latestValid = validGames[validGames.length - 1];
+      if (latestValid) {
+        if (Array.isArray(latestValid.redPlayers) && latestValid.redPlayers.length) {
+          m.redTeam = latestValid.redPlayers;
+        }
+        if (Array.isArray(latestValid.bluePlayers) && latestValid.bluePlayers.length) {
+          m.blueTeam = latestValid.bluePlayers;
+        }
+        m.mode = getMode(latestValid.redCivs.length);
+      }
+      changed = true;
+    }
+
     if (m.status === 'LIVE' && m.lastHeartbeat && (now - m.lastHeartbeat > FOUR_HOURS)) {
       m.status = 'FINISHED';
+      changed = true;
+    }
+
+    if (m.status === 'LIVE') {
+      const sKey = String(m.streamerName || '').trim().toLowerCase();
+      if (sKey) {
+        if (!liveByStreamer.has(sKey)) {
+          liveByStreamer.set(sKey, []);
+        }
+        liveByStreamer.get(sKey).push(m);
+      }
+    }
+
+    if (changed) {
       await db.saveMatch(m);
     }
   }
+
+  // Đảm bảo mỗi Streamer chỉ có tối đa 1 kèo LIVE mới nhất
+  for (const [, list] of liveByStreamer.entries()) {
+    if (list.length > 1) {
+      list.sort(
+        (a, b) =>
+          Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+          Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+      );
+      for (let i = 1; i < list.length; i++) {
+        list[i].status = 'FINISHED';
+        await db.saveMatch(list[i]);
+      }
+    }
+  }
+
   if (bogusIds.length > 0) {
     await db.deleteMatches(bogusIds);
   }
@@ -344,11 +410,17 @@ function enrichPlayersWithLiveStatus(players, matches) {
 
 async function getInitialDataPayload(streamerFilter = '') {
   await checkAndAutoFinishDeadMatches();
-  const [rawPlayers, matches, settings] = await Promise.all([
+  const [rawPlayers, rawMatches, settings] = await Promise.all([
     db.getPlayers(),
     db.getMatches(),
     db.getSettings()
   ]);
+
+  const matches = [...(rawMatches || [])].sort(
+    (a, b) =>
+      Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+      Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+  );
 
   const players = enrichPlayersWithLiveStatus(rawPlayers, matches);
 
@@ -357,11 +429,9 @@ async function getInitialDataPayload(streamerFilter = '') {
     const sf = streamerFilter.trim().toLowerCase();
     currentMatch =
       matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sf) ||
-      matches.find(m => String(m.streamerName || '').toLowerCase() === sf) ||
       null;
-  }
-  if (!currentMatch) {
-    currentMatch = matches.find(m => m.status === 'LIVE') || matches[0] || null;
+  } else {
+    currentMatch = matches.find(m => m.status === 'LIVE') || null;
   }
 
   if (currentMatch) {
@@ -397,29 +467,40 @@ async function handleAutoAddGame(data, authResult) {
 
   const rawRedCivs = Array.isArray(data.redCivs) ? data.redCivs : [];
   const rawBlueCivs = Array.isArray(data.blueCivs) ? data.blueCivs : [];
-  const redPlayers = (Array.isArray(data.redPlayers) ? data.redPlayers : [])
-    .map(cleanPlayerName)
-    .filter(Boolean);
-  const bluePlayers = (Array.isArray(data.bluePlayers) ? data.bluePlayers : [])
-    .map(cleanPlayerName)
-    .filter(Boolean);
+  const rawRedPlayers = Array.isArray(data.redPlayers) ? data.redPlayers : [];
+  const rawBluePlayers = Array.isArray(data.bluePlayers) ? data.bluePlayers : [];
 
-  const redCivs = rawRedCivs.map(parseCiv).filter(civ => civ !== 'Random');
-  const blueCivs = rawBlueCivs.map(parseCiv).filter(civ => civ !== 'Random');
+  const redPlayers = rawRedPlayers
+    .map(cleanPlayerName)
+    .filter(name => name && !isFakePlayerName(name));
+  const bluePlayers = rawBluePlayers
+    .map(cleanPlayerName)
+    .filter(name => name && !isFakePlayerName(name));
 
-  if (!redCivs.length || !blueCivs.length || !redPlayers.length || !bluePlayers.length) {
-    return { added: false, message: 'Bỏ qua: Chưa nhận diện đủ cả 2 đội Đỏ & Xanh!' };
+  const redCivs = rawRedCivs.map(parseCiv).filter(civ => civ && civ !== 'Random');
+  const blueCivs = rawBlueCivs.map(parseCiv).filter(civ => civ && civ !== 'Random');
+
+  if (
+    !redPlayers.length ||
+    !bluePlayers.length ||
+    redPlayers.length !== rawRedPlayers.length ||
+    bluePlayers.length !== rawBluePlayers.length ||
+    redCivs.length !== rawRedCivs.length ||
+    blueCivs.length !== rawBlueCivs.length ||
+    redPlayers.length !== bluePlayers.length ||
+    redCivs.length !== redPlayers.length ||
+    blueCivs.length !== bluePlayers.length
+  ) {
+    return {
+      added: false,
+      message: 'Bỏ qua: Bảng quân cần đầy đủ tên người chơi và quân hợp lệ của cả 2 đội (cân bằng 1v1, 2v2, 3v3, 4v4)!'
+    };
   }
 
-  const maxCount = Math.max(redCivs.length, blueCivs.length, redPlayers.length, bluePlayers.length, 1);
-  const mode = getMode(maxCount);
-  while (redPlayers.length < maxCount) redPlayers.push('Red ' + (redPlayers.length + 1));
-  while (bluePlayers.length < maxCount) bluePlayers.push('Blue ' + (bluePlayers.length + 1));
-  while (redCivs.length < maxCount) redCivs.push('Random');
-  while (blueCivs.length < maxCount) blueCivs.push('Random');
+  const mode = getMode(redPlayers.length);
 
-  const redColors = Array.isArray(data.redColors) ? data.redColors : [];
-  const blueColors = Array.isArray(data.blueColors) ? data.blueColors : [];
+  const redColors = Array.isArray(data.redColors) ? data.redColors.slice(0, redPlayers.length) : [];
+  const blueColors = Array.isArray(data.blueColors) ? data.blueColors.slice(0, bluePlayers.length) : [];
   const streamerName = canonicalStreamerName || data.streamerName || 'Auto Bot';
 
   const effectiveOverlayCfg = data.overlayConfig
@@ -427,28 +508,57 @@ async function handleAutoAddGame(data, authResult) {
     : db.normalizeOverlayConfig(playerRecord.overlayConfig);
 
   const matches = await db.getMatches();
-  let liveMatch = matches.find(
-    item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === streamerName.toLowerCase()
-  );
+  const sLower = streamerName.toLowerCase();
+  const liveCandidates = matches
+    .filter(item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === sLower)
+    .sort(
+      (a, b) =>
+        Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+        Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+    );
+
+  let liveMatch = liveCandidates[0] || null;
+  for (let i = 1; i < liveCandidates.length; i++) {
+    liveCandidates[i].status = 'FINISHED';
+    await db.saveMatch(liveCandidates[i]);
+  }
+
+  // Nếu đổi thể thức (ví dụ 2v2 sang 1v1 hoặc 3v3) thì kết thúc kèo cũ và tạo kèo mới từ Trận 1
+  if (liveMatch && liveMatch.mode && liveMatch.mode !== mode) {
+    liveMatch.status = 'FINISHED';
+    await db.saveMatch(liveMatch);
+    liveMatch = null;
+  }
 
   if (liveMatch && liveMatch.games && liveMatch.games.length) {
     const previous = liveMatch.games[liveMatch.games.length - 1];
-    if (
-      !data.allowSameCiv &&
+    const prevWinner = String(previous.winner || 'PENDING').toUpperCase();
+    const isSameCivLineup =
       JSON.stringify(previous.redCivs) === JSON.stringify(redCivs) &&
-      JSON.stringify(previous.blueCivs) === JSON.stringify(blueCivs)
-    ) {
+      JSON.stringify(previous.blueCivs) === JSON.stringify(blueCivs);
+
+    if (!data.allowSameCiv && prevWinner === 'PENDING' && isSameCivLineup) {
       liveMatch.redTeam = redPlayers;
       liveMatch.blueTeam = bluePlayers;
       liveMatch.redColors = redColors;
       liveMatch.blueColors = blueColors;
       liveMatch.overlayConfig = effectiveOverlayCfg;
+      previous.redPlayers = redPlayers;
+      previous.bluePlayers = bluePlayers;
       previous.redColors = redColors;
       previous.blueColors = blueColors;
       liveMatch.lastHeartbeat = Date.now();
       await db.saveMatch(liveMatch);
-      broadcastUpdate('match_updated', { matchId: liveMatch.id });
-      return { added: false, match: liveMatch, message: `Đang ở Trận ${liveMatch.games.length} (Đã đồng bộ tên/màu)` };
+      broadcastUpdate('match_updated', {
+        matchId: liveMatch.id,
+        streamerName: liveMatch.streamerName,
+        match: liveMatch
+      });
+      return {
+        added: false,
+        match: liveMatch,
+        message: `Đang ở Trận ${liveMatch.games.length} (Đã đồng bộ tên/màu)`
+      };
     }
   }
 
@@ -484,6 +594,8 @@ async function handleAutoAddGame(data, authResult) {
   }
 
   liveMatch.games.push({
+    redPlayers,
+    bluePlayers,
     redCivs,
     blueCivs,
     redColors,
@@ -493,7 +605,12 @@ async function handleAutoAddGame(data, authResult) {
   });
 
   await db.saveMatch(liveMatch);
-  broadcastUpdate('game_added', { matchId: liveMatch.id, gameNumber: liveMatch.games.length });
+  broadcastUpdate('game_added', {
+    matchId: liveMatch.id,
+    streamerName: liveMatch.streamerName,
+    gameNumber: liveMatch.games.length,
+    match: liveMatch
+  });
   return {
     added: true,
     match: liveMatch,
@@ -529,6 +646,9 @@ app.get('/api/stream', (req, res) => {
 // GET /api
 app.get('/api', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     const action = req.query.action || 'getInitialData';
     const streamer = req.query.streamer || req.query.player || '';
     if (action === 'getInitialData') {
@@ -1125,26 +1245,75 @@ app.post('/api', async (req, res) => {
       if (data.matchId) {
         match = matches.find(item => item.id === data.matchId);
       } else if (data.streamerName) {
-        match = matches.find(
-          item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === String(data.streamerName).toLowerCase()
-        );
+        const sLower = String(data.streamerName).toLowerCase();
+        const sortedForStreamer = matches
+          .filter(item => String(item.streamerName || '').toLowerCase() === sLower)
+          .sort(
+            (a, b) =>
+              Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+              Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+          );
+        match =
+          sortedForStreamer.find(item => item.status === 'LIVE') ||
+          sortedForStreamer[0] ||
+          null;
       }
       if (!match || !(await canModifyMatch(match, data))) {
         return res.json({ status: 'error', message: 'Không có quyền hoặc không tìm thấy kèo!' });
       }
-      const gameIdx =
-        data.gameIndex !== undefined && data.gameIndex !== null
-          ? Number(data.gameIndex)
-          : (match.games ? match.games.length - 1 : -1);
+      if (!Array.isArray(match.games) || match.games.length === 0) {
+        return res.json({ status: 'error', message: 'Kèo đấu chưa có trận nào!' });
+      }
 
-      if (!match.games || !match.games[gameIdx]) {
+      let gameIdx = -1;
+      if (data.gameIndex !== undefined && data.gameIndex !== null && data.gameIndex !== '') {
+        gameIdx = Number(data.gameIndex);
+      } else {
+        // Khi bấm +1 nhanh (không truyền gameIndex): ưu tiên trận đầu tiên đang PENDING, nếu tất cả đã có kết quả thì lấy trận cuối
+        const pendingIdx = match.games.findIndex(
+          g => !g.winner || String(g.winner).toUpperCase() === 'PENDING'
+        );
+        gameIdx = pendingIdx !== -1 ? pendingIdx : match.games.length - 1;
+      }
+
+      if (!match.games[gameIdx]) {
         return res.json({ status: 'error', message: 'Không tìm thấy trận đấu!' });
       }
-      match.games[gameIdx].winner = data.winner;
+
+      const rawWinner = String(data.winner || 'PENDING').toUpperCase().trim();
+      const winnerVal = ['RED', 'BLUE', 'PENDING'].includes(rawWinner) ? rawWinner : 'PENDING';
+      match.games[gameIdx].winner = winnerVal;
       match.lastHeartbeat = Date.now();
+      match.status = 'LIVE';
+
+      // Đảm bảo các kèo khác của cùng Streamer được chuyển sang FINISHED để Overlay hiển thị đúng kèo vừa chấm tỉ số
+      const sLower = String(match.streamerName || '').toLowerCase();
+      for (const other of matches) {
+        if (
+          other.id !== match.id &&
+          other.status === 'LIVE' &&
+          String(other.streamerName || '').toLowerCase() === sLower
+        ) {
+          other.status = 'FINISHED';
+          await db.saveMatch(other);
+        }
+      }
+
+      const rawPlayers = await db.getPlayers();
+      const owner = rawPlayers.find(p => p.name.toLowerCase() === sLower);
+      match.overlayConfig = db.normalizeOverlayConfig(
+        match.overlayConfig || (owner && owner.overlayConfig) || db.DEFAULT_OVERLAY_CONFIG
+      );
+
       await db.saveMatch(match);
-      broadcastUpdate('winner_updated', { matchId: match.id, gameIndex: gameIdx, winner: data.winner });
-      return res.json({ status: 'success', match });
+      broadcastUpdate('winner_updated', {
+        matchId: match.id,
+        streamerName: match.streamerName,
+        gameIndex: gameIdx,
+        winner: winnerVal,
+        match
+      });
+      return res.json({ status: 'success', gameIndex: gameIdx, winner: winnerVal, match });
     }
 
     if (action === 'finishMatch') {
@@ -1162,7 +1331,10 @@ app.post('/api', async (req, res) => {
       }
       match.status = 'FINISHED';
       await db.saveMatch(match);
-      broadcastUpdate('match_finished', { matchId: match.id });
+      broadcastUpdate('match_finished', {
+        matchId: match.id,
+        streamerName: match.streamerName
+      });
       return res.json({ status: 'success', match });
     }
 
@@ -1175,9 +1347,14 @@ app.post('/api', async (req, res) => {
       if (!existing || !(await canModifyMatch(existing, data))) {
         return res.json({ status: 'error', message: 'Không có quyền chỉnh sửa kèo này!' });
       }
+      data.match.lastHeartbeat = Date.now();
       await db.saveMatch(data.match);
-      broadcastUpdate('match_saved', { matchId: data.match.id });
-      return res.json({ status: 'success' });
+      broadcastUpdate('match_saved', {
+        matchId: data.match.id,
+        streamerName: data.match.streamerName,
+        match: data.match
+      });
+      return res.json({ status: 'success', match: data.match });
     }
 
     if (action === 'deleteMatches') {
