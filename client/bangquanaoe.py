@@ -3785,147 +3785,296 @@ class AOETrackerApp:
         self._update_obs_preview_entry()
 
     def show_obs_guide_window(self):
+        """
+        Cửa sổ Hướng dẫn chi tiết (cuộn được, tự xuống dòng không bị cắt chữ, kèm ảnh minh họa tải từ Server):
+        ① Link OBS • ② Thêm nguồn Browser • ③ Căn Khung Ảo • ④ Phím tắt trong game • ⑤ Run as Administrator • ⑥ Xử lý sự cố
+        """
         tk = self.tk
         base = self.get_base_server_url()
         name = self.player_name_var.get().strip() or "XO"
         obs_url = f"{base}/overlay.html?streamer={name}"
         obs_chat_url = f"{base}/chat-overlay.html?streamer={name}"
 
+        BG = "#080c16"
+        CARD = "#131b28"
+        BORDER = "#243247"
+        TXT = "#e2e8f0"
+        SUB = "#cbd5e1"
+
         win = tk.Toplevel(self.root)
-        win.title("Hướng dẫn gán Bảng Quân & Khung Chat vào OBS Studio")
-        win.geometry("740x610")
-        win.configure(bg="#080c16")
-        win.resizable(False, False)
+        win.title("📖 Hướng dẫn chi tiết: Gán Bảng Quân & Khung Chat vào OBS • Phím tắt • Run as Administrator")
+        try:
+            sw = self.root.winfo_screenwidth()
+            sh = self.root.winfo_screenheight()
+            w = min(1040, max(760, int(sw * 0.62)))
+            h = min(860, max(600, int(sh * 0.86)))
+            win.geometry(f"{w}x{h}+{max(0, (sw - w) // 2)}+{max(0, (sh - h) // 2 - 20)}")
+        except Exception:
+            win.geometry("1000x800")
+        win.minsize(720, 520)
+        win.configure(bg=BG)
+        win.resizable(True, True)
+        win._guide_imgs = []
 
-        card = tk.Frame(win, bg="#181e28", highlightthickness=1, highlightbackground="#2b3541", padx=18, pady=16)
-        card.pack(fill="both", expand=True, padx=14, pady=14)
-
+        # --- Thanh tiêu đề cố định ---
+        top = tk.Frame(win, bg=CARD, highlightthickness=1, highlightbackground=BORDER, padx=16, pady=10)
+        top.pack(fill="x", padx=12, pady=(12, 6))
         tk.Label(
-            card,
-            text="📺 Hướng dẫn gán Overlay Bảng Quân & Khung Chat vào OBS Studio",
+            top,
+            text="📖 Hướng dẫn chi tiết: Gán Overlay Bảng Quân & Khung Chat vào OBS",
             font=("Segoe UI", 12, "bold"),
-            fg="#e7ebf0",
-            bg="#181e28",
-        ).pack(anchor="w", pady=(0, 10))
-
-        # Link 1: Bảng quân
-        step1 = tk.LabelFrame(
-            card,
-            text=" 1. Link OBS Bảng Quân + Hiệu ứng Sao (Width: 550 x Height: 210  |  Bật Đánh theo C: 750 x 210) ",
-            font=("Segoe UI", 9, "bold"),
-            fg="#e7ebf0",
-            bg="#181e28",
-            padx=12,
-            pady=8,
-        )
-        step1.pack(fill="x", pady=6)
-
-        url_entry = tk.Entry(
-            step1,
-            font=("Consolas", 9, "bold"),
-            bg="#11151b",
-            fg="#34d399",
-            relief="flat",
-            readonlybackground="#11151b",
-        )
-        url_entry.insert(0, obs_url)
-        url_entry.configure(state="readonly")
-        url_entry.pack(side="left", fill="x", expand=True, ipady=4, padx=(0, 8))
-
-        tk.Button(
-            step1,
-            text="📋 Copy Link Bảng Quân",
-            command=self.copy_obs_link,
-            font=("Segoe UI", 9, "bold"),
-            bg="#eca133",
-            fg="#11151b",
-            relief="flat",
-            padx=12,
-            pady=3,
-            cursor="hand2",
-        ).pack(side="right")
-
-        # Link 2: Khung Chat
-        step_chat = tk.LabelFrame(
-            card,
-            text=" 2. Link OBS Khung Chat Bình Luận & Tặng Sao (Width: 380 x Height: 520) ",
-            font=("Segoe UI", 9, "bold"),
-            fg="#e7ebf0",
-            bg="#181e28",
-            padx=12,
-            pady=8,
-        )
-        step_chat.pack(fill="x", pady=6)
-
-        chat_url_entry = tk.Entry(
-            step_chat,
-            font=("Consolas", 9, "bold"),
-            bg="#11151b",
-            fg="#eca133",
-            relief="flat",
-            readonlybackground="#11151b",
-        )
-        chat_url_entry.insert(0, obs_chat_url)
-        chat_url_entry.configure(state="readonly")
-        chat_url_entry.pack(side="left", fill="x", expand=True, ipady=4, padx=(0, 8))
-
-        tk.Button(
-            step_chat,
-            text="💬 Copy Link Khung Chat",
-            command=self.copy_obs_chat_link,
-            font=("Segoe UI", 9, "bold"),
-            bg="#11151b",
-            fg="#e7ebf0",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#2b3541",
-            padx=12,
-            pady=3,
-            cursor="hand2",
-        ).pack(side="right")
-
-        step2 = tk.LabelFrame(
-            card,
-            text=" 3. Các bước thêm nguồn Browser & Căn khung ảo chuẩn xác trong OBS Studio ",
-            font=("Segoe UI", 9, "bold"),
-            fg="#e7ebf0",
-            bg="#181e28",
-            padx=12,
-            pady=8,
-        )
-        step2.pack(fill="x", pady=6)
-
-        guide_text = (
-            "1. Mở phần mềm OBS Studio -> Tại cột 'Sources' (Nguồn) bấm dấu [+] -> Chọn 'Browser'.\n"
-            "2. Dán Link Bảng Quân vào ô URL, đặt kích thước chuẩn để khung đỏ OBS ôm sát bảng quân (không bị thừa khoảng trống dưới đáy):\n"
-            "   • Chế độ tiêu chuẩn: Width = 550, Height = 210  |  Nếu bật 'Đánh theo C' (Kim Cương): Width = 750, Height = 210.\n"
-            "3. Căn chỉnh vị trí bằng 'Khung Bảng Quân Ảo':\n"
-            "   • Khi chưa có trận đấu, OBS sẽ tự động hiển thị 'Khung Bảng Quân Ảo (Có viền nét đứt vàng)' đúng kích thước thật.\n"
-            "   • Bạn chỉ cần kéo khung ảo này đặt vào sát mép dưới hoặc góc màn hình OBS.\n"
-            "   • Ngay khi vào game bấm F2 (Diplomacy), khung ảo sẽ tự động biến mất và chuyển sang Bảng Quân thật!\n"
-            "4. Nếu muốn hiện thêm Khung Chat & Tặng Sao ⭐: Tạo nguồn 'Browser' thứ 2 -> Dán Link Khung Chat (Width = 380, Height = 520)."
-        )
-        tk.Label(
-            step2,
-            text=guide_text,
+            fg="#fbbf24",
+            bg=CARD,
+            anchor="w",
             justify="left",
+        ).pack(fill="x")
+        sub_lbl = tk.Label(
+            top,
+            text="Kèm phím tắt trong game (F2 / F5 / F6 / F8) và cách chạy Tool bằng quyền Administrator. Lăn chuột để xem toàn bộ hướng dẫn.",
             font=("Segoe UI", 9),
-            fg="#8e99a7",
-            bg="#181e28",
-        ).pack(anchor="w")
+            fg=SUB,
+            bg=CARD,
+            anchor="w",
+            justify="left",
+        )
+        sub_lbl.pack(fill="x", pady=(2, 0))
 
+        # --- Vùng nội dung cuộn ---
+        body = tk.Frame(win, bg=BG)
+        body.pack(fill="both", expand=True, padx=12, pady=(0, 6))
+        canvas = tk.Canvas(body, bg=BG, highlightthickness=0, bd=0)
+        vbar = tk.Scrollbar(body, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vbar.set)
+        vbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        inner = tk.Frame(canvas, bg=BG)
+        inner_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+        wrap_labels = [sub_lbl]
+        image_slots = []  # (label, filename, max_ratio)
+
+        def _on_inner_configure(_e=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _on_canvas_configure(e):
+            canvas.itemconfigure(inner_id, width=e.width)
+            wrap_w = max(320, e.width - 70)
+            for lb in wrap_labels:
+                try:
+                    lb.configure(wraplength=wrap_w)
+                except Exception:
+                    pass
+            try:
+                sub_lbl.configure(wraplength=max(320, top.winfo_width() - 40))
+            except Exception:
+                pass
+
+        inner.bind("<Configure>", _on_inner_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+
+        def _on_wheel(e):
+            try:
+                canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+            except Exception:
+                pass
+
+        # Toplevel nằm trong bindtags của mọi widget con → lăn chuột ở bất kỳ đâu trong cửa sổ đều cuộn nội dung
+        win.bind("<MouseWheel>", _on_wheel)
+
+        # --- Hàm dựng nội dung ---
+        def section(title, color="#fbbf24", bg=CARD, border=BORDER):
+            fr = tk.Frame(inner, bg=bg, highlightthickness=1, highlightbackground=border, padx=14, pady=10)
+            fr.pack(fill="x", pady=6, padx=(0, 4))
+            lb = tk.Label(fr, text=title, font=("Segoe UI", 11, "bold"), fg=color, bg=bg, anchor="w", justify="left")
+            lb.pack(fill="x", pady=(0, 6))
+            wrap_labels.append(lb)
+            return fr
+
+        def para(parent, text, fg=SUB, bold=False, size=10, pady=(0, 4)):
+            lb = tk.Label(
+                parent,
+                text=text,
+                font=("Segoe UI", size, "bold" if bold else "normal"),
+                fg=fg,
+                bg=parent.cget("bg"),
+                anchor="w",
+                justify="left",
+            )
+            lb.pack(fill="x", pady=pady)
+            wrap_labels.append(lb)
+            return lb
+
+        def link_row(parent, label, url, color, btn_text, btn_cmd, btn_bg, btn_fg):
+            para(parent, label, fg=color, bold=True, size=10, pady=(2, 2))
+            row = tk.Frame(parent, bg=parent.cget("bg"))
+            row.pack(fill="x", pady=(0, 6))
+            ent = tk.Entry(row, font=("Consolas", 10, "bold"), bg="#0b0f17", fg=color, relief="flat", readonlybackground="#0b0f17")
+            ent.insert(0, url)
+            ent.configure(state="readonly")
+            ent.pack(side="left", fill="x", expand=True, ipady=5, padx=(0, 8))
+            tk.Button(
+                row, text=btn_text, command=btn_cmd, font=("Segoe UI", 9, "bold"),
+                bg=btn_bg, fg=btn_fg, activebackground=btn_bg, relief="flat", padx=12, pady=4, cursor="hand2",
+            ).pack(side="right")
+
+        def image(parent, filename, max_ratio=1.0, caption=""):
+            lb = tk.Label(
+                parent,
+                text=f"⏳ Đang tải ảnh minh họa ({filename})...",
+                font=("Segoe UI", 9, "italic"),
+                fg="#64748b",
+                bg="#0b0f17",
+                pady=18,
+                cursor="hand2",
+            )
+            lb.pack(fill="x", pady=(4, 2))
+            lb.bind("<Button-1>", lambda _e, f=filename: self._open_url_in_browser(f"{base}/guide/{f}"))
+            image_slots.append((lb, filename, max_ratio))
+            if caption:
+                cap = para(parent, caption, fg="#94a3b8", size=8, pady=(0, 6))
+                cap.configure(anchor="center", justify="center")
+
+        # ① LINK OBS
+        s1 = section("① Lấy 2 đường link OBS của bạn", color="#38bdf8")
+        link_row(s1, "Link 1 — Bảng Quân + Hiệu ứng Tặng Sao + Hiệu ứng F8:", obs_url, "#34d399",
+                 "📋 Copy Link Bảng Quân", self.copy_obs_link, "#eca133", "#11151b")
+        link_row(s1, "Link 2 — Khung Chat Bình Luận & Quà Tặng (nền trong suốt):", obs_chat_url, "#fbbf24",
+                 "💬 Copy Link Khung Chat", self.copy_obs_chat_link, "#1e293b", "#e2e8f0")
+        para(s1, "Kích thước chuẩn của nguồn Browser trong OBS:", fg=TXT, bold=True, pady=(4, 2))
+        para(s1, "  •  Bảng Quân (thường):  Width = 550,  Height = 210", fg="#34d399", bold=True, pady=(0, 1))
+        para(s1, "  •  Bảng Quân (bật Đánh theo C — 💎 Kim Cương):  Width = 750,  Height = 210", fg="#38bdf8", bold=True, pady=(0, 1))
+        para(s1, "  •  Khung Chat:  Width = 380,  Height = 450", fg="#fbbf24", bold=True, pady=(0, 2))
+
+        # ② THÊM NGUỒN BROWSER
+        s2 = section("② Thêm nguồn Browser vào OBS Studio", color="#38bdf8")
+        for line in (
+            "1.  Mở OBS Studio → ở khung Sources (Nguồn) bấm dấu [+].",
+            "2.  Chọn Browser (Trình duyệt) → đặt tên (VD: Bang Quan AOE) → OK.",
+            "3.  Dán Link 1 (Bảng Quân) vào ô URL.",
+            "4.  Đặt Width = 550, Height = 210 (Đánh theo C: 750 × 210) → bấm OK.",
+            "5.  Lặp lại để tạo nguồn Browser thứ 2 cho Link 2 (Khung Chat) với Width = 380, Height = 450.",
+        ):
+            para(s2, line, fg=SUB, pady=(0, 2))
+        image(s2, "obs-add-browser.png", caption="Ảnh minh họa — bấm vào ảnh để mở cỡ lớn trên trình duyệt")
+        para(s2, "Mẹo: Nếu nền bị trắng / đen, dán vào ô Custom CSS:  body { background-color: rgba(0,0,0,0) !important; }",
+             fg="#94a3b8", size=9)
+
+        # ③ CĂN KHUNG ẢO
+        s3 = section("③ Căn vị trí bằng Khung Ảo (trước khi vào trận)", color="#38bdf8")
+        for line in (
+            "•  Khi chưa có trận, cả 2 link tự hiện Khung Ảo viền nét đứt vàng đúng kích thước thật.",
+            "•  Kéo khung đỏ của OBS tới vị trí mong muốn: Bảng Quân sát mép dưới / góc màn hình, Khung Chat bên trái hoặc phải.",
+            "•  Vào game ấn F2 (Diplomacy) → khung ảo tự chuyển sang dữ liệu thật. Khung Chat tự hiện chat thật khi có trận LIVE / bình luận mới.",
+            "•  Bật / tắt tại tab ⚙️ Cài đặt VIP → 📐 Hiện Khung Ảo. Thêm &preview=1 vào link để luôn hiện khung ảo khi chưa có trận.",
+        ):
+            para(s3, line, fg=SUB, pady=(0, 2))
+        image(s3, "obs-layout.png", caption="Bố cục gợi ý: Khung Chat bên trái • Bảng Quân phía dưới")
+        image(s3, "overlay-virtual.png", max_ratio=0.62, caption="Khung Bảng Quân Ảo (550 × 210)")
+        image(s3, "chat-virtual.png", max_ratio=0.34, caption="Khung Chat Ảo (380 × 450)")
+
+        # ④ PHÍM TẮT
+        s4 = section("④ Phím tắt dùng ngay trong màn hình Game", color="#fbbf24")
+        image(s4, "hotkeys.png")
+        for line, col in (
+            ("F2:  mở Diplomacy trong game → Tool tự quét và đưa bảng quân lên OBS.", SUB),
+            ("F5 / F6:  chấm Team Đỏ / Team Xanh thắng (+1). Chỉ nhận khi trận hiện tại ĐÃ HIỆN QUÂN và CHƯA CÓ ĐỘI THẮNG (mỗi trận chỉ 1 đội thắng).", SUB),
+            ("F8:  bắn hiệu ứng \"Tay đâu, tayyyy đâuuuuu\" lên Link OBS Bảng Quân (Khung Chat tự mờ trong lúc chạy hiệu ứng).", SUB),
+            ("F3 (Test ảnh) và F7 (Kết thúc kèo) dùng trên cửa sổ App. Đóng App cũng tự kết thúc kèo đấu đang LIVE.", SUB),
+        ):
+            para(s4, "•  " + line, fg=col, pady=(0, 2))
+
+        # ⑤ RUN AS ADMINISTRATOR
+        admin_ok = is_windows_process_admin()
+        s5 = section(
+            "⑤ Chạy Tool bằng quyền Administrator (bắt buộc để F5 / F6 / F8 nhận trong game)",
+            color="#fca5a5", bg="#1c1117", border="#7f1d1d",
+        )
+        para(
+            s5,
+            ("✅ Tool ĐANG chạy bằng quyền Administrator — phím tắt trong game đã sẵn sàng."
+             if admin_ok else
+             "⚠️ Tool CHƯA chạy bằng quyền Administrator — phím F5 / F6 / F8 có thể không nhận khi đang ở trong game!"),
+            fg="#34d399" if admin_ok else "#fbbf24", bold=True, pady=(0, 6),
+        )
+        para(s5, "Game Đế Chế (EMPIRESX.EXE) luôn chạy bằng quyền Administrator. Nếu Tool chạy quyền thường, Windows sẽ chặn phím tắt "
+                 "khi bạn đang ở trong màn hình game. Bản Tool mới tự xin quyền khi mở — chỉ cần bấm Yes. Nếu vẫn không nhận phím, làm 1 trong 2 cách:",
+             fg=SUB)
+        image(s5, "run-admin.png")
+        para(s5, "Cách 1 (mỗi lần mở):  Chuột phải vào TOOL_BANG_QUAN_AOE_BY_XO.exe → Run as administrator → bấm Yes.", fg=TXT, pady=(2, 2))
+        para(s5, "Cách 2 (cài 1 lần):  Chuột phải → Properties → tab Compatibility → tích \"Run this program as an administrator\" → OK.", fg=TXT, pady=(0, 2))
+        para(s5, "Kiểm tra:  Nhật ký App hiện dòng \"🛡️ Đã kích hoạt Quyền Administrator...\" là phím tắt trong game đã sẵn sàng.", fg="#34d399", pady=(0, 2))
+
+        # ⑥ XỬ LÝ SỰ CỐ
+        s6 = section("⑥ Xử lý sự cố thường gặp", color=TXT)
+        for q, a in (
+            ("OBS không cập nhật / hiện bản cũ:", "chuột phải nguồn Browser → Properties → Refresh cache of current page."),
+            ("Bảng quân bị cắt / thừa khoảng trống:", "kiểm tra lại Width / Height theo mục ①, không kéo giãn khung bằng chuột."),
+            ("Ấn F5 / F6 bị từ chối:", "trận hiện tại chưa hiện quân (hãy ấn F2 trong game) hoặc trận đã có đội thắng."),
+            ("Ấn phím trong game không nhận:", "làm theo mục ⑤ (Run as administrator)."),
+            ("Tắt App đột ngột:", "Server tự kết thúc kèo LIVE sau khoảng 3 phút mất tín hiệu."),
+        ):
+            para(s6, f"•  {q}  {a}", fg=SUB, pady=(0, 2))
+
+        # --- Thanh nút dưới đáy ---
+        bottom = tk.Frame(win, bg=BG)
+        bottom.pack(fill="x", padx=12, pady=(0, 12))
         tk.Button(
-            card,
-            text="Đã hiểu & Đóng hướng dẫn",
-            command=win.destroy,
-            font=("Segoe UI", 10, "bold"),
-            bg="#eca133",
-            fg="#11151b",
-            relief="flat",
-            padx=20,
-            pady=6,
-            cursor="hand2",
-        ).pack(pady=(12, 0))
+            bottom, text="🌐 Mở hướng dẫn trên Web", command=lambda: self._open_url_in_browser(base),
+            font=("Segoe UI", 9, "bold"), bg="#1e293b", fg="#e2e8f0", activebackground="#334155",
+            relief="flat", padx=14, pady=6, cursor="hand2",
+        ).pack(side="left")
+        tk.Button(
+            bottom, text="Đã hiểu & Đóng hướng dẫn", command=win.destroy,
+            font=("Segoe UI", 10, "bold"), bg="#eca133", fg="#11151b", activebackground="#d98f26",
+            relief="flat", padx=20, pady=6, cursor="hand2",
+        ).pack(side="right")
+
+        # --- Tải ảnh minh họa từ Server ở luồng nền (không làm đứng giao diện) ---
+        def _load_images():
+            try:
+                from PIL import ImageTk  # noqa: F401
+            except Exception:
+                return
+            import io
+            for lb, fname, ratio in image_slots:
+                try:
+                    r = requests.get(f"{base}/guide/{fname}", timeout=12)
+                    if r.status_code != 200 or not r.content:
+                        raise ValueError(f"HTTP {r.status_code}")
+                    raw = Image.open(io.BytesIO(r.content)).convert("RGBA")
+                except Exception:
+                    self.root.after(0, lambda l=lb, f=fname: l.winfo_exists() and l.configure(
+                        text=f"⚠️ Không tải được ảnh minh họa ({f}) — kiểm tra kết nối mạng hoặc mở hướng dẫn trên Web."))
+                    continue
+
+                def _apply(l=lb, img=raw, rt=ratio):
+                    try:
+                        if not l.winfo_exists():
+                            return
+                        from PIL import ImageTk as _ImageTk
+                        avail = max(320, canvas.winfo_width() - 70)
+                        target_w = int(min(avail * rt, img.width * 1.25))
+                        target_w = max(160, target_w)
+                        target_h = int(img.height * target_w / img.width)
+                        bg_img = Image.new("RGBA", img.size, (11, 15, 23, 255))
+                        bg_img.alpha_composite(img)
+                        photo = _ImageTk.PhotoImage(bg_img.resize((target_w, target_h), Image.LANCZOS))
+                        win._guide_imgs.append(photo)
+                        l.configure(image=photo, text="", pady=0, bg="#0b0f17")
+                        _on_inner_configure()
+                    except Exception:
+                        pass
+
+                self.root.after(0, _apply)
+
+        win.after(250, lambda: threading.Thread(target=_load_images, daemon=True).start())
+
+    def _open_url_in_browser(self, url: str):
+        try:
+            import webbrowser
+            webbrowser.open(url)
+        except Exception:
+            pass
 
     def open_download_tool_url(self):
         import webbrowser

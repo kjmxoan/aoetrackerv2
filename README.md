@@ -20,11 +20,18 @@ aoe-tracker/
 │       ├── manifest.json            # Khai báo Chrome Extension Manifest V3
 │       └── content.js               # Script quét DOM bình luận luồng Live Facebook đẩy về Server
 ├── public/
+│   ├── guide/                       # Bộ 6 ảnh minh họa hướng dẫn trực quan (OBS Browser, Bố cục OBS, Khung Ảo, Phím tắt, Run as Admin)
+│   │   ├── obs-add-browser.png      # Minh họa 5 bước thêm nguồn Browser trong OBS Studio
+│   │   ├── obs-layout.png           # Minh họa bố cục đặt Bảng Quân (550x210) & Khung Chat (380x450) trên màn hình game
+│   │   ├── overlay-virtual.png      # Ảnh chụp thực tế Khung Bảng Quân Ảo (550x210)
+│   │   ├── chat-virtual.png         # Ảnh chụp thực tế Khung Chat Ảo (380x450)
+│   │   ├── hotkeys.png              # Bảng tổng hợp các phím tắt trong game (F2, F5, F6, F8, F3, F7)
+│   │   └── run-admin.png            # Hướng dẫn chạy Tool bằng quyền Administrator (Chuột phải & Compatibility)
 │   ├── logo.svg                     # Logo Vector chính thức của thương hiệu AOE BY XO (Khiên Obsidian, Song Kiếm Vàng, Vương Miện "XO")
 │   ├── brand-tokens.css             # Hệ thống Design Tokens 3 tầng (Primitive -> Semantic -> Component) & Animation Vinh Danh
-│   ├── index.html                   # Trang chủ Web: Sảnh Các Trận Đấu Đang Live, Hộp Chat & Vật Phẩm AOE, Thống kê, Admin
+│   ├── index.html                   # Trang chủ Web: Sảnh Các Trận Đấu Đang Live, Hộp Chat & Vật Phẩm AOE, Thống kê, Admin & Hướng dẫn có ảnh
 │   ├── overlay.html                 # Link OBS 1: Bảng Quân, Màu Cờ, Tỉ Số, Chữ Chạy, Bảng Phụ C & Bảng Vinh Danh Hoàng Gia
-│   └── chat-overlay.html            # Link OBS 2: Khung Chat & Bảng Vinh Danh Vật Phẩm AOE nền trong suốt
+│   └── chat-overlay.html            # Link OBS 2: Khung Chat & Bảng Vinh Danh Vật Phẩm AOE nền trong suốt (kèm Khung Chat Ảo 380x450)
 ├── docs/
 │   └── brand-guidelines.md          # Tài liệu Bộ Nhận Diện Thương Hiệu & Chuẩn UI/UX Pro Max của AOE BY XO
 ├── design-system/
@@ -144,23 +151,42 @@ Admin sau khi đăng nhập mật khẩu quản trị có toàn quyền:
 
 ## 📺 3. Hướng Dẫn Sử Dụng Chi Tiết Cho Streamer
 
-### 3.1. Gán 2 Link OBS Hiển Thị Lên Livestream & Căn Chỉnh Bằng Khung Bảng Quân Ảo
+### 3.1. Gán 2 Link OBS Hiển Thị Lên Livestream & Căn Chỉnh Bằng Khung Ảo
 Trong phần mềm **OBS Studio**, tại mục **Sources (Nguồn)** bấm dấu **`+`** $\rightarrow$ chọn **`Browser` (Trình duyệt)**:
 
 | Loại Nguồn OBS | Cách lấy Link trên Tool / Web | Kích thước chuẩn (Width x Height) | Công dụng |
 | :--- | :--- | :--- | :--- |
-| **1. OBS Bảng Quân & Tỉ Số** | Bấm nút **`📋 Copy Link OBS Bảng Quân`** (`/overlay.html?streamer=TEN_MAY`) | **`550` x `210`** *(hoặc **`750` x `210`** nếu bật Đánh theo C)* | Hiển thị Bảng Quân 2 Team, Màu Cờ, Tỉ Số, Chữ Chạy & Bảng phụ Đánh theo C. Khung vừa khít bảng quân, không bị thừa khoảng trống dưới đáy khi đặt sát mép dưới OBS. |
-| **2. OBS Khung Chat & Sao** | Bấm nút **`💬 Copy Link OBS Chat`** (`/chat-overlay.html?streamer=TEN_MAY`) | **`380` x `520`** | Nền **trong suốt 100%**, chỉ hiện chữ viền đen sắc nét + Hiệu ứng Sao bay + Comment từ Facebook Group Live (`🔵 [FB]`). |
+| **1. OBS Bảng Quân & Tỉ Số** | Bấm nút **`🖥️ Link OBS`** (`/overlay.html?streamer=TEN_MAY`) | **`550` x `210`** *(hoặc **`750` x `210`** nếu bật Đánh theo C)* | Hiển thị Bảng Quân 2 Team, Màu Cờ, Tỉ Số, Chữ Chạy, Bảng phụ Đánh theo C & Hiệu ứng ăn mừng **`F8`** (`"Tay đâu, tayyyy đâuuuuu"`). Khung vừa khít bảng quân, không thừa khoảng trống dưới đáy. |
+| **2. OBS Khung Chat & Sao** | Bấm nút **`💬 OBS Chat`** (`/chat-overlay.html?streamer=TEN_MAY`) | **`380` x `450`** | Nền **trong suốt 100%**, chỉ hiện chữ viền đen sắc nét + Tặng Vật phẩm Đế Chế + Comment từ Facebook Group Live (`🔵 [FB]`). Tự động mờ 80% sau 5 giây không có chat mới để không che bản đồ game. |
 
 > [!TIP]
-> **Tính năng Khung Bảng Quân Ảo Căn Chỉnh OBS (`showIdlePreview`)**:
-> - Khi bạn chưa vào trận đấu (`match === null`), link `/overlay.html?streamer=TEN_MAY` sẽ tự động hiển thị một **Khung Bảng Quân Ảo (viền nét đứt vàng + nhãn `📐 KHUNG ẢO CĂN OBS`)** có kích thước, bố cục, màu cờ và cài đặt VIP y hệt bảng quân thật.
-> - Bạn có thể kéo và căn vị trí khung trên OBS cực kỳ trực quan ngay trước khi vào game.
-> - Ngay khi vào trận và bấm **`F2 (Diplomacy)`**, khung ảo sẽ tự động biến mất và chuyển sang **Bảng Quân & Tỉ Số thực tế** theo thời gian thực! (Có thể bật/tắt khung ảo bất kỳ lúc nào trong tab **⚙️ Tùy Chỉnh Cài Đặt VIP**).
+> **Tính năng Khung Ảo Căn Chỉnh OBS (`showIdlePreview`) cho cả Bảng Quân (`550 x 210`) & Khung Chat (`380 x 450`)**:
+> - Khi bạn chưa vào trận đấu (`match === null`), cả 2 link `/overlay.html?streamer=TEN_MAY` và `/chat-overlay.html?streamer=TEN_MAY` đều tự động hiển thị **Khung Ảo Căn OBS** (viền nét đứt vàng + 4 góc xanh ngọc) đúng kích thước thật để bạn kéo thả căn vị trí trên OBS trước khi vào game.
+> - Ngay khi vào trận và bấm **`F2 (Diplomacy)`** (hoặc có bình luận mới), khung ảo sẽ tự động biến mất và chuyển sang **Bảng Quân & Khung Chat thực tế** theo thời gian thực! (Có thể bật/tắt khung ảo bất kỳ lúc nào trong tab **⚙️ Cài đặt VIP** hoặc thêm `&preview=1` vào cuối link).
 
 ---
 
-### 3.2. Hướng Dẫn Đẩy Comment Từ Luồng Live Trong Group Facebook Lên OBS
+### 3.2. Hướng Dẫn Chạy Quyền Administrator (`Run as administrator`) & Sử Dụng Phím Tắt Trong Game (`F2 - F5 - F6 - F8`)
+
+Trên Windows 10/11, game Đế Chế (`EMPIRESX.EXE`) luôn chạy dưới quyền **Administrator** (do cơ chế DirectPlay). Vì vậy, để các phím tắt **`F2` / `F5` / `F6` / `F8`** hoạt động xuyên qua cửa sổ game, bạn cần mở `TOOL_BANG_QUAN_AOE_BY_XO.exe` với quyền **Administrator**:
+
+1. **Cách 1 — Mở nhanh mỗi lần chơi**:
+   - Nhấp **chuột phải** vào file `TOOL_BANG_QUAN_AOE_BY_XO.exe` $\rightarrow$ chọn **`Run as administrator`** $\rightarrow$ bấm **`Yes`** ở bảng hỏi UAC của Windows.
+2. **Cách 2 — Cài cố định 1 lần dùng mãi mãi (Khuyên dùng)**:
+   - Nhấp **chuột phải** vào file `TOOL_BANG_QUAN_AOE_BY_XO.exe` $\rightarrow$ chọn **`Properties`**.
+   - Chuyển sang tab **`Compatibility`** $\rightarrow$ tích chọn ô **`☑ Run this program as an administrator`** $\rightarrow$ bấm **`Apply`** $\rightarrow$ **`OK`**.
+
+| Phím tắt trong Game | Chức năng | Quy tắc & Lưu ý |
+| :--- | :--- | :--- |
+| **`F2`** *(hoặc click nút `Diplomacy`)* | **Tự động quét Bảng Quân & Màu Cờ** | Mở bảng `Diplomacy` trong game khoảng `1 giây` để Tool chụp và đồng bộ quân 2 đội lên Web & OBS. Nếu mở lại `F2` trong cùng trận mà bộ quân không đổi, hệ thống giữ nguyên trận hiện tại (không bị nhảy sang trận mới). |
+| **`F5`** | **🔴 Team Đỏ thắng ván này (`+1`)** | Chỉ cộng điểm khi trận hiện tại **đã quét quân hợp lệ** và **chưa có đội thắng** (mỗi trận chỉ có 1 đội thắng duy nhất). Phát âm báo `Beep` xác nhận. |
+| **`F6`** | **🔵 Team Xanh thắng ván này (`+1`)** | Chỉ cộng điểm khi trận hiện tại **đã quét quân hợp lệ** và **chưa có đội thắng**. Muốn chấm ván tiếp theo, hãy vào trận mới và ấn `F2` quét quân trước. |
+| **`F8`** | **🙌 Bắn hiệu ứng `"Tay đâu, tayyyy đâuuuuu"`** | Làm mờ bảng quân & khung chat OBS, đồng thời bung bảng hiệu ứng lửa vàng rung lắc + mưa icon `🙌 🔥 👏` trên khung **Link OBS Bảng Quân** trong `6.5 giây`. |
+| **`F3`** / **`F7`** | **Test ảnh mẫu** / **Kết thúc kèo đấu** | Dùng khi đang mở cửa sổ Tool PC để kiểm tra nhanh hoặc kết thúc kèo hiện tại. |
+
+---
+
+### 3.3. Hướng Dẫn Đẩy Comment Từ Luồng Live Trong Group Facebook Lên OBS
 Khi bạn phát Live trong **Group Facebook**, hãy chọn 1 trong 2 cách sau:
 
 #### Cách 1: Dùng nút 1-Click trên Tool (Nhanh nhất — 10 giây, Bảo mật 100% mật khẩu khi Live)
@@ -226,10 +252,12 @@ Copy-Item "$src\server\index.js" "$dst\server\index.js" -Force
 Copy-Item "$src\public\index.html" "$dst\public\index.html" -Force
 Copy-Item "$src\public\overlay.html" "$dst\public\overlay.html" -Force
 Copy-Item "$src\public\chat-overlay.html" "$dst\public\chat-overlay.html" -Force
+Copy-Item "$src\public\guide\*" "$dst\public\guide\" -Force
 Copy-Item "$src\client\bangquanaoe.py" "$dst\client\bangquanaoe.py" -Force
 Copy-Item "$src\client\fb_group_live_extension\*" "$dst\client\fb_group_live_extension\" -Force
 Copy-Item "$src\client\dist\bangquanaoe.exe" "$dst\client\dist\bangquanaoe.exe" -Force
 Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" -Force
+Copy-Item "$src\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\TOOL_BANG_QUAN_AOE_BY_XO.exe" -Force
 ```
 
 ---
@@ -338,3 +366,14 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
             - Khi Streamer **chưa có trận `LIVE`** và **chưa có bình luận / quà tặng mới trong 3 phút gần nhất**, [`public/chat-overlay.html`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/chat-overlay.html) hiển thị **Khung Chat Ảo** đúng kích thước nguồn Browser OBS **`380 x 450`**: viền nét đứt vàng, 4 góc xanh ngọc, huy hiệu `KHUNG ẢO CĂN OBS CHAT`, tên máy, và 4 dòng mẫu đúng kiểu chữ thật (Chat thường, `🔵 [FB]`, Tặng Vật phẩm `🐘 Con Voi (+22⭐) ➔ XO`, Sự kiện Hệ thống) để Streamer kéo thả / căn chỉnh vị trí trong OBS trước khi vào trận.
             - Ngay khi có trận `LIVE` (ấn `F2` trong game) hoặc có bình luận / quà tặng mới, khung ảo tự chuyển sang **Chat thật trong suốt**; khung ảo không bị tự làm mờ 80% sau 5 giây (để dễ căn chỉnh).
             - Dùng chung tùy chọn **`📐 Hiện Khung Ảo căn OBS (Bảng Quân + Khung Chat)`** (`showIdlePreview`, mặc định Bật) trên Web / App PC; thêm `&preview=1` vào link (VD: `/chat-overlay.html?streamer=XO&preview=1`) để luôn hiện khung ảo khi chưa có trận.
+          - **Cập nhật toàn diện Cửa Sổ Hướng Dẫn (`📖 Hướng dẫn` trên Web & App PC) — Bổ sung 6 Ảnh Minh Họa Trực Quan, Hướng Dẫn `Run as Administrator`, Phím Tắt `F2 / F5 / F6 / F8` & Tự Động Xuống Dòng Không Bao Giờ Mất Chữ**:
+            - **Bộ 6 ảnh hướng dẫn trực quan trong [`public/guide/`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/guide/)**:
+              1. `obs-add-browser.png`: Minh họa đánh số 1–5 từng bước bấm `[+]` trong `Sources` $\rightarrow$ chọn `Browser` $\rightarrow$ dán URL & nhập `550 x 210` / `380 x 450` $\rightarrow$ `OK`.
+              2. `obs-layout.png`: Sơ đồ bố cục đặt `Browser 1: Bảng Quân (550 x 210)` ở đáy giữa và `Browser 2: Khung Chat (380 x 450)` ở cạnh trái màn hình game AOE.
+              3. `overlay-virtual.png`: Ảnh chụp thực tế Khung Bảng Quân Ảo (`550 x 210`).
+              4. `chat-virtual.png`: Ảnh chụp thực tế Khung Chat Ảo (`380 x 450`).
+              5. `hotkeys.png`: Bảng trực quan các phím tắt trong game (`F2` Quét quân, `F5` Team Đỏ +1, `F6` Team Xanh +1, `F8` Hiệu ứng `"Tay đâu, tayyyy đâuuuuu"`, `F3` Test ảnh, `F7` Kết thúc kèo).
+              6. `run-admin.png`: Hướng dẫn 2 cách chạy quyền **Administrator** (Chuột phải $\rightarrow$ `Run as administrator`, hoặc `Properties` $\rightarrow$ `Compatibility` $\rightarrow$ tích `☑ Run this program as an administrator` để lưu vĩnh viễn) giúp phím tắt `F2 / F5 / F6 / F8` không bị Windows UIPI chặn khi đang trong game `EMPIRESX.EXE`.
+            - **Khắc phục triệt để lỗi chèn / cắt chữ trong cửa sổ Hướng dẫn trên cả Web và App PC**:
+              - Trên **App PC ([`show_obs_guide_window`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/client/bangquanaoe.py#L3787-L4080))**: Thay thế cửa sổ cố định `740x610` không thanh cuộn bằng cửa sổ `1040x860` cho phép kéo giãn (`resizable`), tích hợp `Canvas + Scrollbar` hỗ trợ lăn chuột (`MouseWheel`), tự động tính lại `wraplength` của toàn bộ nhãn văn bản theo chiều rộng thực tế (`<Configure>`) đảm bảo `0` dòng chữ bị tràn hoặc cắt góc ở mọi mức DPI (`125%`, `150%`, `4K`), đồng thời tải và hiển thị trực tiếp 6 ảnh minh họa ngay trong App.
+              - Trên **Web ([`public/index.html`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/index.html#L1246-L1415))**: Mở rộng modal lên `max-w-3xl`, áp dụng `break-words` + `[overflow-wrap:anywhere]`, thanh nhảy nhanh 6 mục (`① Link & Kích thước` $\rightarrow$ `⑥ Xử lý lỗi`), bảng kích thước chuẩn, 2 nút Copy Link nhanh và cho phép bấm vào từng ảnh minh họa để phóng to xem chi tiết.

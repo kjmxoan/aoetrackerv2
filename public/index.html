@@ -1243,45 +1243,137 @@
         </button>
       </nav>
 
-      <!-- MODAL HƯỚNG DẪN GÁN LINK OBS (BẢNG QUÂN & KHUNG CHAT) -->
-      <div v-if="showObsGuideModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[150]">
-        <div class="premium-card rounded-2xl max-w-xl w-full p-6 space-y-4 relative max-h-[92vh] overflow-y-auto">
-          <button @click="showObsGuideModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">&times;</button>
-          <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
-            <div class="bg-sky-500 text-slate-950 p-2.5 rounded-xl font-bold"><i class="fa-solid fa-tv text-lg"></i></div>
-            <div>
-              <h3 class="text-base font-bold text-slate-100 uppercase">Hướng Dẫn Gán Bảng Quân & Khung Chat Vào OBS</h3>
-              <p class="text-xs text-slate-400">Hiển thị Bảng Quân, Hiệu ứng Tặng Sao & Bình luận trực tiếp lên Livestream</p>
+      <!-- MODAL HƯỚNG DẪN CHI TIẾT: GÁN OVERLAY BẢNG QUÂN & KHUNG CHAT VÀO OBS + PHÍM TẮT + CHẠY QUYỀN ADMINISTRATOR -->
+      <div v-if="showObsGuideModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[150]">
+        <div class="premium-card rounded-2xl max-w-3xl w-full p-4 sm:p-6 space-y-4 relative max-h-[94vh] overflow-y-auto break-words">
+          <button @click="showObsGuideModal = false" class="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-white text-2xl leading-none" title="Đóng">&times;</button>
+          <div class="flex items-start gap-3 border-b border-slate-800 pb-3 pr-8">
+            <div class="bg-sky-500 text-slate-950 p-2.5 rounded-xl font-bold shrink-0"><i class="fa-solid fa-tv text-lg"></i></div>
+            <div class="min-w-0">
+              <h3 class="text-sm sm:text-base font-bold text-slate-100 uppercase leading-snug">Hướng Dẫn Chi Tiết: Gán Bảng Quân &amp; Khung Chat Vào OBS</h3>
+              <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Kèm phím tắt trong game (F2 / F5 / F6 / F8) và cách chạy Tool bằng quyền Administrator. Bấm vào ảnh để xem cỡ lớn.</p>
             </div>
           </div>
 
-          <div class="space-y-3.5 text-sm text-slate-200">
-            <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-xl space-y-2">
-              <div class="font-bold text-sky-400">1. Link OBS Bảng Quân + Hiệu ứng Tặng Sao (Size chuẩn: 550 x 210 hoặc 750 x 210 nếu Đánh theo C):</div>
-              <div class="flex gap-2 items-center">
-                <input type="text" readonly :value="currentObsPreviewUrl" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-xs text-emerald-300">
-                <button @click="copyOverlayLink(sessionPlayerName || 'XO')" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs shrink-0">
-                  Copy Link
-                </button>
+          <!-- Mục lục nhanh -->
+          <div class="flex flex-wrap gap-1.5 text-[11px] font-bold">
+            <a href="#guide-links" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-sky-300">① Link OBS</a>
+            <a href="#guide-obs" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-sky-300">② Thêm vào OBS</a>
+            <a href="#guide-frame" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-sky-300">③ Căn Khung Ảo</a>
+            <a href="#guide-hotkeys" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-amber-300">④ Phím tắt</a>
+            <a href="#guide-admin" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-red-300">⑤ Run as Admin</a>
+            <a href="#guide-faq" class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300">⑥ Xử lý sự cố</a>
+          </div>
+
+          <div class="space-y-4 text-sm text-slate-200 leading-relaxed">
+            <!-- ① LINK OBS -->
+            <div id="guide-links" class="bg-slate-950/90 border border-slate-800 p-3.5 sm:p-4 rounded-xl space-y-3">
+              <div class="font-bold text-slate-100">① Lấy 2 đường link OBS của bạn</div>
+              <div class="space-y-1.5">
+                <div class="text-xs font-bold text-sky-400">Link 1 — Bảng Quân + Hiệu ứng Tặng Sao + Hiệu ứng F8</div>
+                <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <input type="text" readonly :value="currentObsPreviewUrl" class="min-w-0 flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-xs text-emerald-300">
+                  <button @click="copyOverlayLink(sessionPlayerName || 'XO')" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs shrink-0">📋 Copy Link Bảng Quân</button>
+                </div>
+              </div>
+              <div class="space-y-1.5">
+                <div class="text-xs font-bold text-amber-400">Link 2 — Khung Chat Bình Luận &amp; Quà Tặng (nền trong suốt)</div>
+                <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                  <input type="text" readonly :value="currentChatObsPreviewUrl" class="min-w-0 flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-xs text-amber-300">
+                  <button @click="copyChatOverlayLink(sessionPlayerName || 'XO')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs shrink-0">💬 Copy Link Khung Chat</button>
+                </div>
+              </div>
+              <!-- Bảng kích thước chuẩn -->
+              <div class="overflow-x-auto">
+                <table class="w-full text-xs border border-slate-800 rounded-lg overflow-hidden">
+                  <thead class="bg-slate-900 text-slate-300">
+                    <tr><th class="text-left px-3 py-2">Nguồn Browser</th><th class="px-3 py-2">Width</th><th class="px-3 py-2">Height</th></tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800">
+                    <tr><td class="px-3 py-2">Bảng Quân (thường)</td><td class="text-center font-bold text-emerald-300">550</td><td class="text-center font-bold text-emerald-300">210</td></tr>
+                    <tr><td class="px-3 py-2">Bảng Quân (bật Đánh theo C — 💎)</td><td class="text-center font-bold text-sky-300">750</td><td class="text-center font-bold text-sky-300">210</td></tr>
+                    <tr><td class="px-3 py-2">Khung Chat</td><td class="text-center font-bold text-amber-300">380</td><td class="text-center font-bold text-amber-300">450</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-xl space-y-2">
-              <div class="font-bold text-amber-400">2. Link OBS Khung Chat Bình Luận Trực Tiếp (Rộng 380 x Cao 450):</div>
-              <div class="flex gap-2 items-center">
-                <input type="text" readonly :value="currentChatObsPreviewUrl" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-xs text-amber-300">
-                <button @click="copyChatOverlayLink(sessionPlayerName || 'XO')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs shrink-0">
-                  Copy Link Chat
-                </button>
+            <!-- ② THÊM VÀO OBS -->
+            <div id="guide-obs" class="bg-slate-950/90 border border-slate-800 p-3.5 sm:p-4 rounded-xl space-y-2.5">
+              <div class="font-bold text-slate-100">② Thêm nguồn Browser vào OBS Studio</div>
+              <ol class="list-decimal pl-5 space-y-1 text-xs sm:text-sm text-slate-300">
+                <li>Mở <b class="text-white">OBS Studio</b> → ở khung <b class="text-white">Sources (Nguồn)</b> bấm dấu <b class="text-white">[+]</b>.</li>
+                <li>Chọn <b class="text-white">Browser (Trình duyệt)</b> → đặt tên (VD: <i>Bang Quan AOE</i>) → OK.</li>
+                <li>Dán <b class="text-emerald-300">Link 1 (Bảng Quân)</b> vào ô <b class="text-white">URL</b>.</li>
+                <li>Đặt <b class="text-white">Width = 550, Height = 210</b> (Đánh theo C: 750 × 210) → bấm <b class="text-white">OK</b>.</li>
+                <li>Lặp lại để tạo nguồn Browser thứ 2 cho <b class="text-amber-300">Link 2 (Khung Chat)</b> với <b class="text-white">Width = 380, Height = 450</b>.</li>
+              </ol>
+              <a href="/guide/obs-add-browser.png" target="_blank" class="block">
+                <img src="/guide/obs-add-browser.png" alt="Thêm nguồn Browser vào OBS" loading="lazy" class="w-full rounded-lg border border-slate-800 hover:border-sky-500 transition">
+              </a>
+              <p class="text-[11px] text-slate-400">Mẹo: Nếu nền bị trắng / đen, dán vào ô <b class="text-slate-200">Custom CSS</b>: <code class="text-emerald-300 [overflow-wrap:anywhere]">body { background-color: rgba(0,0,0,0) !important; }</code></p>
+            </div>
+
+            <!-- ③ CĂN KHUNG ẢO -->
+            <div id="guide-frame" class="bg-slate-950/90 border border-slate-800 p-3.5 sm:p-4 rounded-xl space-y-2.5">
+              <div class="font-bold text-slate-100">③ Căn vị trí bằng Khung Ảo (trước khi vào trận)</div>
+              <ul class="list-disc pl-5 space-y-1 text-xs sm:text-sm text-slate-300">
+                <li>Khi chưa có trận, <b class="text-white">cả 2 link</b> tự hiện <b class="text-amber-300">Khung Ảo viền nét đứt vàng</b> đúng kích thước thật.</li>
+                <li>Kéo khung đỏ của OBS tới vị trí mong muốn: Bảng Quân sát mép dưới / góc màn hình, Khung Chat bên trái hoặc phải.</li>
+                <li>Vào game ấn <b class="text-white">F2 (Diplomacy)</b> → khung ảo tự chuyển sang dữ liệu thật. Khung Chat tự hiện chat thật khi có trận LIVE / bình luận mới.</li>
+                <li>Bật / tắt tại <b class="text-white">Cấu hình VIP OBS → 📐 Hiện Khung Ảo căn OBS</b>. Thêm <code class="text-emerald-300">&amp;preview=1</code> vào link để luôn hiện khung ảo khi chưa có trận.</li>
+              </ul>
+              <a href="/guide/obs-layout.png" target="_blank" class="block">
+                <img src="/guide/obs-layout.png" alt="Căn vị trí Khung Ảo trong OBS" loading="lazy" class="w-full rounded-lg border border-slate-800 hover:border-sky-500 transition">
+              </a>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <figure class="bg-slate-900/70 border border-slate-800 rounded-lg p-2">
+                  <img src="/guide/overlay-virtual.png" alt="Khung Bảng Quân Ảo" loading="lazy" class="w-full rounded">
+                  <figcaption class="text-[11px] text-slate-400 mt-1 text-center">Khung Bảng Quân Ảo (550 × 210)</figcaption>
+                </figure>
+                <figure class="bg-slate-900/70 border border-slate-800 rounded-lg p-2">
+                  <img src="/guide/chat-virtual.png" alt="Khung Chat Ảo" loading="lazy" class="w-full max-w-[220px] mx-auto rounded">
+                  <figcaption class="text-[11px] text-slate-400 mt-1 text-center">Khung Chat Ảo (380 × 450)</figcaption>
+                </figure>
               </div>
             </div>
 
-            <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-xl space-y-1.5 text-xs text-slate-300">
-              <div class="font-bold text-slate-100 text-sm mb-1">Các bước thêm & căn chỉnh Khung Ảo trong OBS Studio:</div>
-              <p>&bull; Mở <b>OBS Studio</b> &rarr; Tại khung <b>Sources (Nguồn)</b> bấm dấu <b>[+]</b> &rarr; Chọn <b>Browser (Trình duyệt)</b>.</p>
-              <p>&bull; Dán đường dẫn Bảng Quân vào ô <b>URL</b>, đặt kích thước <b class="text-emerald-300">Width = 550, Height = 210</b> (hoặc <b class="text-sky-300">Width = 750, Height = 210</b> nếu bật Đánh theo C) để khung đỏ OBS ôm vừa khít bảng quân, không bị thừa khoảng trống dưới đáy.</p>
-              <p>&bull; <b>Khung Bảng Quân Ảo tự động:</b> Khi chưa có trận đấu, OBS tự hiện một <b>Khung Bảng Quân Ảo (viền nét đứt vàng)</b> đúng kích thước thật để bạn kéo đặt vào vị trí mong muốn. Ngay khi vào game ấn <b>F2 (Diplomacy)</b>, khung ảo sẽ tự chuyển sang Bảng Quân thật!</p>
-              <p>&bull; <b>Khung Chat Ảo tự động:</b> Link OBS Khung Chat cũng hiện <b>Khung Chat Ảo (viền nét đứt vàng, 4 góc xanh)</b> kèm bình luận mẫu đúng kích thước <b class="text-amber-300">380 x 450</b> khi chưa có trận LIVE / bình luận mới. Có trận LIVE hoặc bình luận mới sẽ tự chuyển sang Chat thật. (Thêm <code class="text-emerald-300">&amp;preview=1</code> vào link để luôn hiện khung ảo.)</p>
+            <!-- ④ PHÍM TẮT -->
+            <div id="guide-hotkeys" class="bg-slate-950/90 border border-slate-800 p-3.5 sm:p-4 rounded-xl space-y-2.5">
+              <div class="font-bold text-slate-100">④ Phím tắt dùng ngay trong màn hình Game</div>
+              <a href="/guide/hotkeys.png" target="_blank" class="block">
+                <img src="/guide/hotkeys.png" alt="Phím tắt F2 F5 F6 F8" loading="lazy" class="w-full rounded-lg border border-slate-800 hover:border-amber-500 transition">
+              </a>
+              <ul class="list-disc pl-5 space-y-1 text-xs sm:text-sm text-slate-300">
+                <li><b class="text-white">F2</b>: mở Diplomacy trong game → Tool tự quét và đưa bảng quân lên OBS.</li>
+                <li><b class="text-red-300">F5</b> / <b class="text-sky-300">F6</b>: chấm Team Đỏ / Team Xanh thắng (+1). Chỉ nhận khi trận hiện tại <b class="text-white">đã hiện quân</b> và <b class="text-white">chưa có đội thắng</b> (mỗi trận 1 đội thắng duy nhất).</li>
+                <li><b class="text-amber-300">F8</b>: bắn hiệu ứng <i>"Tay đâu, tayyyy đâuuuuu"</i> lên Link OBS Bảng Quân (Khung Chat tự mờ đi trong lúc chạy hiệu ứng).</li>
+                <li><b class="text-white">F3</b> (Test ảnh) và <b class="text-white">F7</b> (Kết thúc kèo) dùng trên cửa sổ App. <b class="text-white">Đóng App cũng tự kết thúc kèo.</b></li>
+              </ul>
+            </div>
+
+            <!-- ⑤ RUN AS ADMINISTRATOR -->
+            <div id="guide-admin" class="bg-red-950/30 border border-red-800/50 p-3.5 sm:p-4 rounded-xl space-y-2.5">
+              <div class="font-bold text-red-200">⑤ Chạy Tool bằng quyền Administrator (bắt buộc để F5 / F6 / F8 nhận trong game)</div>
+              <p class="text-xs sm:text-sm text-slate-300">Game Đế Chế (<code>EMPIRESX.EXE</code>) luôn chạy bằng quyền Administrator. Nếu Tool chạy quyền thường, Windows sẽ <b class="text-white">chặn phím tắt</b> khi bạn đang ở trong màn hình game. Bản Tool mới đã tự xin quyền khi mở — chỉ cần bấm <b class="text-white">Yes</b>. Nếu vẫn không nhận phím, làm 1 trong 2 cách:</p>
+              <a href="/guide/run-admin.png" target="_blank" class="block">
+                <img src="/guide/run-admin.png" alt="Chạy Tool bằng quyền Administrator" loading="lazy" class="w-full rounded-lg border border-slate-800 hover:border-red-500 transition">
+              </a>
+              <ol class="list-decimal pl-5 space-y-1 text-xs sm:text-sm text-slate-300">
+                <li><b class="text-white">Cách 1 (mỗi lần mở):</b> Chuột phải vào <b>TOOL_BANG_QUAN_AOE_BY_XO.exe</b> → <b>Run as administrator</b> → bấm <b>Yes</b>.</li>
+                <li><b class="text-white">Cách 2 (cài 1 lần):</b> Chuột phải → <b>Properties</b> → tab <b>Compatibility</b> → tích <b>Run this program as an administrator</b> → <b>OK</b>.</li>
+                <li>Kiểm tra: Nhật ký App hiện dòng <b class="text-emerald-300">"🛡️ Đã kích hoạt Quyền Administrator..."</b> là phím tắt trong game đã sẵn sàng.</li>
+              </ol>
+            </div>
+
+            <!-- ⑥ XỬ LÝ SỰ CỐ -->
+            <div id="guide-faq" class="bg-slate-950/90 border border-slate-800 p-3.5 sm:p-4 rounded-xl space-y-2 text-xs sm:text-sm text-slate-300">
+              <div class="font-bold text-slate-100">⑥ Xử lý sự cố thường gặp</div>
+              <p><b class="text-white">OBS không cập nhật / hiện bản cũ:</b> chuột phải nguồn Browser → <b>Properties</b> → <b>Refresh cache of current page</b>.</p>
+              <p><b class="text-white">Bảng quân bị cắt / thừa khoảng trống:</b> kiểm tra lại Width / Height đúng bảng kích thước ở mục ①, không kéo giãn khung bằng chuột (giữ <b>Alt</b> khi kéo sẽ cắt khung).</p>
+              <p><b class="text-white">Ấn F5 / F6 bị từ chối:</b> trận hiện tại chưa hiện quân (hãy ấn F2 trong game) hoặc trận đã có đội thắng.</p>
+              <p><b class="text-white">Ấn phím trong game không nhận:</b> làm theo mục ⑤ (Run as administrator).</p>
+              <p><b class="text-white">Tắt App đột ngột:</b> Server tự kết thúc kèo LIVE sau khoảng 3 phút mất tín hiệu.</p>
             </div>
           </div>
 
