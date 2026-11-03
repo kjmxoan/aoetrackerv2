@@ -71,13 +71,89 @@
       filter: blur(2.5px);
       transition: opacity 0.35s ease, filter 0.35s ease;
     }
+    /* Khung Chat Ảo căn vị trí OBS (hiện khi chưa có trận LIVE / chưa có bình luận mới) */
+    .virtual-chat-frame {
+      height: 434px;
+      border: 2px dashed rgba(251, 191, 36, 0.85);
+      border-radius: 14px;
+      background: rgba(2, 6, 23, 0.35) !important;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), inset 0 0 24px rgba(251, 191, 36, 0.08);
+    }
+    .virtual-corner {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-color: #34d399;
+      border-style: solid;
+    }
+    .virtual-sample {
+      opacity: 0.78;
+    }
   </style>
 </head>
 <body class="p-2">
   <div id="app"
        class="w-[370px] relative select-none"
-       :class="isHypeDimmed ? 'chat-hype-dimmed' : (isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright')"
+       :class="isVirtualPreview ? 'chat-active-bright' : (isHypeDimmed ? 'chat-hype-dimmed' : (isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright'))"
        style="background: transparent !important;">
+    <!-- KHUNG CHAT ẢO CĂN VỊ TRÍ OBS (Size chuẩn 380 x 450) — chỉ hiện khi chưa có trận LIVE và chưa có bình luận mới -->
+    <div v-if="isVirtualPreview" class="virtual-chat-frame relative flex flex-col justify-between px-2.5 py-2 stroke-text">
+      <span class="virtual-corner" style="top:-2px;left:-2px;border-width:3px 0 0 3px;border-top-left-radius:12px;"></span>
+      <span class="virtual-corner" style="top:-2px;right:-2px;border-width:3px 3px 0 0;border-top-right-radius:12px;"></span>
+      <span class="virtual-corner" style="bottom:-2px;left:-2px;border-width:0 0 3px 3px;border-bottom-left-radius:12px;"></span>
+      <span class="virtual-corner" style="bottom:-2px;right:-2px;border-width:0 3px 3px 0;border-bottom-right-radius:12px;"></span>
+
+      <!-- Hàng trên: Huy hiệu Khung Ảo + Tên máy -->
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 bg-slate-950/90 border border-emerald-400/60 rounded-lg px-2 py-0.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+          <span class="font-honor text-[10px] font-black uppercase text-emerald-300 tracking-wide">KHUNG ẢO CĂN OBS CHAT</span>
+        </div>
+        <span class="font-honor text-[11px] font-black text-amber-300 uppercase">MÁY {{ streamerFilter || 'XO' }}</span>
+      </div>
+
+      <!-- Thân: Mô phỏng đúng bố cục Chat thật (dồn chữ xuống đáy khung) -->
+      <div class="flex flex-col justify-end gap-1.5 flex-1 pt-3">
+        <div class="flex items-center justify-between px-1 pb-1">
+          <div class="flex items-center gap-1.5">
+            <img src="/logo.svg" alt="AOE BY XO" class="w-4 h-4 object-contain drop-shadow" />
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="font-honor text-[12px] font-extrabold text-amber-300 uppercase tracking-wider">
+              LIVE CHAT • MÁY {{ streamerFilter || 'XO' }}
+            </span>
+          </div>
+          <div class="font-honor text-[12px] font-black text-amber-300 stroke-gold">⭐ 0 Sao</div>
+        </div>
+        <div class="virtual-sample text-[13px] leading-snug px-1">
+          <span class="font-extrabold text-sky-300">🥇 Khán giả 1:</span>
+          <span class="font-bold text-white ml-1">Bình luận mẫu hiển thị ở đây</span>
+        </div>
+        <div class="virtual-sample text-[13px] leading-snug px-1">
+          <span class="font-extrabold text-blue-400"><span class="text-[#38bdf8]">🔵 [FB] </span>Khán giả FB:</span>
+          <span class="font-bold text-white ml-1">Comment từ Group Facebook Live</span>
+        </div>
+        <div class="virtual-sample text-[13px] leading-snug px-1">
+          <span>🐘 </span>
+          <span class="font-extrabold text-white">Khán giả 2</span>
+          <span class="font-semibold text-slate-300 mx-1">tặng</span>
+          <span class="font-black text-amber-300 stroke-gold">🐘 Con Voi (+22⭐)</span>
+          <span class="font-bold text-slate-400 mx-1">➔</span>
+          <span class="font-black text-emerald-400">{{ streamerFilter || 'XO' }}</span>
+        </div>
+        <div class="virtual-sample text-[13px] leading-snug px-1">
+          <span class="font-extrabold text-sky-400">⚙️ </span>
+          <span class="font-bold text-slate-200">Ván #1: 🔴 TEAM ĐỎ chiến thắng! Tỷ số hiện tại: 1 - 0</span>
+        </div>
+      </div>
+
+      <!-- Hàng dưới: Hướng dẫn căn khung -->
+      <div class="mt-2 px-2 py-1 rounded-lg bg-slate-950/90 border border-dashed border-amber-400/70 text-[10.5px] font-bold leading-snug">
+        <div class="text-amber-300">📐 Khung mẫu căn vị trí OBS Chat (Size chuẩn: 380 x 450)</div>
+        <div class="text-emerald-400">Có trận LIVE / bình luận mới sẽ tự chuyển sang Chat thật</div>
+      </div>
+    </div>
+
+    <template v-else>
     <!-- Hiệu ứng sao bay khi có người tặng sao -->
     <span v-for="st in starParticles" :key="st.id"
           class="star-float text-2xl z-50 stroke-gold"
@@ -151,6 +227,7 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 
   <script>
@@ -169,7 +246,10 @@
           isHypeDimmed: false,
           hypeDimTimer: null,
           lastSeenHypeId: '',
-          lastLatestMsgId: ''
+          lastLatestMsgId: '',
+          streamerOverlayConfig: null,
+          forcePreviewParam: false,
+          nowTs: Date.now()
         };
       },
       computed: {
@@ -178,6 +258,24 @@
         },
         totalStars() {
           return (this.match && this.match.starsCount) || 0;
+        },
+        hasLiveMatch() {
+          return Boolean(this.match && String(this.match.status || 'LIVE').toUpperCase() === 'LIVE');
+        },
+        hasRecentRealMessages() {
+          // Bình luận / quà tặng trong vòng 3 phút gần nhất được xem là Chat thật đang hoạt động
+          const RECENT_MS = 3 * 60 * 1000;
+          return this.displayMessages.some(m => {
+            const ts = Number(m.createdAt || m._receivedAt || 0);
+            return ts > 0 && (this.nowTs - ts) < RECENT_MS;
+          });
+        },
+        isVirtualPreview() {
+          // Giống Link OBS Bảng Quân: dùng chung tùy chọn showIdlePreview (mặc định Bật) hoặc ép bằng ?preview=1
+          const cfgAllow = !this.streamerOverlayConfig || this.streamerOverlayConfig.showIdlePreview !== false;
+          if (!(cfgAllow || this.forcePreviewParam)) return false;
+          if (this.activeStarGift) return false;
+          return !this.hasLiveMatch && !this.hasRecentRealMessages;
         }
       },
       methods: {
@@ -248,12 +346,15 @@
         async fetchChatData() {
           const query = new URLSearchParams(location.search);
           this.streamerFilter = (query.get('streamer') || query.get('player') || '').trim();
+          this.forcePreviewParam = query.get('preview') === '1';
+          this.nowTs = Date.now();
           try {
-            const res = await fetch(`${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.streamerFilter)}`);
+            const res = await fetch(`${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.streamerFilter)}&_t=${Date.now()}`, { cache: 'no-store' });
             const data = await res.json();
             this.match = data.currentMatch || null;
             const targetName = (this.streamerFilter || 'XO').toLowerCase();
             const streamerPlayer = (data.players || []).find(p => String(p.name || '').toLowerCase() === targetName);
+            this.streamerOverlayConfig = (streamerPlayer && streamerPlayer.overlayConfig) || null;
             const candidateHype =
               (this.match && this.match.lastHypeShout) ||
               (streamerPlayer && streamerPlayer.overlayConfig && streamerPlayer.overlayConfig.lastHypeShout) ||
@@ -291,7 +392,8 @@
                 if (payload.type === 'chat_message' && payload.chat) {
                   if (!this.streamerFilter || String(payload.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase()) {
                     if (!this.messages.some(m => m.id === payload.chat.id)) {
-                      this.messages.push(payload.chat);
+                      this.messages.push({ ...payload.chat, _receivedAt: Date.now() });
+                      this.nowTs = Date.now();
                     }
                     this.lastLatestMsgId = String(payload.chat.id || '');
                     this.wakeUpOverlay();
@@ -299,7 +401,8 @@
                 } else if (payload.type === 'star_gifted') {
                   if (payload.chat && (!this.streamerFilter || String(payload.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase())) {
                     if (!this.messages.some(m => m.id === payload.chat.id)) {
-                      this.messages.push(payload.chat);
+                      this.messages.push({ ...payload.chat, _receivedAt: Date.now() });
+                      this.nowTs = Date.now();
                     }
                     this.lastLatestMsgId = String(payload.chat.id || '');
                     this.wakeUpOverlay();

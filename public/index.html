@@ -401,7 +401,7 @@
             <label class="flex items-center gap-2 cursor-pointer text-emerald-300">
               <input type="checkbox" v-model="overlayConfigForm.showIdlePreview"
                      class="w-4 h-4 accent-emerald-400 rounded">
-              <span>📐 Hiện <b>Khung Bảng Quân Ảo</b> trên OBS khi chưa có trận <span class="text-xs text-slate-400">(Để căn vị trí OBS dễ dàng)</span></span>
+              <span>📐 Hiện <b>Khung Ảo căn OBS</b> (Bảng Quân + Khung Chat) khi chưa có trận <span class="text-xs text-slate-400">(Để căn vị trí OBS dễ dàng)</span></span>
             </label>
           </div>
 
@@ -1281,6 +1281,7 @@
               <p>&bull; Mở <b>OBS Studio</b> &rarr; Tại khung <b>Sources (Nguồn)</b> bấm dấu <b>[+]</b> &rarr; Chọn <b>Browser (Trình duyệt)</b>.</p>
               <p>&bull; Dán đường dẫn Bảng Quân vào ô <b>URL</b>, đặt kích thước <b class="text-emerald-300">Width = 550, Height = 210</b> (hoặc <b class="text-sky-300">Width = 750, Height = 210</b> nếu bật Đánh theo C) để khung đỏ OBS ôm vừa khít bảng quân, không bị thừa khoảng trống dưới đáy.</p>
               <p>&bull; <b>Khung Bảng Quân Ảo tự động:</b> Khi chưa có trận đấu, OBS tự hiện một <b>Khung Bảng Quân Ảo (viền nét đứt vàng)</b> đúng kích thước thật để bạn kéo đặt vào vị trí mong muốn. Ngay khi vào game ấn <b>F2 (Diplomacy)</b>, khung ảo sẽ tự chuyển sang Bảng Quân thật!</p>
+              <p>&bull; <b>Khung Chat Ảo tự động:</b> Link OBS Khung Chat cũng hiện <b>Khung Chat Ảo (viền nét đứt vàng, 4 góc xanh)</b> kèm bình luận mẫu đúng kích thước <b class="text-amber-300">380 x 450</b> khi chưa có trận LIVE / bình luận mới. Có trận LIVE hoặc bình luận mới sẽ tự chuyển sang Chat thật. (Thêm <code class="text-emerald-300">&amp;preview=1</code> vào link để luôn hiện khung ảo.)</p>
             </div>
           </div>
 
