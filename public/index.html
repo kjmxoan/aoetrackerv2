@@ -1031,12 +1031,9 @@
               </div>
             </div>
 
-            <!-- Thanh Vật Phẩm Đế Chế & Tặng Sao (Chuẩn khoảng cách nút gap-2 >= 8px) -->
-            <div class="bg-slate-950/90 border border-amber-500/30 rounded-xl p-3 mb-3 space-y-2.5">
+            <!-- Thanh Vật Phẩm Đế Chế & Tặng Sao (Gộp gọn vào 1 nút, bấm sẽ xổ ra các lựa chọn) -->
+            <div class="bg-slate-950/90 border border-amber-500/30 rounded-xl p-2.5 mb-2.5 space-y-2.5">
               <div class="flex justify-between items-center flex-wrap gap-1.5">
-                <span class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
-                  <span class="text-amber-400">⚔️</span> Tiếp sức sảnh <b class="text-amber-300">{{ activeChatStreamer }}</b>:
-                </span>
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="text-[11px] font-extrabold text-emerald-300 bg-slate-900 px-2 py-0.5 rounded-lg border border-emerald-500/40">
                     🎁 Phiên Live: {{ (activeChatMatch && activeChatMatch.starsCount) || 0 }} ⭐
@@ -1045,37 +1042,46 @@
                     💰 Quỹ Sao: {{ myPlayerObj.starsBalance || 0 }} ⭐
                   </span>
                 </div>
-              </div>
-
-              <!-- Hàng 1: 6 Vật Phẩm Đặc Trưng AOE 1 (gap-2 = 8px) -->
-              <div class="grid grid-cols-3 gap-2">
-                <button v-for="item in aoeGiftCatalog" :key="item.code"
-                        @click="sendStarGift(item.stars, item.code)"
-                        class="bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-100 border border-slate-700 hover:border-amber-300 py-2 px-2 rounded-xl text-[11px] transition flex flex-col items-center justify-center leading-tight group shadow-sm"
-                        :title="item.name + ' (' + item.stars + ' Sao) — ' + item.defaultMsg">
-                  <span class="font-extrabold group-hover:scale-105 transition">{{ item.icon }} {{ item.shortLabel }}</span>
-                  <span class="text-[10px] text-amber-300 group-hover:text-slate-950 font-black mt-0.5">{{ item.stars }} ⭐</span>
+                <button @click="showGiftDrawer = !showGiftDrawer"
+                        :class="showGiftDrawer ? 'bg-amber-400 text-slate-950 border-amber-300' : 'bg-amber-500/15 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border-amber-400/50'"
+                        class="border font-extrabold px-3 py-1 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm">
+                  <span>🎁 Tặng Sao / Vật Phẩm</span>
+                  <span>{{ showGiftDrawer ? '▴' : '▾' }}</span>
                 </button>
               </div>
 
-              <!-- Hàng 2: Nút Tặng Sao Nhanh (gap-2 = 8px) -->
-              <div class="grid grid-cols-4 gap-2 pt-1.5 border-t border-slate-800">
-                <button @click="sendStarGift(1)"
-                        class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
-                  ⭐ +1
-                </button>
-                <button @click="sendStarGift(10)"
-                        class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
-                  ⭐ +10
-                </button>
-                <button @click="sendStarGift(50)"
-                        class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
-                  ✨ +50
-                </button>
-                <button @click="sendStarGift(100)"
-                        class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-1.5 rounded-xl text-xs shadow transition">
-                  🔥 +100
-                </button>
+              <!-- Ngăn xổ ra khi bấm nút '🎁 Tặng Sao / Vật Phẩm' -->
+              <div v-if="showGiftDrawer" class="space-y-2.5 pt-2 border-t border-slate-800/80">
+                <!-- Hàng 1: 6 Vật Phẩm Đặc Trưng AOE 1 (gap-2 = 8px) -->
+                <div class="grid grid-cols-3 gap-2">
+                  <button v-for="item in aoeGiftCatalog" :key="item.code"
+                          @click="sendStarGift(item.stars, item.code); showGiftDrawer = false"
+                          class="bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-100 border border-slate-700 hover:border-amber-300 py-2 px-2 rounded-xl text-[11px] transition flex flex-col items-center justify-center leading-tight group shadow-sm"
+                          :title="item.name + ' (' + item.stars + ' Sao) — ' + item.defaultMsg">
+                    <span class="font-extrabold group-hover:scale-105 transition">{{ item.icon }} {{ item.shortLabel }}</span>
+                    <span class="text-[10px] text-amber-300 group-hover:text-slate-950 font-black mt-0.5">{{ item.stars }} ⭐</span>
+                  </button>
+                </div>
+
+                <!-- Hàng 2: Nút Tặng Sao Nhanh (gap-2 = 8px) -->
+                <div class="grid grid-cols-4 gap-2 pt-1.5 border-t border-slate-800">
+                  <button @click="sendStarGift(1); showGiftDrawer = false"
+                          class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
+                    ⭐ +1
+                  </button>
+                  <button @click="sendStarGift(10); showGiftDrawer = false"
+                          class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
+                    ⭐ +10
+                  </button>
+                  <button @click="sendStarGift(50); showGiftDrawer = false"
+                          class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
+                    ✨ +50
+                  </button>
+                  <button @click="sendStarGift(100); showGiftDrawer = false"
+                          class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-1.5 rounded-xl text-xs shadow transition">
+                    🔥 +100
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1170,6 +1176,12 @@
                 <input type="text" v-model="chatInputText" @keyup.enter="submitChatMessage"
                        :placeholder="'Bình luận vào sảnh ' + activeChatStreamer + '...'"
                        class="flex-1 bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3.5 py-2 text-sm text-slate-100 outline-none">
+                <button @click="showGiftDrawer = !showGiftDrawer"
+                        :class="showGiftDrawer ? 'bg-amber-400 text-slate-950' : 'bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40'"
+                        class="font-bold px-3 py-2 rounded-xl text-xs transition shrink-0"
+                        title="Mở bảng Tặng Sao & Vật Phẩm Đế Chế">
+                  🎁 Tặng Sao {{ showGiftDrawer ? '▴' : '▾' }}
+                </button>
                 <button @click="submitChatMessage"
                         class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition shrink-0">
                   Gửi
@@ -1874,6 +1886,7 @@
           chatFilterTab: 'ALL',
           chatSearchQuery: '',
           chatAntiSpam: true,
+          showGiftDrawer: false,
           isLoading: false,
           notification: null,
           showDonateModal: false,

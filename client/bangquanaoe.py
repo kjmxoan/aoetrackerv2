@@ -1290,16 +1290,19 @@ class AOETrackerApp:
         self.root = root
         self.root.title(f"AOE COMMAND CENTER — {APP_TITLE} ({APP_VERSION})")
         try:
+            self.root.tk.call("tk", "scaling", 1.26)
+        except Exception:
+            pass
+        try:
             sw = int(self.root.winfo_screenwidth())
             sh = int(self.root.winfo_screenheight())
-            win_w = min(max(1340, int(sw * 0.80)), 2560)
-            win_h = min(max(860, int(sh * 0.84)), 1520)
+            win_w, win_h = 1366, 768
             pos_x = max(0, (sw - win_w) // 2)
             pos_y = max(0, (sh - win_h) // 2 - 15)
             self.root.geometry(f"{win_w}x{win_h}+{pos_x}+{pos_y}")
         except Exception:
-            self.root.geometry("1360x880")
-        self.root.minsize(1140, 760)
+            self.root.geometry("1366x768")
+        self.root.minsize(1100, 680)
         self.root.configure(bg="#080c16")
         self.root.resizable(True, True)
 
@@ -1874,10 +1877,11 @@ class AOETrackerApp:
             lambda *_: self._update_friends_and_social_ui(self._cached_social_data) if self._cached_social_data else None,
         )
 
-        # Phím tắt thao tác nhanh toàn cục trên cửa sổ Tool
+        # Phím tắt thao tác nhanh (Hoạt động cả trên cửa sổ Tool lẫn Global Hotkey khi đang trong màn hình Game AOE)
+        self._last_global_score_hotkey_ts = 0.0
         self.root.bind("<F3>", lambda _e: self.test_from_image_file() if self.is_logged_in else None)
-        self.root.bind("<F5>", lambda _e: self.set_current_winner("RED") if self.is_logged_in else None)
-        self.root.bind("<F6>", lambda _e: self.set_current_winner("BLUE") if self.is_logged_in else None)
+        self.root.bind("<F5>", lambda _e: self._trigger_global_winner_hotkey("RED", "F5") if self.is_logged_in else None)
+        self.root.bind("<F6>", lambda _e: self._trigger_global_winner_hotkey("BLUE", "F6") if self.is_logged_in else None)
         self.root.bind("<F7>", lambda _e: self.finish_current_match() if self.is_logged_in else None)
 
         self.main_app_frame = tk.Frame(self.root, bg="#0b0e14")
@@ -2111,12 +2115,12 @@ class AOETrackerApp:
         self.my_profile_btn.pack(fill="x")
         tk.Frame(tab3_wrap, bg="#131720", height=3).pack(fill="x")
 
-        # Vạch ngăn cách dọc
-        tk.Frame(nav_sub_bar, bg="#262f3d", width=1, height=22).pack(side="left", padx=10, pady=6)
+        # Vạch ngăn cách dọc giữa cụm Tab chính và cụm nút chức năng (nằm liền nhau trên hàng 2 theo đúng bản thiết kế)
+        tk.Frame(nav_sub_bar, bg="#262f3d", width=1, height=22).pack(side="left", padx=16, pady=6)
 
-        # Cụm công cụ phụ bên phải thanh điều hướng (kích thước gọn, độ nổi bật vừa phải)
+        # Cụm công cụ chức năng nằm liền kề ngay sau vạch ngăn cách ở hàng thứ 2
         nav_right_tools = tk.Frame(nav_sub_bar, bg="#131720")
-        nav_right_tools.pack(side="right", pady=4)
+        nav_right_tools.pack(side="left", pady=4)
 
         for lbl_txt, cmd_fn in [
             ("🖥️ Link OBS", self.copy_obs_link),
@@ -2129,18 +2133,18 @@ class AOETrackerApp:
                 nav_right_tools,
                 text=lbl_txt,
                 command=cmd_fn,
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 9, "bold"),
                 bg="#131720",
                 fg="#cbd5e1",
                 activebackground="#1e2533",
                 activeforeground="#eca133",
                 relief="flat",
                 bd=0,
-                padx=9,
-                pady=3,
+                padx=14,
+                pady=4,
                 cursor="hand2",
             )
-            b_tool.pack(side="left", padx=3)
+            b_tool.pack(side="left", padx=6)
             self._bind_hover(b_tool, "#131720", "#1b2230", "#cbd5e1", "#fbbf24")
             if lbl_txt == "🌐 Mở Web":
                 self.open_web_btn = b_tool
@@ -2349,21 +2353,21 @@ class AOETrackerApp:
         self.right_workspace_col.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
 
         # ----------------------------------------------------------------------
-        # KHU VỰC B – TRUNG TÂM QUẢN LÝ TRẬN ĐẤU (ESPORTS SCOREBOARD THỰC THỤ)
+        # KHU VỰC B – TRUNG TÂM QUẢN LÝ TRẬN ĐẤU (ESPORTS SCOREBOARD GỌN GÀNG CHO 1366x768)
         # ----------------------------------------------------------------------
         battle_card = tk.Frame(
             self.left_workspace_col,
             bg="#131720",
             highlightthickness=1,
             highlightbackground="#232a36",
-            padx=14,
-            pady=12,
+            padx=12,
+            pady=8,
         )
-        battle_card.pack(fill="x", side="top", pady=(0, 8))
+        battle_card.pack(fill="x", side="top", pady=(0, 6))
 
         # Thanh tiêu đề Scoreboard: TRẬN ĐẤU ĐANG DIỄN RA | Nút Hoàn tác (-1) + Nhãn LIVE
         sb_top_bar = tk.Frame(battle_card, bg="#131720")
-        sb_top_bar.pack(fill="x", pady=(0, 8))
+        sb_top_bar.pack(fill="x", pady=(0, 6))
 
         self.scoreboard_hdr_lbl = tk.Label(
             sb_top_bar,
@@ -2381,7 +2385,7 @@ class AOETrackerApp:
             fg="#34d399",
             bg="#0e2920",
             padx=8,
-            pady=2,
+            pady=1,
             highlightthickness=1,
             highlightbackground="#166534",
         )
@@ -2404,16 +2408,16 @@ class AOETrackerApp:
         self.btn_undo_win.pack(side="right", padx=(0, 8))
         self._bind_hover(self.btn_undo_win, "#1a202c", "#2d3748", "#fbbf24", "#ffffff")
 
-        # Khung Scoreboard 3 cột: TEAM ĐỎ (Trái) | TỶ SỐ LỚN (Giữa) | TEAM XANH (Phải)
+        # Khung Scoreboard 3 cột: TEAM ĐỎ (Trái) | TỶ SỐ LỚN (Giữa có viền nổi bật) | TEAM XANH (Phải)
         sb_board_inner = tk.Frame(
             battle_card,
-            bg="#161b26",
+            bg="#151923",
             highlightthickness=1,
-            highlightbackground="#262f3f",
-            padx=12,
-            pady=12,
+            highlightbackground="#232a38",
+            padx=10,
+            pady=8,
         )
-        sb_board_inner.pack(fill="x", pady=(0, 10))
+        sb_board_inner.pack(fill="x", pady=(0, 8))
         sb_board_inner.columnconfigure(0, weight=4, uniform="sb_col")
         sb_board_inner.columnconfigure(1, weight=4, uniform="sb_col")
         sb_board_inner.columnconfigure(2, weight=4, uniform="sb_col")
@@ -2421,42 +2425,41 @@ class AOETrackerApp:
         # --- CỘT TRÁI: TEAM ĐỎ ---
         self.red_card = tk.Frame(
             sb_board_inner,
-            bg="#1c1419",
-            highlightthickness=1,
-            highlightbackground="#4c1d24",
-            padx=10,
-            pady=10,
+            bg="#18131a",
+            highlightthickness=0,
+            padx=6,
+            pady=4,
         )
-        self.red_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        self.red_card.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
 
-        self._create_team_shield_canvas(self.red_card, "RED", size=56, bg_color="#1c1419").pack(pady=(2, 4))
+        self._create_team_shield_canvas(self.red_card, "RED", size=44, bg_color="#18131a").pack(pady=(2, 2))
 
         tk.Label(
             self.red_card,
             text="TEAM ĐỎ",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 11, "bold"),
             fg="#ef4444",
-            bg="#1c1419",
+            bg="#18131a",
         ).pack()
 
         self.red_primary_player_lbl = tk.Label(
             self.red_card,
             text="XO",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 11, "bold"),
             fg="#ffffff",
-            bg="#1c1419",
+            bg="#18131a",
         )
-        self.red_primary_player_lbl.pack(pady=(2, 0))
+        self.red_primary_player_lbl.pack(pady=(1, 0))
 
         self.red_roster_lbl = tk.Label(
             self.red_card,
             text="Ấn F2 Diplomacy trong game",
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
-            bg="#1c1419",
+            bg="#18131a",
             justify="center",
         )
-        self.red_roster_lbl.pack(pady=(1, 2))
+        self.red_roster_lbl.pack(pady=(1, 1))
 
         self.red_count_lbl = tk.Label(
             self.red_card,
@@ -2465,69 +2468,71 @@ class AOETrackerApp:
             fg="#fca5a5",
             bg="#2b161b",
             padx=6,
-            pady=1,
+            pady=0,
         )
-        self.red_count_lbl.pack(pady=(2, 0))
+        self.red_count_lbl.pack(pady=(1, 0))
 
-        # --- CỘT GIỮA: TỶ SỐ LỚN TRUNG TÂM & HOÀN TÁC / KẾT THÚC KÈO ---
+        # --- CỘT GIỮA: TỶ SỐ LỚN TRUNG TÂM & KẾT THÚC KÈO (Đóng khung trung tâm chuẩn thiết kế) ---
         center_hud = tk.Frame(
             sb_board_inner,
-            bg="#161b26",
-            padx=8,
-            pady=4,
+            bg="#171c28",
+            highlightthickness=1,
+            highlightbackground="#263042",
+            padx=10,
+            pady=6,
         )
         center_hud.grid(row=0, column=1, sticky="nsew", padx=4)
 
         self.match_mode_lbl = tk.Label(
             center_hud,
             text="Kèo 1v1 - Chạm 7",
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 8, "bold"),
             fg="#eca133",
-            bg="#161b26",
+            bg="#171c28",
         )
-        self.match_mode_lbl.pack(side="top", pady=(2, 0))
+        self.match_mode_lbl.pack(side="top", pady=(0, 0))
 
         self.score_lbl = tk.Label(
             center_hud,
             text="0 : 0",
-            font=("Segoe UI", 34, "bold"),
+            font=("Segoe UI", 26, "bold"),
             fg="#ffffff",
-            bg="#161b26",
+            bg="#171c28",
         )
-        self.score_lbl.pack(side="top", pady=(0, 2))
+        self.score_lbl.pack(side="top", pady=(0, 0))
 
         self.c_mode_summary_lbl = tk.Label(
             center_hud,
             text="Ấn F2 trong game để bắt đầu",
             font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
-            bg="#161b26",
-            wraplength=210,
+            bg="#171c28",
+            wraplength=200,
             justify="center",
         )
-        self.c_mode_summary_lbl.pack(side="top", pady=(0, 2))
+        self.c_mode_summary_lbl.pack(side="top", pady=(0, 1))
 
         self.match_history_lbl = tk.Label(
             center_hud,
-            text="Lịch sử ván: Chưa có ván kết thúc",
+            text="Lịch sử ván: Chưa có ván đấu",
             font=("Segoe UI", 8, "bold"),
             fg="#cbd5e1",
             bg="#11151e",
-            padx=8,
-            pady=2,
-            wraplength=210,
+            padx=6,
+            pady=1,
+            wraplength=200,
             justify="center",
         )
-        self.match_history_lbl.pack(side="top", pady=(2, 4))
+        self.match_history_lbl.pack(side="top", pady=(1, 2))
 
         self.stars_counter_lbl = tk.Label(
             center_hud,
             text="⭐ 0 sao tại sảnh XO",
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 8, "bold"),
             fg="#fbbf24",
-            bg="#161b26",
+            bg="#171c28",
         )
-        self.stars_counter_lbl.pack(side="top", pady=(0, 6))
+        self.stars_counter_lbl.pack(side="top", pady=(0, 4))
 
         self.btn_end_match = tk.Button(
             center_hud,
@@ -2541,8 +2546,8 @@ class AOETrackerApp:
             relief="flat",
             highlightthickness=1,
             highlightbackground="#7f1d1d",
-            padx=14,
-            pady=4,
+            padx=12,
+            pady=3,
             cursor="hand2",
         )
         self.btn_end_match.pack(side="bottom")
@@ -2551,42 +2556,41 @@ class AOETrackerApp:
         # --- CỘT PHẢI: TEAM XANH ---
         self.blue_card = tk.Frame(
             sb_board_inner,
-            bg="#121a28",
-            highlightthickness=1,
-            highlightbackground="#1e3a8a",
-            padx=10,
-            pady=10,
+            bg="#121826",
+            highlightthickness=0,
+            padx=6,
+            pady=4,
         )
-        self.blue_card.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
+        self.blue_card.grid(row=0, column=2, sticky="nsew", padx=(4, 0))
 
-        self._create_team_shield_canvas(self.blue_card, "BLUE", size=56, bg_color="#121a28").pack(pady=(2, 4))
+        self._create_team_shield_canvas(self.blue_card, "BLUE", size=44, bg_color="#121826").pack(pady=(2, 2))
 
         tk.Label(
             self.blue_card,
             text="TEAM XANH",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 11, "bold"),
             fg="#3b82f6",
-            bg="#121a28",
+            bg="#121826",
         ).pack()
 
         self.blue_primary_player_lbl = tk.Label(
             self.blue_card,
             text="Đối thủ",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 11, "bold"),
             fg="#ffffff",
-            bg="#121a28",
+            bg="#121826",
         )
-        self.blue_primary_player_lbl.pack(pady=(2, 0))
+        self.blue_primary_player_lbl.pack(pady=(1, 0))
 
         self.blue_roster_lbl = tk.Label(
             self.blue_card,
             text="Ấn F2 Diplomacy trong game",
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
-            bg="#121a28",
+            bg="#121826",
             justify="center",
         )
-        self.blue_roster_lbl.pack(pady=(1, 2))
+        self.blue_roster_lbl.pack(pady=(1, 1))
 
         self.blue_count_lbl = tk.Label(
             self.blue_card,
@@ -2595,11 +2599,11 @@ class AOETrackerApp:
             fg="#93c5fd",
             bg="#15233b",
             padx=6,
-            pady=1,
+            pady=0,
         )
-        self.blue_count_lbl.pack(pady=(2, 0))
+        self.blue_count_lbl.pack(pady=(1, 0))
 
-        # --- HÀNG NÚT XÁC NHẬN CHIẾN THẮNG (2 NÚT BẰNG NHAU 50/50) ---
+        # --- HÀNG NÚT XÁC NHẬN CHIẾN THẮNG (2 NÚT BẰNG NHAU 50/50 + GỢI Ý F5/F6 TRONG GAME) ---
         win_btns_row = tk.Frame(battle_card, bg="#131720")
         win_btns_row.pack(fill="x")
         win_btns_row.columnconfigure(0, weight=1, uniform="win_btn_col")
@@ -2607,9 +2611,9 @@ class AOETrackerApp:
 
         self.btn_red_win = tk.Button(
             win_btns_row,
-            text="🏆  Team Đỏ thắng (+1)",
+            text="🏆  Team Đỏ thắng (+1) [F5]",
             command=lambda: self.set_current_winner("RED"),
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#881b24",
             fg="#ffffff",
             activebackground="#a8222d",
@@ -2617,17 +2621,17 @@ class AOETrackerApp:
             relief="flat",
             highlightthickness=1,
             highlightbackground="#dc2626",
-            pady=8,
+            pady=5,
             cursor="hand2",
         )
-        self.btn_red_win.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        self.btn_red_win.grid(row=0, column=0, sticky="ew", padx=(0, 5))
         self._bind_hover(self.btn_red_win, "#881b24", "#a8222d", "#ffffff", "#ffffff")
 
         self.btn_blue_win = tk.Button(
             win_btns_row,
-            text="🏆  Team Xanh thắng (+1)",
+            text="🏆  Team Xanh thắng (+1) [F6]",
             command=lambda: self.set_current_winner("BLUE"),
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg="#19397a",
             fg="#ffffff",
             activebackground="#1d4ed8",
@@ -2635,10 +2639,10 @@ class AOETrackerApp:
             relief="flat",
             highlightthickness=1,
             highlightbackground="#3b82f6",
-            pady=8,
+            pady=5,
             cursor="hand2",
         )
-        self.btn_blue_win.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        self.btn_blue_win.grid(row=0, column=1, sticky="ew", padx=(5, 0))
         self._bind_hover(self.btn_blue_win, "#19397a", "#1d4ed8", "#ffffff", "#ffffff")
 
         # ----------------------------------------------------------------------
@@ -3058,7 +3062,8 @@ class AOETrackerApp:
             cursor="hand2",
         ).pack(side="right")
 
-        # 5. Ô nhập Bình luận ở Đáy Khu vực D (Pack side="bottom" trước để cố định đáy)
+        # 5. Ô nhập Bình luận & Nút gộp Tặng Sao / Vật Phẩm ở Đáy Khu vực D (Pack side="bottom" trước để cố định đáy)
+        self.gift_drawer_open = False
         chat_input_row = tk.Frame(chat_card, bg="#131720")
         chat_input_row.pack(fill="x", side="bottom", pady=(4, 0))
 
@@ -3074,7 +3079,7 @@ class AOETrackerApp:
             highlightthickness=1,
             highlightbackground="#262f3f",
         )
-        chat_entry.pack(side="left", fill="x", expand=True, padx=(0, 6), ipady=6)
+        chat_entry.pack(side="left", fill="x", expand=True, padx=(0, 6), ipady=5)
         chat_entry.bind("<Return>", lambda _e: self.send_chat_message_action())
 
         self.btn_emoji_chat = tk.Button(
@@ -3087,11 +3092,11 @@ class AOETrackerApp:
             relief="flat",
             highlightthickness=1,
             highlightbackground="#2d3748",
-            padx=8,
+            padx=7,
             pady=3,
             cursor="hand2",
         )
-        self.btn_emoji_chat.pack(side="right", padx=(5, 0))
+        self.btn_emoji_chat.pack(side="right", padx=(4, 0))
         self._bind_hover(self.btn_emoji_chat, "#1a202c", "#2d3748", "#e2e8f0", "#fbbf24")
 
         btn_send_chat = tk.Button(
@@ -3102,33 +3107,67 @@ class AOETrackerApp:
             bg="#eca133",
             fg="#11151b",
             relief="flat",
-            padx=16,
-            pady=5,
+            padx=14,
+            pady=4,
             cursor="hand2",
         )
-        btn_send_chat.pack(side="right")
+        btn_send_chat.pack(side="right", padx=(4, 0))
         self._bind_hover(btn_send_chat, "#eca133", "#f59e0b", "#11151b", "#11151b")
 
-        # 6. Khung Vật Phẩm Đế Chế 3x2 Card lớn & 4 Nút Tặng Sao nhanh (Pack side="bottom")
-        aoe_gift_panel = tk.Frame(
-            chat_card,
-            bg="#131720",
+        self.btn_toggle_gift_drawer = tk.Button(
+            chat_input_row,
+            text="🎁 Tặng Sao ▾",
+            command=self.toggle_gift_drawer,
+            font=("Segoe UI", 9, "bold"),
+            bg="#261c10",
+            fg="#fbbf24",
+            activebackground="#3b2a14",
+            activeforeground="#fde047",
+            relief="flat",
             highlightthickness=1,
-            highlightbackground="#232a36",
+            highlightbackground="#b45309",
+            padx=10,
+            pady=4,
+            cursor="hand2",
+        )
+        self.btn_toggle_gift_drawer.pack(side="right")
+        self._bind_hover(self.btn_toggle_gift_drawer, "#261c10", "#3b2a14", "#fbbf24", "#ffffff")
+
+        # 6. Khung Vật Phẩm Đế Chế 3x2 Card & 4 Nút Tặng Sao nhanh (Gộp vào nút '🎁 Tặng Sao ▾', bấm mới xổ ra)
+        self.aoe_gift_panel = tk.Frame(
+            chat_card,
+            bg="#151a24",
+            highlightthickness=1,
+            highlightbackground="#b45309",
             padx=8,
             pady=6,
         )
-        aoe_gift_panel.pack(fill="x", side="bottom", pady=(6, 2))
+
+        gift_hdr_row = tk.Frame(self.aoe_gift_panel, bg="#151a24")
+        gift_hdr_row.pack(fill="x", pady=(0, 4))
 
         tk.Label(
-            aoe_gift_panel,
-            text="⚔️ VẬT PHẨM ĐẾ CHẾ & TẶNG SAO  (Quy đổi trừ trực tiếp từ Quỹ Sao của bạn)",
+            gift_hdr_row,
+            text="⚔️ CHỌN VẬT PHẨM ĐẾ CHẾ HOẶC TẶNG SAO (Trừ từ Quỹ Sao của bạn)",
             font=("Segoe UI", 8, "bold"),
-            fg="#cbd5e1",
-            bg="#131720",
-        ).pack(anchor="w", pady=(0, 5))
+            fg="#fbbf24",
+            bg="#151a24",
+        ).pack(side="left")
 
-        gift_grid = tk.Frame(aoe_gift_panel, bg="#131720")
+        tk.Button(
+            gift_hdr_row,
+            text="✕ Thu gọn",
+            command=lambda: self.toggle_gift_drawer(force_close=True),
+            font=("Segoe UI", 8, "bold"),
+            bg="#1e2533",
+            fg="#94a3b8",
+            relief="flat",
+            padx=6,
+            pady=0,
+            cursor="hand2",
+        ).pack(side="right")
+
+        gift_grid = tk.Frame(self.aoe_gift_panel, bg="#151a24")
         gift_grid.pack(fill="x", pady=(0, 4))
         for c_i in range(3):
             gift_grid.columnconfigure(c_i, weight=1, uniform="gift_col")
@@ -3154,21 +3193,21 @@ class AOETrackerApp:
                 bg=card_bg,
                 highlightthickness=1,
                 highlightbackground=card_border,
-                padx=8,
-                pady=5,
+                padx=6,
+                pady=4,
                 cursor="hand2",
             )
-            g_card.grid(row=r_i, column=c_i, sticky="ew", padx=3, pady=3)
+            g_card.grid(row=r_i, column=c_i, sticky="ew", padx=3, pady=2)
 
             ico_l = tk.Label(
                 g_card,
                 text=g_ico,
-                font=("Segoe UI Emoji", 16),
+                font=("Segoe UI Emoji", 14),
                 fg="#fbbf24",
                 bg=card_bg,
                 cursor="hand2",
             )
-            ico_l.pack(side="left", padx=(2, 8))
+            ico_l.pack(side="left", padx=(2, 6))
 
             txt_stack = tk.Frame(g_card, bg=card_bg, cursor="hand2")
             txt_stack.pack(side="left", fill="x", expand=True)
@@ -3187,7 +3226,7 @@ class AOETrackerApp:
             cost_l = tk.Label(
                 txt_stack,
                 text=f"{g_cost} ⭐",
-                font=("Segoe UI", 9, "bold"),
+                font=("Segoe UI", 8, "bold"),
                 fg="#fbbf24",
                 bg=card_bg,
                 anchor="w",
@@ -3215,7 +3254,7 @@ class AOETrackerApp:
             _bind_gift_click([g_card, ico_l, txt_stack, name_l, cost_l])
 
         # Hàng nút Tặng Sao nhanh (+1, +10, +50, +100 Sao)
-        quick_star_row = tk.Frame(aoe_gift_panel, bg="#131720")
+        quick_star_row = tk.Frame(self.aoe_gift_panel, bg="#151a24")
         quick_star_row.pack(fill="x")
         for c_i in range(4):
             quick_star_row.columnconfigure(c_i, weight=1, uniform="qstar_col")
@@ -3240,8 +3279,9 @@ class AOETrackerApp:
             self._bind_hover(b, "#171c26", "#242c3d", "#e2e8f0", "#fbbf24")
 
         # 7. Khung Tin Nhắn Dọc ở Giữa Khu Vực D (Phân cấp Thời gian / Admin / Người dùng / Quà tặng / Hệ thống)
-        chat_feed_wrap = tk.Frame(chat_card, bg="#0e121a", highlightthickness=1, highlightbackground="#232a36")
-        chat_feed_wrap.pack(side="top", fill="both", expand=True, pady=(0, 2))
+        self.chat_feed_wrap = tk.Frame(chat_card, bg="#0e121a", highlightthickness=1, highlightbackground="#232a36")
+        self.chat_feed_wrap.pack(side="top", fill="both", expand=True, pady=(0, 2))
+        chat_feed_wrap = self.chat_feed_wrap
 
         chat_scroll = tk.Scrollbar(chat_feed_wrap, orient="vertical")
         chat_scroll.pack(side="right", fill="y")
@@ -5756,6 +5796,30 @@ class AOETrackerApp:
 
         threading.Thread(target=_task, daemon=True).start()
 
+    def toggle_gift_drawer(self, force_close: bool = False):
+        """Đóng/mở ngăn chọn Vật Phẩm Đế Chế & Tặng Sao khi bấm vào nút '🎁 Tặng Sao ▾'."""
+        if not hasattr(self, "aoe_gift_panel"):
+            return
+        if force_close or getattr(self, "gift_drawer_open", False):
+            self.gift_drawer_open = False
+            try:
+                self.aoe_gift_panel.pack_forget()
+                if hasattr(self, "btn_toggle_gift_drawer"):
+                    self.btn_toggle_gift_drawer.configure(text="🎁 Tặng Sao ▾", bg="#261c10", fg="#fbbf24")
+            except Exception:
+                pass
+        else:
+            self.gift_drawer_open = True
+            try:
+                if hasattr(self, "chat_feed_wrap"):
+                    self.aoe_gift_panel.pack(before=self.chat_feed_wrap, fill="x", side="bottom", pady=(4, 2))
+                else:
+                    self.aoe_gift_panel.pack(fill="x", side="bottom", pady=(4, 2))
+                if hasattr(self, "btn_toggle_gift_drawer"):
+                    self.btn_toggle_gift_drawer.configure(text="🎁 Đóng Quà ▴", bg="#eca133", fg="#11151b")
+            except Exception:
+                pass
+
     def send_star_gift_action(self, stars: int = 1, gift_code: str = "", gift_name: str = "", default_msg: str = ""):
         if not self.is_logged_in:
             self.messagebox.showwarning(
@@ -5763,6 +5827,8 @@ class AOETrackerApp:
                 "Bạn bắt buộc phải đăng nhập tài khoản Player trước khi tặng Vật Phẩm / Sao trong sảnh Live!",
             )
             return
+        # Tự động thu gọn ngăn chọn quà sau khi bấm chọn
+        self.toggle_gift_drawer(force_close=True)
         sender = self.player_name_var.get().strip()
         target_streamer = self.get_active_lobby_streamer()
         gift_msg = default_msg or f"Tặng {stars} sao cổ vũ {target_streamer}!"
@@ -6440,6 +6506,26 @@ class AOETrackerApp:
 
         threading.Thread(target=_task, daemon=True).start()
 
+    def _trigger_global_winner_hotkey(self, winner: str, key_name: str = "F5"):
+        """Xử lý phím tắt F5 (Thắng Đỏ) / F6 (Thắng Xanh) cả khi đang ở trong màn hình Game AOE lẫn trên App."""
+        if not self.is_logged_in:
+            return
+        now = time.time()
+        if now - getattr(self, "_last_global_score_hotkey_ts", 0.0) < 1.0:
+            return
+        self._last_global_score_hotkey_ts = now
+        team_label = "Team Đỏ (+1)" if winner == "RED" else "Team Xanh (+1)"
+        self.log(f"⌨️ [Phím tắt {key_name}] Ghi nhận {team_label} từ bàn phím — đang cập nhật tỉ số...", "TEAM")
+        # Phát tiếng bíp xác nhận ngắn để người chơi đang trong màn hình Game toàn màn hình biết đã ăn phím F5/F6
+        if os.name == "nt":
+            try:
+                import winsound
+                freq = 880 if winner == "RED" else 1046
+                threading.Thread(target=lambda: winsound.Beep(freq, 110), daemon=True).start()
+            except Exception:
+                pass
+        self.set_current_winner(winner)
+
     def set_current_winner(self, winner: str):
         def _task():
             try:
@@ -6570,8 +6656,9 @@ class AOETrackerApp:
 
     def _monitor_diplomacy_events(self):
         """
-        Bắt sự kiện khi người chơi thực sự click vào nút Diplomacy trên thanh HUD phía trên trong game
-        hoặc bấm phím tắt F2 / Alt+D. Chỉ khi có sự kiện này mới kích hoạt cửa sổ quét bảng quân.
+        Bắt sự kiện toàn cục (Global Hook / Key State) ngay cả khi người chơi đang ở trong màn hình Game AOE:
+        1. Phím tắt F5 (Team Đỏ thắng +1), F6 (Team Xanh thắng +1) hoạt động trực tiếp trong Game.
+        2. Nút Diplomacy trên HUD, phím F2 hoặc tổ hợp Alt+D kích hoạt cửa sổ quét bảng quân.
         """
         if os.name != "nt":
             return
@@ -6582,17 +6669,57 @@ class AOETrackerApp:
             user32 = ctypes.windll.user32
             VK_LBUTTON = 0x01
             VK_F2 = 0x71
+            VK_F5 = 0x74
+            VK_F6 = 0x75
             VK_MENU = 0x12
             VK_D = 0x44
+            MOD_NOREPEAT = 0x4000
+            WM_HOTKEY = 0x0312
+            HOTKEY_ID_F5 = 505
+            HOTKEY_ID_F6 = 506
+
+            # Đăng ký thêm OS Hotkey F5/F6 để vượt qua UIPI ngay cả khi Game chạy quyền Administrator
+            try:
+                user32.RegisterHotKey(None, HOTKEY_ID_F5, MOD_NOREPEAT, VK_F5)
+                user32.RegisterHotKey(None, HOTKEY_ID_F6, MOD_NOREPEAT, VK_F6)
+            except Exception:
+                pass
 
             prev_lbtn = False
             prev_f2 = False
+            prev_f5 = False
+            prev_f6 = False
             prev_alt_d = False
+            msg = wintypes.MSG()
 
             while self.running:
                 try:
-                    if not self.is_logged_in or not self.auto_scan_var.get():
+                    # 1. Đọc hàng đợi WM_HOTKEY của Windows (bắt nhạy F5/F6 trong Game)
+                    while user32.PeekMessageW(ctypes.byref(msg), None, WM_HOTKEY, WM_HOTKEY, 1):
+                        if self.is_logged_in and msg.message == WM_HOTKEY:
+                            if msg.wParam == HOTKEY_ID_F5:
+                                self.root.after(0, lambda: self._trigger_global_winner_hotkey("RED", "F5 (In-Game)"))
+                            elif msg.wParam == HOTKEY_ID_F6:
+                                self.root.after(0, lambda: self._trigger_global_winner_hotkey("BLUE", "F6 (In-Game)"))
+
+                    if not self.is_logged_in:
                         time.sleep(0.1)
+                        continue
+
+                    # 2. Kiểm tra trực tiếp trạng thái phím F5 / F6 bằng GetAsyncKeyState (dự phòng kép)
+                    f5_down = (user32.GetAsyncKeyState(VK_F5) & 0x8000) != 0
+                    f6_down = (user32.GetAsyncKeyState(VK_F6) & 0x8000) != 0
+
+                    if f5_down and not prev_f5:
+                        self.root.after(0, lambda: self._trigger_global_winner_hotkey("RED", "F5 (In-Game)"))
+                    if f6_down and not prev_f6:
+                        self.root.after(0, lambda: self._trigger_global_winner_hotkey("BLUE", "F6 (In-Game)"))
+
+                    prev_f5 = f5_down
+                    prev_f6 = f6_down
+
+                    if not self.auto_scan_var.get():
+                        time.sleep(0.04)
                         continue
 
                     f2_down = (user32.GetAsyncKeyState(VK_F2) & 0x8000) != 0
@@ -6646,6 +6773,11 @@ class AOETrackerApp:
                 except Exception:
                     pass
                 time.sleep(0.025)
+            try:
+                user32.UnregisterHotKey(None, HOTKEY_ID_F5)
+                user32.UnregisterHotKey(None, HOTKEY_ID_F6)
+            except Exception:
+                pass
         except Exception:
             pass
 

@@ -1431,23 +1431,41 @@ app.post('/api', async (req, res) => {
         return res.json({ status: 'error', message: 'Kèo đấu chưa có trận nào!' });
       }
 
+      const rawWinner = String(data.winner || 'PENDING').toUpperCase().trim();
+      const winnerVal = ['RED', 'BLUE', 'PENDING'].includes(rawWinner) ? rawWinner : 'PENDING';
+
       let gameIdx = -1;
       if (data.gameIndex !== undefined && data.gameIndex !== null && data.gameIndex !== '') {
         gameIdx = Number(data.gameIndex);
       } else {
-        // Khi bấm +1 nhanh (không truyền gameIndex): ưu tiên trận đầu tiên đang PENDING, nếu tất cả đã có kết quả thì lấy trận cuối
+        // Khi bấm +1 nhanh hoặc phím tắt F5/F6 trong Game (không truyền gameIndex):
+        // Ưu tiên ván đang PENDING, nếu tất cả các ván đã có kết quả thắng/thua thì tự động nối thêm ván mới (+1 tỉ số)
         const pendingIdx = match.games.findIndex(
           g => !g.winner || String(g.winner).toUpperCase() === 'PENDING'
         );
-        gameIdx = pendingIdx !== -1 ? pendingIdx : match.games.length - 1;
+        if (pendingIdx !== -1) {
+          gameIdx = pendingIdx;
+        } else if (winnerVal === 'RED' || winnerVal === 'BLUE') {
+          const lastG = match.games[match.games.length - 1] || {};
+          match.games.push({
+            redCivs: Array.isArray(lastG.redCivs) ? [...lastG.redCivs] : [],
+            blueCivs: Array.isArray(lastG.blueCivs) ? [...lastG.blueCivs] : [],
+            redColors: Array.isArray(lastG.redColors) ? [...lastG.redColors] : [],
+            blueColors: Array.isArray(lastG.blueColors) ? [...lastG.blueColors] : [],
+            winner: winnerVal,
+            timestamp: Date.now(),
+            autoAppendedByHotkey: true
+          });
+          gameIdx = match.games.length - 1;
+        } else {
+          gameIdx = match.games.length - 1;
+        }
       }
 
       if (!match.games[gameIdx]) {
         return res.json({ status: 'error', message: 'Không tìm thấy trận đấu!' });
       }
 
-      const rawWinner = String(data.winner || 'PENDING').toUpperCase().trim();
-      const winnerVal = ['RED', 'BLUE', 'PENDING'].includes(rawWinner) ? rawWinner : 'PENDING';
       match.games[gameIdx].winner = winnerVal;
       match.lastHeartbeat = Date.now();
       match.status = 'LIVE';
@@ -1543,7 +1561,11 @@ app.post('/api', async (req, res) => {
       }
 
       const prevWinner = match.games[targetIdx].winner;
-      match.games[targetIdx].winner = 'PENDING';
+      if (match.games[targetIdx].autoAppendedByHotkey && match.games.length > 1) {
+        match.games.splice(targetIdx, 1);
+      } else {
+        match.games[targetIdx].winner = 'PENDING';
+      }
       match.lastHeartbeat = Date.now();
       match.status = 'LIVE';
 
