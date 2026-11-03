@@ -13,63 +13,45 @@
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #080c16;
-      color: #e7ebf0;
+      background-color: #0b0f17;
+      color: #f1f5f9;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .font-display {
       font-family: 'Roboto Condensed', 'Inter', sans-serif;
     }
 
-    /* Dark Matte Wood-Gold Theme — khớp 100% ảnh mẫu đính kèm */
+    /* Minimalist Dark Esports Theme (Nền Xám Đen + Trắng Sáng + Xanh Dương dịu, hạn chế màu vàng/cam) */
     .premium-card {
-      background: #181e28;
-      border: 1px solid #2b3541;
-      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.65);
+      background: #131b26;
+      border: 1px solid #222f42;
+      box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
       transition: border-color 0.2s ease, transform 0.2s ease;
     }
 
     .premium-card-hover:hover {
-      border-color: #eca133;
+      border-color: #38bdf8;
     }
 
-    /* Override các lớp màu Tailwind sang bảng màu gỗ tối / charcoal & vàng hổ phách (#eca133) */
-    .bg-slate-900, .bg-slate-900\/90, .bg-slate-950, .bg-slate-950\/60, .bg-slate-950\/70, .bg-slate-950\/80 {
-      background-color: #11151b !important;
-    }
-    .bg-slate-800, .bg-slate-800\/90, .bg-slate-800\/80, .bg-slate-800\/60 {
-      background-color: #11151b !important;
-    }
-    .hover\:bg-slate-700:hover {
-      background-color: #222b38 !important;
-    }
-    .border-slate-700, .border-slate-700\/80, .border-slate-700\/70, .border-slate-800 {
-      border-color: #2b3541 !important;
-    }
-    .bg-sky-500, .bg-sky-600 {
-      background-color: #eca133 !important;
-      color: #11151b !important;
-    }
-    .hover\:bg-sky-400:hover, .hover\:bg-sky-500:hover {
-      background-color: #d98f26 !important;
-      color: #11151b !important;
-    }
-    .text-sky-400, .text-sky-300 {
-      color: #eca133 !important;
-    }
-    .border-sky-500\/40, .border-sky-500\/50, .focus\:border-sky-400:focus {
-      border-color: #eca133 !important;
-    }
-
-    /* Team Đỏ & Team Xanh có màu đặc trưng dịu mắt trên nền gỗ tối */
+    /* Team Đỏ & Team Xanh tối giản, dịu mắt, tôn chữ trắng rõ nét */
     .team-red-box {
-      background: #1e171b;
-      border: 1px solid #5c242c;
+      background: #1a1418;
+      border: 1px solid #4c1d24;
     }
 
     .team-blue-box {
-      background: #151d29;
-      border: 1px solid #284268;
+      background: #121a26;
+      border: 1px solid #1e3a5f;
+    }
+
+    /* Ẩn thanh cuộn ngang trên thanh tab điện thoại */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
 
     @keyframes floatStar {
@@ -85,8 +67,8 @@
     }
   </style>
 </head>
-<body class="min-h-screen selection:bg-sky-500 selection:text-slate-950">
-  <div id="app" class="max-w-7xl mx-auto px-5 py-6 flex flex-col min-h-screen justify-between">
+<body class="min-h-screen selection:bg-sky-500 selection:text-slate-950 pb-20 lg:pb-0">
+  <div id="app" class="max-w-7xl mx-auto px-3 sm:px-5 py-3 sm:py-6 flex flex-col min-h-screen justify-between">
     <div>
       <!-- HIỆU ỨNG SAO BAY TOÀN MÀN HÌNH KHI CÓ NGƯỜI TẶNG SAO -->
       <span v-for="st in starBurstParticles" :key="st.id"
@@ -97,147 +79,235 @@
 
       <!-- BANNER THÔNG BÁO KHI CÓ NGƯỜI TẶNG SAO -->
       <div v-if="activeStarBanner"
-           class="fixed top-5 left-1/2 -translate-x-1/2 z-[180] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 px-6 py-3 rounded-2xl shadow-2xl border-2 border-white/80 flex items-center gap-3 animate-bounce">
-        <span class="text-2xl">🌟</span>
-        <div>
-          <div class="text-sm font-black">
-            {{ activeStarBanner.senderName }} vừa tặng +{{ activeStarBanner.starCount }} ⭐ cho {{ activeStarBanner.streamerName }}!
+           class="fixed top-4 left-1/2 -translate-x-1/2 z-[180] w-[92vw] max-w-md bg-sky-500 text-slate-950 px-4 py-2.5 rounded-2xl shadow-2xl border border-white/80 flex items-center gap-3 animate-bounce">
+        <span class="text-xl">🌟</span>
+        <div class="min-w-0">
+          <div class="text-xs sm:text-sm font-black truncate">
+            {{ activeStarBanner.senderName }} tặng +{{ activeStarBanner.starCount }} ⭐ cho {{ activeStarBanner.streamerName }}!
           </div>
-          <div class="text-xs font-semibold text-slate-900">"{{ activeStarBanner.message }}"</div>
+          <div class="text-[11px] font-semibold text-slate-900 truncate">"{{ activeStarBanner.message }}"</div>
         </div>
       </div>
 
       <!-- NOTIFICATION ALERT -->
       <div v-if="notification"
            :class="notification.type === 'error' ? 'bg-red-950/95 border-red-500/60 text-red-100' : 'bg-slate-900/95 border-sky-500/50 text-slate-100'"
-           class="fixed top-5 right-5 z-[160] max-w-md px-4 py-3.5 rounded-xl border shadow-2xl flex justify-between items-center text-sm">
-        <span class="flex items-center gap-2.5">
-          <i :class="notification.type === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-circle-check text-emerald-400'" class="fa-solid text-base"></i>
+           class="fixed top-4 right-3 left-3 sm:left-auto sm:right-5 z-[160] max-w-md px-4 py-3 rounded-xl border shadow-2xl flex justify-between items-center text-xs sm:text-sm">
+        <span class="flex items-center gap-2">
+          <i :class="notification.type === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-circle-check text-sky-400'" class="fa-solid text-base"></i>
           <span class="font-medium">{{ notification.message }}</span>
         </span>
-        <button @click="notification = null" class="text-slate-400 hover:text-white ml-4 text-lg">&times;</button>
+        <button @click="notification = null" class="text-slate-400 hover:text-white ml-3 text-lg">&times;</button>
       </div>
 
-      <!-- 1. HEADER: AOE COMMAND CENTER (PREMIUM GAMING DASHBOARD) -->
-      <header class="premium-card p-5 rounded-2xl mb-6 flex flex-col lg:flex-row justify-between items-center gap-5">
-        <div class="flex items-center gap-4 cursor-pointer" @click="goHome">
-          <div class="w-14 h-14 flex items-center justify-center bg-slate-800/90 border border-amber-500/40 rounded-2xl shadow-md">
-            <span class="text-2xl">⚔️🛡️</span>
-          </div>
-          <div>
-            <div class="flex items-center gap-2.5 flex-wrap">
-              <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">AOE COMMAND CENTER</span>
-              <span class="text-xs text-slate-500">&bull;</span>
-              <span class="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                Hệ thống trực tuyến
-              </span>
-              <span v-if="liveMatchesCount > 0" class="bg-red-500/20 border border-red-500/40 text-red-300 text-xs px-2.5 py-0.5 rounded-full font-semibold">
-                🔴 {{ liveMatchesCount }} kèo đang Live
-              </span>
+      <!-- 1. HEADER GỌN GÀNG CHO CẢ ĐIỆN THOẠI & MÁY TÍNH -->
+      <header class="premium-card p-3.5 sm:p-5 rounded-2xl mb-3 sm:mb-5">
+        <div class="flex justify-between items-center gap-2">
+          <!-- Cụm Logo & Tiêu đề -->
+          <div class="flex items-center gap-2.5 sm:gap-4 cursor-pointer min-w-0" @click="goHome">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 shrink-0 flex items-center justify-center bg-slate-900 border border-sky-500/40 rounded-xl shadow">
+              <span class="text-lg sm:text-xl">⚔️</span>
             </div>
-            <h1 class="font-display text-2xl font-black text-slate-100 tracking-wide uppercase mt-0.5">
-              TOOL BẢNG QUÂN AOE BY XO
-            </h1>
-            <p class="text-sm text-slate-400 mt-0.5">
-              Quản lý kèo đấu Esports, tự động quét Diplomacy, kết nối bạn bè & OBS Livestream Overlay
-            </p>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span class="text-[10px] sm:text-xs font-bold text-sky-400 uppercase tracking-wider">AOE BY XO</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span v-if="liveMatchesCount > 0" class="bg-red-500/20 border border-red-500/40 text-red-300 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold">
+                  🔴 {{ liveMatchesCount }} Live
+                </span>
+              </div>
+              <h1 class="font-display text-base sm:text-2xl font-black text-white tracking-wide uppercase truncate">
+                TOOL BẢNG QUÂN AOE BY XO
+              </h1>
+              <p class="hidden sm:block text-xs text-slate-400 mt-0.5">
+                Theo dõi tỉ số kèo đấu trực tiếp, bình luận Live & đồng bộ OBS Overlay
+              </p>
+            </div>
+          </div>
+
+          <!-- Cụm Nút Bên Phải Trên Điện Thoại (Chỉ hiện Đăng nhập/Tài khoản + Nút Menu Thu Gọn) -->
+          <div class="flex lg:hidden items-center gap-1.5 shrink-0">
+            <button v-if="sessionPlayerName"
+                    @click="openMyProfileModal"
+                    class="bg-slate-900 border border-slate-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-user text-sky-400"></i>
+              <span class="max-w-[76px] truncate">{{ sessionPlayerName }}</span>
+            </button>
+            <button v-else
+                    @click="openLoginUpdaterModal"
+                    class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-xs shadow">
+              Đăng nhập
+            </button>
+
+            <button @click="showMobileMenu = !showMobileMenu"
+                    class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 w-9 h-9 rounded-xl flex items-center justify-center text-sm"
+                    title="Mở menu công cụ PC / OBS / Admin">
+              <i class="fa-solid" :class="showMobileMenu ? 'fa-xmark text-sky-400' : 'fa-bars'"></i>
+            </button>
+          </div>
+
+          <!-- Cụm Nút Đầy Đủ Trên Máy Tính (Desktop lg+) -->
+          <div class="hidden lg:flex flex-col items-end gap-2">
+            <div class="flex items-center gap-2.5 text-xs text-slate-300 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-lg">
+              <i class="fa-regular fa-clock text-sky-400"></i>
+              <span class="font-mono font-medium text-slate-300">{{ currentDateTimeText }}</span>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+              <button @click="goHome"
+                      :class="currentTab === 'matches' || currentTab === 'detail' ? 'bg-sky-500 text-slate-950 font-bold shadow' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700'"
+                      class="px-3.5 py-1.5 rounded-xl text-xs transition">
+                <i class="fa-solid fa-trophy mr-1.5"></i>Sảnh Kèo Đấu
+              </button>
+
+              <button @click="openAnalytics"
+                      :class="currentTab === 'analytics' ? 'bg-sky-500 text-slate-950 font-bold shadow' : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700'"
+                      class="px-3.5 py-1.5 rounded-xl text-xs transition">
+                <i class="fa-solid fa-chart-column mr-1.5"></i>Thống Kê Quân
+              </button>
+
+              <button @click="downloadPcTool"
+                      class="bg-slate-900 hover:bg-slate-800 text-sky-300 border border-sky-500/40 px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                <i class="fa-solid fa-download"></i>
+                <span>Tải Tool PC (v{{ appRelease.latestVersion || '5.3' }})</span>
+              </button>
+
+              <button @click="showObsGuideModal = true"
+                      class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium transition">
+                <i class="fa-solid fa-tv text-sky-400 mr-1.5"></i>Hướng Dẫn OBS
+              </button>
+
+              <button @click="showDonateModal = true"
+                      class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium transition">
+                🧋 Donate
+              </button>
+
+              <!-- Thông tin tài khoản Player đang đăng nhập -->
+              <div v-if="sessionPlayerName" class="flex items-center gap-1.5 bg-slate-900 border border-slate-700 px-3 py-1 rounded-xl">
+                <button @click="openMyProfileModal" class="flex items-center gap-1.5 hover:opacity-90 transition">
+                  <i class="fa-solid fa-circle-user text-sky-400"></i>
+                  <span class="text-xs font-bold text-white">{{ sessionPlayerName }}</span>
+                  <span :class="getTierBadgeClass(currentActiveTier)" class="text-[11px] px-2 py-0.5 rounded font-bold">
+                    {{ getTierLabel(currentActiveTier) }}
+                  </span>
+                </button>
+                <button @click="showVipControlPanel = !showVipControlPanel"
+                        class="text-xs bg-sky-500/15 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-sky-500/30 font-semibold px-2.5 py-1 rounded-lg transition">
+                  <i class="fa-solid fa-sliders mr-1"></i>Cấu hình OBS
+                </button>
+                <button @click="logoutPlayer" class="text-xs text-slate-400 hover:text-red-400 ml-1" title="Đăng xuất">
+                  <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+              </div>
+
+              <button v-else @click="openLoginUpdaterModal"
+                      class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs shadow transition">
+                <i class="fa-solid fa-user mr-1.5"></i>Đăng Nhập
+              </button>
+
+              <!-- Admin -->
+              <button v-if="!isAdmin" @click="openAdminModal"
+                      class="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-sky-400 border border-slate-700 px-2.5 py-1.5 rounded-xl text-xs transition"
+                      title="Quản trị hệ thống">
+                <i class="fa-solid fa-shield-halved"></i>
+              </button>
+              <div v-else class="flex items-center gap-1.5 bg-slate-900 border border-sky-500/50 px-2.5 py-1 rounded-xl">
+                <button @click="showPlayerManagerModal = true"
+                        class="text-xs bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg">
+                  <i class="fa-solid fa-users-gear mr-1"></i>Quản Lý User
+                </button>
+                <button @click="logoutAdmin" class="text-xs text-red-400 hover:text-red-300 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Góc phải Header: Ngày giờ + Các nút điều hướng rõ ràng, độ tương phản cao -->
-        <div class="flex flex-col items-end gap-2.5 w-full lg:w-auto">
-          <div class="flex items-center gap-3 text-xs text-slate-300 bg-slate-900/90 border border-slate-700/80 px-3.5 py-1.5 rounded-xl">
-            <i class="fa-regular fa-calendar text-sky-400"></i>
-            <span class="font-mono font-semibold text-slate-200">{{ currentDateTimeText }}</span>
+        <!-- MENU THU GỌN TRÊN ĐIỆN THOẠI (Ẩn các nút PC/OBS/Admin vào đây để màn hình điện thoại thoáng đẹp) -->
+        <div v-if="showMobileMenu" class="lg:hidden mt-3 pt-3 border-t border-slate-800 space-y-2.5">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span><i class="fa-regular fa-clock text-sky-400 mr-1"></i>{{ currentDateTimeText }}</span>
+            <span v-if="sessionPlayerName" :class="getTierBadgeClass(currentActiveTier)" class="px-2 py-0.5 rounded font-bold text-[11px]">
+              {{ getTierLabel(currentActiveTier) }}
+            </span>
           </div>
-
-          <div class="flex items-center gap-2.5 flex-wrap justify-end">
-            <button @click="goHome"
-                    :class="currentTab === 'matches' ? 'bg-sky-500 text-slate-950 font-bold shadow-md' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'"
-                    class="px-4 py-2 rounded-xl text-sm transition">
-              <i class="fa-solid fa-trophy mr-1.5"></i>Sảnh Kèo Đấu
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button v-if="sessionPlayerName" @click="openMyProfileModal(); showMobileMenu = false"
+                    class="bg-slate-900 border border-slate-700 text-slate-100 py-2 px-3 rounded-xl font-semibold text-left flex items-center gap-2">
+              <i class="fa-solid fa-id-card text-sky-400"></i> Hồ sơ tài khoản
             </button>
-
-            <button @click="openAnalytics"
-                    :class="currentTab === 'analytics' ? 'bg-sky-500 text-slate-950 font-bold shadow-md' : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'"
-                    class="px-4 py-2 rounded-xl text-sm transition">
-              <i class="fa-solid fa-chart-column mr-1.5"></i>Thống Kê Quân
+            <button v-if="sessionPlayerName || isAdmin" @click="showVipControlPanel = !showVipControlPanel; showMobileMenu = false"
+                    class="bg-slate-900 border border-slate-700 text-slate-100 py-2 px-3 rounded-xl font-semibold text-left flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-sky-400"></i> Cấu hình VIP OBS
             </button>
-
-            <button @click="downloadPcTool"
-                    class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-sm font-bold shadow transition flex items-center gap-1.5"
-                    :title="appRelease.releaseNotes || 'Tải bản cài đặt Tool Bảng Quân AOE tự động quét F2 cho máy tính'">
-              <i class="fa-solid fa-download"></i>
-              <span>Tải Tool PC (v{{ appRelease.latestVersion || '5.3' }})</span>
+            <button @click="showObsGuideModal = true; showMobileMenu = false"
+                    class="bg-slate-900 border border-slate-700 text-slate-200 py-2 px-3 rounded-xl font-medium text-left flex items-center gap-2">
+              <i class="fa-solid fa-tv text-sky-400"></i> Link & Hướng dẫn OBS
             </button>
-
-            <button @click="showObsGuideModal = true"
-                    class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 px-3.5 py-2 rounded-xl text-sm font-medium transition">
-              <i class="fa-solid fa-tv text-sky-400 mr-1.5"></i>Hướng Dẫn OBS
+            <button @click="downloadPcTool(); showMobileMenu = false"
+                    class="bg-slate-900 border border-slate-700 text-slate-200 py-2 px-3 rounded-xl font-medium text-left flex items-center gap-2">
+              <i class="fa-solid fa-download text-sky-400"></i> Tải Tool PC (v{{ appRelease.latestVersion || '5.3' }})
             </button>
-
-            <button @click="showDonateModal = true"
-                    class="bg-rose-600/90 hover:bg-rose-500 text-white px-3.5 py-2 rounded-xl text-sm font-semibold transition">
-              🧋 Donate
+            <button @click="showDonateModal = true; showMobileMenu = false"
+                    class="bg-slate-900 border border-slate-700 text-slate-200 py-2 px-3 rounded-xl font-medium text-left flex items-center gap-2">
+              <span>🧋</span> Ủng hộ Donate
             </button>
-
-            <!-- Thông tin tài khoản Player đang đăng nhập -->
-            <div v-if="sessionPlayerName" class="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3.5 py-1.5 rounded-xl">
-              <button @click="openMyProfileModal" class="flex items-center gap-1.5 hover:opacity-90 transition" title="Xem thông tin tài khoản của tôi">
-                <i class="fa-solid fa-circle-user text-sky-400"></i>
-                <span class="text-sm font-bold text-slate-100">{{ sessionPlayerName }}</span>
-                <span :class="getTierBadgeClass(currentActiveTier)" class="text-xs px-2 py-0.5 rounded-md font-bold">
-                  {{ getTierLabel(currentActiveTier) }}
-                </span>
-              </button>
-              <button @click="openMyProfileModal"
-                      class="text-xs bg-sky-500/20 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-sky-500/40 font-bold px-2.5 py-1 rounded-lg transition">
-                <i class="fa-solid fa-id-card mr-1"></i>Thông Tin TK
-              </button>
-              <button @click="showVipControlPanel = !showVipControlPanel"
-                      class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg transition">
-                <i class="fa-solid fa-sliders mr-1"></i>Cấu hình VIP
-              </button>
-              <button @click="logoutPlayer" class="text-sm text-slate-400 hover:text-red-400 ml-1" title="Đăng xuất">
-                <i class="fa-solid fa-right-from-bracket"></i>
-              </button>
-            </div>
-
-            <button v-else @click="openLoginUpdaterModal"
-                    class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm shadow transition">
-              <i class="fa-solid fa-user mr-1.5"></i>Đăng Nhập Player
+            <button v-if="!isAdmin" @click="openAdminModal(); showMobileMenu = false"
+                    class="bg-slate-900 border border-slate-700 text-slate-300 py-2 px-3 rounded-xl font-medium text-left flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-sky-400"></i> Quản trị Admin
             </button>
-
-            <!-- Admin -->
-            <button v-if="!isAdmin" @click="openAdminModal"
-                    class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-3 py-2 rounded-xl text-sm transition">
-              <i class="fa-solid fa-shield-halved"></i>
+            <button v-else @click="showPlayerManagerModal = true; showMobileMenu = false"
+                    class="bg-sky-500/20 border border-sky-500/40 text-sky-300 py-2 px-3 rounded-xl font-bold text-left flex items-center gap-2">
+              <i class="fa-solid fa-users-gear"></i> Quản Lý User & VIP
             </button>
-            <div v-else class="flex items-center gap-2 bg-emerald-950/80 border border-emerald-600/50 px-3 py-1.5 rounded-xl">
-              <button @click="showPlayerManagerModal = true"
-                      class="text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1 rounded-lg">
-                <i class="fa-solid fa-users-gear mr-1"></i>Quản Lý User & VIP
-              </button>
-              <button @click="logoutAdmin" class="text-sm text-red-400 hover:text-red-300 ml-1"><i class="fa-solid fa-right-from-bracket"></i></button>
-            </div>
+            <button v-if="sessionPlayerName" @click="logoutPlayer(); showMobileMenu = false"
+                    class="bg-red-950/60 border border-red-800/50 text-red-300 py-2 px-3 rounded-xl font-semibold text-left flex items-center gap-2">
+              <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+            </button>
           </div>
         </div>
       </header>
 
+      <!-- THANH CHUYỂN TAB NHANH TRÊN ĐIỆN THOẠI (Không phải cuộn trang dài) -->
+      <div class="lg:hidden grid grid-cols-4 gap-1.5 bg-slate-900/95 border border-slate-800 p-1.5 rounded-2xl mb-3">
+        <button @click="setMobileSection('matches')"
+                :class="mobileSection === 'matches' ? 'bg-sky-500 text-slate-950 font-bold shadow' : 'text-slate-300 hover:text-white'"
+                class="py-2 rounded-xl text-xs flex items-center justify-center gap-1 transition">
+          <i class="fa-solid fa-trophy"></i>
+          <span>Kèo Đấu</span>
+        </button>
+        <button @click="setMobileSection('chat')"
+                :class="mobileSection === 'chat' ? 'bg-sky-500 text-slate-950 font-bold shadow' : 'text-slate-300 hover:text-white'"
+                class="py-2 rounded-xl text-xs flex items-center justify-center gap-1 transition">
+          <i class="fa-solid fa-comments"></i>
+          <span>Chat Live</span>
+        </button>
+        <button @click="setMobileSection('friends')"
+                :class="mobileSection === 'friends' ? 'bg-sky-500 text-slate-950 font-bold shadow' : 'text-slate-300 hover:text-white'"
+                class="py-2 rounded-xl text-xs flex items-center justify-center gap-1 transition">
+          <i class="fa-solid fa-user-group"></i>
+          <span>Bạn Bè</span>
+        </button>
+        <button @click="setMobileSection('analytics')"
+                :class="mobileSection === 'analytics' ? 'bg-sky-500 text-slate-950 font-bold shadow' : 'text-slate-300 hover:text-white'"
+                class="py-2 rounded-xl text-xs flex items-center justify-center gap-1 transition">
+          <i class="fa-solid fa-chart-simple"></i>
+          <span>Thống Kê</span>
+        </button>
+      </div>
+
       <!-- 2. KHU VỰC CẤU HÌNH VIP OVERLAY (ĐƠN GIẢN HÓA, GỌN GÀNG, DỄ THAO TÁC) -->
-      <div v-if="(sessionPlayerName || isAdmin) && showVipControlPanel" class="premium-card p-5 rounded-2xl mb-6">
-        <div class="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-slate-700/70 pb-3.5 mb-4">
+      <div v-if="(sessionPlayerName || isAdmin) && showVipControlPanel" class="premium-card p-4 sm:p-5 rounded-2xl mb-4 sm:mb-6">
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-slate-800 pb-3.5 mb-4">
           <div class="flex items-center gap-3 flex-wrap">
-            <h2 class="text-base font-bold text-sky-400 uppercase tracking-wide flex items-center gap-2">
-              <i class="fa-solid fa-crown text-amber-400"></i>
+            <h2 class="text-sm sm:text-base font-bold text-sky-400 uppercase tracking-wide flex items-center gap-2">
+              <i class="fa-solid fa-sliders"></i>
               <span>Cấu Hình VIP OBS Overlay</span>
             </h2>
             <span :class="getTierBadgeClass(currentActiveTier)" class="text-xs px-2.5 py-0.5 rounded-md font-bold">
               {{ getTierLabel(currentActiveTier) }}
             </span>
           </div>
-          <div class="flex items-center gap-3 text-sm">
+          <div class="flex items-center gap-3 text-xs sm:text-sm">
             <span class="text-slate-400">Streamer áp dụng:</span>
             <input v-if="isAdmin" v-model="vipTargetPlayer" class="bg-slate-900 border border-slate-700 px-3 py-1 rounded-lg text-slate-100 font-semibold w-32 text-sm">
             <span v-else class="text-slate-100 font-bold bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">{{ sessionPlayerName }}</span>
@@ -246,7 +316,6 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <!-- Trường 1: Kèo chạm bao nhiêu -->
           <div>
             <label class="text-xs font-semibold text-slate-300 block mb-1.5">
               Kèo đấu chạm bao nhiêu <span class="text-slate-400">(🥈 Bạc+)</span>
@@ -256,7 +325,6 @@
                    class="w-full bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3.5 py-2 text-slate-100 font-bold text-sm outline-none">
           </div>
 
-          <!-- Trường 2: Chế độ dòng chữ chạy -->
           <div>
             <label class="text-xs font-semibold text-slate-300 block mb-1.5">
               Chế độ dòng chữ chạy <span class="text-slate-400">(🥇 Vàng+)</span>
@@ -272,7 +340,6 @@
             </select>
           </div>
 
-          <!-- Trường 3: Nội dung chữ chạy tùy chỉnh -->
           <div class="md:col-span-2">
             <label class="text-xs font-semibold text-slate-300 block mb-1.5">
               Nội dung chữ chạy tùy chỉnh <span class="text-slate-400">(Khi chọn chế độ tùy chỉnh)</span>
@@ -285,7 +352,7 @@
         </div>
 
         <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mt-4 pt-3.5 border-t border-slate-800">
-          <div class="flex items-center gap-6 flex-wrap text-sm">
+          <div class="flex items-center gap-6 flex-wrap text-xs sm:text-sm">
             <label class="flex items-center gap-2 cursor-pointer text-slate-200">
               <input type="checkbox" v-model="overlayConfigForm.showDateCorner"
                      :disabled="getTierRank(currentActiveTier) < 1 && !isAdmin"
@@ -296,8 +363,8 @@
             <label class="flex items-center gap-2 cursor-pointer text-slate-200">
               <input type="checkbox" v-model="overlayConfigForm.cModeEnabled"
                      :disabled="getTierRank(currentActiveTier) < 3 && !isAdmin"
-                     class="w-4 h-4 accent-amber-400 rounded">
-              <span>Bật chế độ <b>Đánh theo 'C'</b> — Hiện Overlay phụ Séc 1, Séc 2, Séc 3 bên phải (Chạm 3 = 1 C) <span class="text-xs text-amber-400 font-semibold">(💎 Kim Cương)</span></span>
+                     class="w-4 h-4 accent-sky-400 rounded">
+              <span>Bật chế độ <b>Đánh theo 'C'</b> — Hiện Séc 1, Séc 2, Séc 3 (Chạm 3 = 1 C) <span class="text-xs text-sky-400 font-semibold">(💎 Kim Cương)</span></span>
             </label>
           </div>
 
@@ -308,324 +375,327 @@
         </div>
       </div>
 
-      <!-- THANH COPY NHANH LINK OBS BẢNG QUÂN & LINK OBS KHUNG CHAT -->
-      <div class="premium-card px-5 py-3.5 rounded-2xl mb-6 flex flex-col lg:flex-row justify-between items-center gap-3">
-        <div class="flex items-center gap-3 text-sm flex-wrap">
+      <!-- THANH COPY NHANH LINK OBS (CHỈ HIỆN TRÊN MÁY TÍNH ĐỂ ĐIỆN THOẠI GỌN ĐẸP) -->
+      <div class="hidden lg:flex premium-card px-5 py-3 rounded-2xl mb-5 justify-between items-center gap-3">
+        <div class="flex items-center gap-3 text-xs flex-wrap">
           <span class="text-sky-400 font-bold flex items-center gap-1.5">
             <i class="fa-solid fa-video"></i> Link Gán OBS Livestream:
           </span>
-          <span class="text-slate-300">Chiều rộng khuyên dùng: <b>980 x 600</b> (Bảng quân) &bull; <b>380 x 450</b> (Khung chat)</span>
+          <span class="text-slate-400">Chiều rộng khuyên dùng: <b class="text-slate-200">980 x 600</b> (Bảng quân) &bull; <b class="text-slate-200">380 x 450</b> (Khung chat)</span>
         </div>
-        <div class="flex items-center gap-2.5 flex-wrap">
+        <div class="flex items-center gap-2">
           <button @click="copyOverlayLink(sessionPlayerName || 'XO')"
-                  class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs transition shadow">
+                  class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow">
             <i class="fa-solid fa-copy mr-1.5"></i>Copy Link OBS Bảng Quân
           </button>
           <button @click="copyChatOverlayLink(sessionPlayerName || 'XO')"
-                  class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs transition shadow">
-            <i class="fa-solid fa-comments mr-1.5"></i>Copy Link OBS Khung Chat
+                  class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-semibold px-3 py-1.5 rounded-xl text-xs transition">
+            <i class="fa-solid fa-comments text-sky-400 mr-1.5"></i>Copy Link OBS Khung Chat
           </button>
         </div>
       </div>
 
-      <!-- BỐ CỤC CHÍNH: CỘT TRÁI (KÈO ĐẤU / CHI TIẾT) + CỘT PHẢI (BẠN BÈ LIVE & KHUNG CHAT TẶNG SAO) -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- BỐ CỤC CHÍNH: TRÊN ĐIỆN THOẠI HIỂN THỊ THEO TAB GỌN GÀNG, TRÊN PC HIỂN THỊ 2 CỘT -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
         <!-- CỘT CHÍNH (8 CỘT TRÊN MÀN HÌNH LỚN) -->
-        <div class="lg:col-span-8 space-y-5">
+        <div class="lg:col-span-8 space-y-4" :class="(mobileSection === 'matches' || mobileSection === 'analytics') ? 'block' : 'hidden lg:block'">
 
-          <!-- TAB 1: DANH SÁCH KÈO ĐẤU -->
-          <div v-if="currentTab === 'matches'" class="space-y-4">
-            <div class="flex justify-between items-center premium-card px-4 py-3 rounded-xl flex-wrap gap-3">
-              <div class="flex gap-2 flex-wrap">
+          <!-- TAB 1: DANH SÁCH KÈO ĐẤU (LIVESCORE HORIZONTAL LAYOUT CHO CẢ ĐIỆN THOẠI & PC) -->
+          <div v-if="currentTab === 'matches'" class="space-y-3 sm:space-y-4">
+            <div class="flex justify-between items-center premium-card px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl gap-2">
+              <div class="flex gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
                 <button @click="filterStatus = 'ALL'"
-                        :class="filterStatus === 'ALL' ? 'bg-sky-500 text-slate-950 font-bold' : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'"
-                        class="px-3.5 py-1.5 rounded-lg text-sm transition">
+                        :class="filterStatus === 'ALL' ? 'bg-sky-500 text-slate-950 font-bold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
+                        class="px-3 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0">
                   Tất cả ({{ matches.length }})
                 </button>
                 <button @click="filterStatus = 'LIVE'"
-                        :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-bold' : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'"
-                        class="px-3.5 py-1.5 rounded-lg text-sm transition">
-                  🔴 Đang Live ({{ liveMatchesCount }})
+                        :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-bold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
+                        class="px-3 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0">
+                  🔴 Live ({{ liveMatchesCount }})
                 </button>
                 <button @click="filterStatus = 'FINISHED'"
-                        :class="filterStatus === 'FINISHED' ? 'bg-slate-700 text-white font-bold' : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'"
-                        class="px-3.5 py-1.5 rounded-lg text-sm transition">
-                  🏁 Đã kết thúc
+                        :class="filterStatus === 'FINISHED' ? 'bg-slate-700 text-white font-bold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
+                        class="px-3 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0">
+                  🏁 Đã xong
                 </button>
               </div>
-              <button @click="fetchInitialData" class="text-sm text-slate-300 hover:text-sky-400 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80">
-                <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i> Làm mới
+              <button @click="fetchInitialData" class="text-xs sm:text-sm text-slate-300 hover:text-sky-400 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 shrink-0">
+                <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i>
+                <span class="hidden sm:inline">Làm mới</span>
               </button>
             </div>
 
-            <div v-if="filteredMatches.length > 0" class="space-y-4">
+            <div v-if="filteredMatches.length > 0" class="space-y-3 sm:space-y-4">
               <div v-for="match in filteredMatches" :key="match.id" @click="selectMatch(match)"
-                   class="premium-card premium-card-hover p-5 rounded-2xl cursor-pointer">
-                <!-- Dòng thông tin trên cùng của Card -->
-                <div class="flex justify-between items-center mb-3.5 flex-wrap gap-2">
-                  <div class="flex items-center gap-2.5 flex-wrap">
-                    <span class="font-bold px-2.5 py-1 rounded-lg text-xs bg-slate-800 text-sky-400 border border-slate-700">
-                      Kèo {{ match.mode }}
+                   class="premium-card premium-card-hover p-3.5 sm:p-5 rounded-2xl cursor-pointer">
+                <!-- Dòng thông tin trên cùng của Card (Gọn gàng trên 1 hàng) -->
+                <div class="flex justify-between items-center mb-3 gap-2">
+                  <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                    <span class="font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs bg-slate-900 text-sky-400 border border-slate-800">
+                      {{ match.mode }}
                     </span>
-                    <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-bold animate-pulse">
-                      🔴 Đang Live
+                    <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-[11px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-bold">
+                      🔴 LIVE
                     </span>
-                    <span v-else class="bg-slate-800 text-slate-400 text-xs px-2.5 py-1 rounded-lg font-medium">
-                      🏁 Đã kết thúc
+                    <span v-else class="bg-slate-900 text-slate-400 border border-slate-800 text-[11px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-medium">
+                      Đã kết thúc
                     </span>
-                    <span v-if="match.streamerName" class="text-xs bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-lg font-semibold">
-                      🎮 Máy {{ match.streamerName }}
+                    <span v-if="match.streamerName" class="text-[11px] sm:text-xs bg-slate-900 text-slate-200 border border-slate-800 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-semibold truncate">
+                      🎮 {{ match.streamerName }}
                     </span>
-                    <span v-if="match.starsCount > 0" class="text-xs bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold">
-                      ⭐ {{ match.starsCount }} Sao
+                    <span v-if="match.starsCount > 0" class="text-[11px] sm:text-xs bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-lg font-bold">
+                      ⭐ {{ match.starsCount }}
                     </span>
                   </div>
 
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-1.5 shrink-0">
                     <button @click.stop="sendQuickStar(match, 1)"
-                            class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded-lg shadow transition"
-                            title="Tặng Sao cổ vũ người chơi">
-                      🌟 Tặng Sao
+                            class="text-[11px] sm:text-xs bg-slate-900 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 font-bold px-2.5 py-1 rounded-lg transition"
+                            title="Tặng Sao cổ vũ">
+                      ⭐ Tặng Sao
                     </button>
                     <button @click.stop="copyOverlayLink(match.streamerName)"
-                            class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+                            class="hidden sm:inline-flex items-center text-xs bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-800 transition">
                       <i class="fa-solid fa-tv mr-1 text-sky-400"></i>Link OBS
                     </button>
-                    <span class="text-xs text-slate-400">{{ match.formattedTime }}</span>
+                    <span class="hidden md:inline text-xs text-slate-400">{{ match.formattedTime }}</span>
                     <button v-if="isAdmin" @click.stop="deleteSingleMatch(match.id)"
-                            class="bg-red-600/90 hover:bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg">
+                            class="bg-red-950 hover:bg-red-600 text-red-300 hover:text-white border border-red-800/60 text-xs font-bold px-2 py-1 rounded-lg">
                       <i class="fa-solid fa-trash-can"></i>
                     </button>
                   </div>
                 </div>
 
-                <!-- 2 Đội Đỏ & Xanh + Tỉ số trung tâm rõ ràng, dễ nhìn -->
-                <div class="grid grid-cols-1 md:grid-cols-11 gap-3 items-center mb-3">
-                  <div class="md:col-span-4 team-red-box p-3.5 rounded-xl text-right">
-                    <div class="text-xs font-bold text-red-400 mb-1">🔴 Team Đỏ</div>
-                    <div class="text-base font-bold text-slate-100 truncate">{{ (match.redTeam || []).join(', ') }}</div>
+                <!-- Bố cục Livescore nằm ngang (Team Đỏ - Tỉ Số - Team Xanh trên cùng 1 hàng cho cả Điện thoại & PC) -->
+                <div class="grid grid-cols-11 gap-1.5 sm:gap-3 items-stretch mb-2.5">
+                  <div class="col-span-4 team-red-box p-2.5 sm:p-3.5 rounded-xl flex flex-col justify-center text-left sm:text-right min-w-0">
+                    <div class="text-[10px] sm:text-xs font-bold text-red-400 mb-0.5">🔴 Team Đỏ</div>
+                    <div class="text-xs sm:text-base font-bold text-white leading-snug break-words line-clamp-2">
+                      {{ (match.redTeam || []).join(', ') || 'Team Đỏ' }}
+                    </div>
                   </div>
 
-                  <div class="md:col-span-3 bg-slate-950/90 border border-slate-700/80 rounded-xl py-2.5 px-3 text-center">
-                    <div class="text-[11px] font-semibold text-slate-400">
+                  <div class="col-span-3 bg-slate-950/90 border border-slate-800 rounded-xl py-2 px-1.5 sm:px-3 flex flex-col justify-center items-center text-center">
+                    <div class="text-[10px] sm:text-[11px] font-medium text-slate-400">
                       Chạm {{ (match.overlayConfig && match.overlayConfig.targetScore) || 100 }}
                     </div>
-                    <div class="font-display font-black text-3xl leading-tight mt-0.5">
+                    <div class="font-display font-black text-xl sm:text-3xl leading-tight mt-0.5 whitespace-nowrap">
                       <span class="text-red-400">{{ getMatchScore(match).red }}</span>
-                      <span class="text-slate-500 mx-1.5">-</span>
+                      <span class="text-slate-600 mx-0.5 sm:mx-1.5">-</span>
                       <span class="text-sky-400">{{ getMatchScore(match).blue }}</span>
                     </div>
                   </div>
 
-                  <div class="md:col-span-4 team-blue-box p-3.5 rounded-xl text-left">
-                    <div class="text-xs font-bold text-sky-400 mb-1">🔵 Team Xanh</div>
-                    <div class="text-base font-bold text-slate-100 truncate">{{ (match.blueTeam || []).join(', ') }}</div>
+                  <div class="col-span-4 team-blue-box p-2.5 sm:p-3.5 rounded-xl flex flex-col justify-center text-right sm:text-left min-w-0">
+                    <div class="text-[10px] sm:text-xs font-bold text-sky-400 mb-0.5">🔵 Team Xanh</div>
+                    <div class="text-xs sm:text-base font-bold text-white leading-snug break-words line-clamp-2">
+                      {{ (match.blueTeam || []).join(', ') || 'Team Xanh' }}
+                    </div>
                   </div>
                 </div>
 
                 <!-- Hiển thị kết quả C nếu bật Đánh theo C -->
                 <div v-if="match.overlayConfig && match.overlayConfig.cModeEnabled"
-                     class="flex items-center justify-between bg-slate-900/90 border border-amber-500/30 rounded-xl px-3.5 py-2 mb-3 text-xs">
-                  <span class="font-bold text-amber-300">
+                     class="flex items-center justify-between bg-slate-900/90 border border-sky-500/30 rounded-xl px-3 py-1.5 mb-2.5 text-[11px] sm:text-xs flex-wrap gap-1.5">
+                  <span class="font-bold text-sky-300">
                     🏆 Tỉ số C: <b class="text-white">{{ getMatchCModeData(match).redCWins }} - {{ getMatchCModeData(match).blueCWins }}</b>
                   </span>
-                  <div class="flex items-center gap-2 flex-wrap">
+                  <div class="flex items-center gap-1.5 flex-wrap">
                     <span v-for="s in getMatchCModeData(match).sets" :key="s.setNumber"
-                          class="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-700 font-semibold">
-                      Séc {{ s.setNumber }}: <b class="text-red-400">{{ s.red }}</b>-<b class="text-sky-400">{{ s.blue }}</b>
+                          class="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 font-semibold">
+                      C{{ s.setNumber }}: <b class="text-red-400">{{ s.red }}</b>-<b class="text-sky-400">{{ s.blue }}</b>
                     </span>
                   </div>
                 </div>
 
-                <div class="flex justify-between items-center text-xs text-slate-400 border-t border-slate-800 pt-2.5">
-                  <div>Số trận đã đấu: <b class="text-slate-200">{{ (match.games || []).length }} trận</b></div>
+                <div class="flex justify-between items-center text-[11px] sm:text-xs text-slate-400 border-t border-slate-800/80 pt-2">
+                  <div>Số trận: <b class="text-slate-200">{{ (match.games || []).length }}</b></div>
                   <div v-if="showCivStats">
-                    Tổng Cung - Chém:
                     <b class="text-sky-300">{{ getMatchCivStats(match).cung }} Cung</b> &bull;
-                    <b class="text-amber-300">{{ getMatchCivStats(match).chem }} Chém</b>
+                    <b class="text-slate-300">{{ getMatchCivStats(match).chem }} Chém</b>
                   </div>
-                  <div>Bình luận: <b class="text-slate-200">{{ (match.chatMessages || []).length }}</b></div>
+                  <div>💬 <b class="text-slate-200">{{ (match.chatMessages || []).length }}</b></div>
                 </div>
               </div>
             </div>
 
-            <div v-else class="premium-card text-center py-12 rounded-2xl text-slate-400 text-base">
+            <div v-else class="premium-card text-center py-10 px-4 rounded-2xl text-slate-400 text-sm">
               Chưa có kèo đấu nào. Hãy mở <b>TOOL BẢNG QUÂN AOE BY XO</b> và ấn <b>Diplomacy (F2)</b> trong game!
             </div>
           </div>
 
-          <!-- TAB 2: CHI TIẾT KÈO ĐẤU (BATTLE CONTROL) -->
-          <div v-if="currentTab === 'detail' && selectedMatch" class="space-y-5">
-            <div class="flex justify-between items-center flex-wrap gap-3">
+          <!-- TAB 2: CHI TIẾT KÈO ĐẤU (ĐƠN GIẢN HÓA MÀU SẮC, CHỮ TRẮNG ĐỒNG NHẤT, GỌN GÀNG TRÊN ĐIỆN THOẠI) -->
+          <div v-if="currentTab === 'detail' && selectedMatch" class="space-y-4">
+            <div class="flex justify-between items-center flex-wrap gap-2">
               <button @click="goHome"
-                      class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition">
-                <i class="fa-solid fa-arrow-left text-sky-400"></i> Quay lại danh sách kèo
+                      class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition">
+                <i class="fa-solid fa-arrow-left text-sky-400"></i> Quay lại
               </button>
-              <div class="flex items-center gap-2.5 flex-wrap">
+              <div class="flex items-center gap-2 flex-wrap">
                 <button @click="sendQuickStar(selectedMatch, 10)"
-                        class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm shadow transition">
-                  🌟 Tặng 10 Sao Cổ Vũ
+                        class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs sm:text-sm shadow transition">
+                  ⭐ Tặng 10 Sao
                 </button>
                 <button @click="copyOverlayLink(selectedMatch.streamerName)"
-                        class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 px-3.5 py-2 rounded-xl text-sm font-medium transition">
+                        class="hidden sm:inline-flex items-center bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium transition">
                   <i class="fa-solid fa-tv text-sky-400 mr-1.5"></i>Link OBS Bảng Quân
                 </button>
                 <button @click="copyChatOverlayLink(selectedMatch.streamerName)"
-                        class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 px-3.5 py-2 rounded-xl text-sm font-medium transition">
-                  <i class="fa-solid fa-comments text-amber-400 mr-1.5"></i>Link OBS Khung Chat
+                        class="hidden sm:inline-flex items-center bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium transition">
+                  <i class="fa-solid fa-comments text-sky-400 mr-1.5"></i>Link OBS Chat
                 </button>
                 <button v-if="selectedMatch.status === 'LIVE' && canModify(selectedMatch)"
                         @click="finishMatch"
-                        class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-xl text-sm shadow transition">
+                        class="bg-red-600 hover:bg-red-500 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs sm:text-sm shadow transition">
                   🏁 Kết Thúc Kèo
                 </button>
               </div>
             </div>
 
-            <!-- BẢNG TỈ SỐ TRUNG TÂM & ĐỘI HÌNH 2 TEAM -->
-            <div class="premium-card p-6 rounded-2xl">
-              <div class="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-4 mb-5">
-                <div class="flex items-center gap-3 flex-wrap">
-                  <span class="text-base font-bold text-sky-400 uppercase">Kèo Đấu {{ selectedMatch.mode }}</span>
-                  <span v-if="selectedMatch.status === 'LIVE'" class="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-bold">
-                    🔴 Đang Live
+            <!-- BẢNG TỈ SỐ TRUNG TÂM & ĐỘI HÌNH 2 TEAM (NẰM NGANG GỌN ĐẸP, CHỮ TRẮNG ĐỒNG NHẤT) -->
+            <div class="premium-card p-3.5 sm:p-5 rounded-2xl">
+              <div class="flex justify-between items-center flex-wrap gap-2 border-b border-slate-800 pb-3 mb-3.5">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-sm sm:text-base font-bold text-sky-400 uppercase">Kèo {{ selectedMatch.mode }}</span>
+                  <span v-if="selectedMatch.status === 'LIVE'" class="bg-red-600 text-white text-[11px] px-2 py-0.5 rounded-lg font-bold">
+                    🔴 LIVE
                   </span>
-                  <span v-else class="bg-slate-800 text-slate-300 text-xs px-2.5 py-1 rounded-lg font-medium">
-                    🏁 Đã kết thúc
+                  <span v-else class="bg-slate-900 text-slate-400 border border-slate-800 text-[11px] px-2 py-0.5 rounded-lg font-medium">
+                    Đã kết thúc
                   </span>
-                  <span class="text-sm text-slate-300">Streamer: <b class="text-white">{{ selectedMatch.streamerName }}</b></span>
+                  <span class="text-xs text-slate-400">Máy: <b class="text-white">{{ selectedMatch.streamerName }}</b></span>
                 </div>
-                <div class="text-sm text-amber-300 font-bold">
-                  ⭐ Đã nhận {{ selectedMatch.starsCount || 0 }} Sao trong kèo này
+                <div class="text-xs text-sky-300 font-semibold">
+                  ⭐ {{ selectedMatch.starsCount || 0 }} Sao
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+              <!-- Bảng tỉ số 3 cột nằm ngang ngay cả trên điện thoại -->
+              <div class="grid grid-cols-11 gap-2 sm:gap-4 items-stretch">
                 <!-- Team Đỏ -->
-                <div class="md:col-span-4 team-red-box p-4 rounded-2xl">
-                  <div class="text-xs font-bold text-red-400 uppercase tracking-wider border-b border-red-500/20 pb-2 mb-3">
-                    🔴 Team Đỏ (Chủ nhà)
+                <div class="col-span-4 team-red-box p-2.5 sm:p-4 rounded-xl">
+                  <div class="text-[11px] sm:text-xs font-bold text-red-400 uppercase border-b border-red-500/20 pb-1.5 mb-2">
+                    🔴 Team Đỏ
                   </div>
-                  <div class="space-y-2">
+                  <div class="space-y-1.5">
                     <div v-for="(player, pi) in (selectedMatch.redTeam || [])" :key="'r-'+pi"
-                         class="flex items-center justify-between bg-slate-950/60 px-3.5 py-2 rounded-xl border border-slate-800">
-                      <span class="font-bold text-base" :style="{ color: getPlayerColorHex(selectedMatch.redColors, pi, '#fca5a5') }">
-                        ● {{ player }}
+                         class="flex items-center justify-between bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
+                      <span class="font-bold text-xs sm:text-sm text-white truncate">
+                        <span class="text-red-400 mr-1">●</span>{{ player }}
                       </span>
-                      <span class="text-xs text-slate-400">Slot {{ pi + 1 }}</span>
+                      <span class="hidden sm:inline text-[11px] text-slate-400">#{{ pi + 1 }}</span>
                     </div>
                   </div>
                 </div>
 
-                <!-- Tỉ số nổi bật ở trung tâm -->
-                <div class="md:col-span-4 bg-slate-950/90 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-center items-center text-center">
-                  <div class="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1 rounded-full mb-2">
+                <!-- Tỉ số trung tâm -->
+                <div class="col-span-3 bg-slate-950/90 border border-slate-800 rounded-xl p-2.5 sm:p-4 flex flex-col justify-center items-center text-center">
+                  <div class="text-[10px] sm:text-xs font-semibold text-sky-300 bg-sky-500/10 border border-sky-500/30 px-2.5 py-0.5 rounded-full mb-1">
                     Chạm {{ (selectedMatch.overlayConfig && selectedMatch.overlayConfig.targetScore) || 100 }}
                   </div>
-                  <div class="font-display font-black text-5xl tracking-tight my-1">
+                  <div class="font-display font-black text-2xl sm:text-5xl tracking-tight my-0.5 whitespace-nowrap">
                     <span class="text-red-400">{{ activeMatchScore.red }}</span>
-                    <span class="text-slate-600 mx-2">-</span>
+                    <span class="text-slate-600 mx-1 sm:mx-2">-</span>
                     <span class="text-sky-400">{{ activeMatchScore.blue }}</span>
                   </div>
-                  <div v-if="showCivStats" class="text-xs text-slate-300 mt-2">
-                    Tổng Cung - Chém:
+                  <div v-if="showCivStats" class="text-[10px] sm:text-xs text-slate-400 mt-1">
                     <b class="text-sky-300">{{ activeMatchCivStats.cung }} Cung</b> &bull;
-                    <b class="text-amber-300">{{ activeMatchCivStats.chem }} Chém</b>
-                  </div>
-
-                  <!-- Kết quả C (Séc) nếu bật -->
-                  <div v-if="selectedMatch.overlayConfig && selectedMatch.overlayConfig.cModeEnabled"
-                       class="w-full mt-4 pt-3 border-t border-slate-800">
-                    <div class="text-xs font-bold text-amber-300 mb-2">
-                      🏆 Tỉ số C: {{ getMatchCModeData(selectedMatch).redCWins }} - {{ getMatchCModeData(selectedMatch).blueCWins }}
-                    </div>
-                    <div class="grid grid-cols-3 gap-2">
-                      <div v-for="s in getMatchCModeData(selectedMatch).sets" :key="s.setNumber"
-                           class="bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center">
-                        <div class="text-[11px] text-slate-400">Séc {{ s.setNumber }}</div>
-                        <div class="font-bold text-sm">
-                          <span class="text-red-400">{{ s.red }}</span> - <span class="text-sky-400">{{ s.blue }}</span>
-                        </div>
-                      </div>
-                    </div>
+                    <b class="text-slate-200">{{ activeMatchCivStats.chem }} Chém</b>
                   </div>
                 </div>
 
                 <!-- Team Xanh -->
-                <div class="md:col-span-4 team-blue-box p-4 rounded-2xl">
-                  <div class="text-xs font-bold text-sky-400 uppercase tracking-wider border-b border-sky-500/20 pb-2 mb-3">
-                    🔵 Team Xanh (Đội khách)
+                <div class="col-span-4 team-blue-box p-2.5 sm:p-4 rounded-xl">
+                  <div class="text-[11px] sm:text-xs font-bold text-sky-400 uppercase border-b border-sky-500/20 pb-1.5 mb-2">
+                    🔵 Team Xanh
                   </div>
-                  <div class="space-y-2">
+                  <div class="space-y-1.5">
                     <div v-for="(player, pi) in (selectedMatch.blueTeam || [])" :key="'b-'+pi"
-                         class="flex items-center justify-between bg-slate-950/60 px-3.5 py-2 rounded-xl border border-slate-800">
-                      <span class="font-bold text-base" :style="{ color: getPlayerColorHex(selectedMatch.blueColors, pi, '#93c5fd') }">
-                        ● {{ player }}
+                         class="flex items-center justify-between bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
+                      <span class="font-bold text-xs sm:text-sm text-white truncate">
+                        <span class="text-sky-400 mr-1">●</span>{{ player }}
                       </span>
-                      <span class="text-xs text-slate-400">Slot {{ pi + 1 }}</span>
+                      <span class="hidden sm:inline text-[11px] text-slate-400">#{{ pi + 1 }}</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Kết quả C (Séc) nếu bật -->
+              <div v-if="selectedMatch.overlayConfig && selectedMatch.overlayConfig.cModeEnabled"
+                   class="w-full mt-3 pt-3 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
+                <div class="text-xs font-bold text-sky-300">
+                  🏆 Tỉ số C: <span class="text-white">{{ getMatchCModeData(selectedMatch).redCWins }} - {{ getMatchCModeData(selectedMatch).blueCWins }}</span>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <div v-for="s in getMatchCModeData(selectedMatch).sets" :key="s.setNumber"
+                       class="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
+                    <span class="text-slate-400 mr-1">Séc {{ s.setNumber }}:</span>
+                    <b class="text-red-400">{{ s.red }}</b> - <b class="text-sky-400">{{ s.blue }}</b>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- LỊCH SỬ TỪNG TRẬN ĐẤU -->
-            <div class="premium-card p-5 rounded-2xl">
-              <h3 class="text-base font-bold text-sky-400 mb-4 border-b border-slate-800 pb-2.5 uppercase">
+            <!-- LỊCH SỬ TỪNG TRẬN ĐẤU (2 CỘT ĐỐI ĐẦU GỌN GÀNG, CHỮ TRẮNG RÕ NÉT) -->
+            <div class="premium-card p-3.5 sm:p-5 rounded-2xl">
+              <h3 class="text-sm sm:text-base font-bold text-sky-400 mb-3 border-b border-slate-800 pb-2 uppercase">
                 Chi Tiết Từng Trận Đấu ({{ (selectedMatch.games || []).length }} trận)
               </h3>
 
-              <div v-if="selectedMatch.games && selectedMatch.games.length > 0" class="space-y-4">
-                <div v-for="(g, idx) in selectedMatch.games" :key="idx" class="bg-slate-950/80 p-4 rounded-xl border border-slate-800">
-                  <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3 flex-wrap gap-2">
-                    <div class="flex items-center gap-2.5 flex-wrap">
-                      <span class="font-bold text-sm text-amber-400 bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">
+              <div v-if="selectedMatch.games && selectedMatch.games.length > 0" class="space-y-3">
+                <div v-for="(g, idx) in selectedMatch.games" :key="idx" class="bg-slate-950/80 p-3 sm:p-4 rounded-xl border border-slate-800">
+                  <div class="flex justify-between items-center border-b border-slate-800 pb-2.5 mb-2.5 flex-wrap gap-2">
+                    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span class="font-bold text-xs sm:text-sm text-sky-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
                         Trận #{{ idx + 1 }}
                       </span>
                       <button @click="setWinner(idx, 'RED')"
-                              :class="g.winner === 'RED' ? 'bg-red-600 text-white font-bold ring-2 ring-red-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
-                              class="px-3.5 py-1.5 rounded-lg text-xs transition">
-                        🔴 Team Đỏ Thắng
+                              :class="g.winner === 'RED' ? 'bg-red-600 text-white font-bold ring-1 ring-red-400' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
+                              class="px-2.5 py-1 rounded-lg text-xs transition">
+                        🔴 Đỏ Thắng
                       </button>
                       <button @click="setWinner(idx, 'BLUE')"
-                              :class="g.winner === 'BLUE' ? 'bg-blue-600 text-white font-bold ring-2 ring-sky-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'"
-                              class="px-3.5 py-1.5 rounded-lg text-xs transition">
-                        🔵 Team Xanh Thắng
+                              :class="g.winner === 'BLUE' ? 'bg-sky-500 text-slate-950 font-bold ring-1 ring-sky-300' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
+                              class="px-2.5 py-1 rounded-lg text-xs transition">
+                        🔵 Xanh Thắng
                       </button>
-                      <span v-if="g.winner === 'PENDING'" class="text-amber-300 font-semibold bg-amber-950/60 px-2.5 py-1 rounded-lg text-xs">
-                        ⏳ Đang thi đấu
+                      <span v-if="g.winner === 'PENDING'" class="text-sky-300 font-medium bg-sky-950/60 border border-sky-800/50 px-2 py-0.5 rounded-lg text-[11px]">
+                        ⏳ Đang đấu
                       </span>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                      <span v-if="showCivStats" class="text-xs text-slate-300">
-                        Cung - Chém: <b class="text-sky-300">{{ getGameCivStats(g).cung }} Cung</b> - <b class="text-amber-300">{{ getGameCivStats(g).chem }} Chém</b>
+                    <div class="flex items-center gap-2">
+                      <span v-if="showCivStats" class="text-[11px] sm:text-xs text-slate-400">
+                        <b class="text-sky-300">{{ getGameCivStats(g).cung }} Cung</b> - <b class="text-slate-200">{{ getGameCivStats(g).chem }} Chém</b>
                       </span>
                       <button v-if="canModify(selectedMatch)" @click="deleteGameFromMatch(idx)"
-                              class="text-xs bg-red-950 hover:bg-red-800 text-red-300 border border-red-800 px-2.5 py-1 rounded-lg">
-                        Xóa trận
+                              class="text-[11px] bg-red-950/80 hover:bg-red-800 text-red-300 border border-red-800/60 px-2 py-0.5 rounded-lg">
+                        Xóa
                       </button>
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="team-red-box p-3 rounded-xl space-y-2">
-                      <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gr-'+pi" class="flex items-center justify-between text-sm">
-                        <span class="font-bold truncate" :style="{ color: getPlayerColorHex(g.redColors || selectedMatch.redColors, pi, '#fca5a5') }">
-                          ● {{ selectedMatch.redTeam[pi] || ('Player ' + (pi + 1)) }}
+                  <!-- Luôn xếp 2 đội song song (grid-cols-2) để dễ so sánh quân trên điện thoại -->
+                  <div class="grid grid-cols-2 gap-2 sm:gap-4">
+                    <div class="team-red-box p-2 sm:p-3 rounded-xl space-y-1.5">
+                      <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gr-'+pi" class="flex items-center justify-between gap-1 text-xs sm:text-sm">
+                        <span class="font-semibold text-white truncate">
+                          {{ selectedMatch.redTeam[pi] || ('P' + (pi + 1)) }}
                         </span>
-                        <span :class="getCivTypeClass(g.redCivs[pi])" class="px-3 py-0.5 rounded-md text-xs font-bold min-w-[80px] text-center">
+                        <span :class="getCivTypeClass(g.redCivs[pi])" class="px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold shrink-0 text-center">
                           {{ g.redCivs[pi] || '---' }}
                         </span>
                       </div>
                     </div>
 
-                    <div class="team-blue-box p-3 rounded-xl space-y-2">
-                      <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gb-'+pi" class="flex items-center justify-between text-sm">
-                        <span class="font-bold truncate" :style="{ color: getPlayerColorHex(g.blueColors || selectedMatch.blueColors, pi, '#93c5fd') }">
-                          ● {{ selectedMatch.blueTeam[pi] || ('Player ' + (pi + 1)) }}
+                    <div class="team-blue-box p-2 sm:p-3 rounded-xl space-y-1.5">
+                      <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gb-'+pi" class="flex items-center justify-between gap-1 text-xs sm:text-sm">
+                        <span class="font-semibold text-white truncate">
+                          {{ selectedMatch.blueTeam[pi] || ('P' + (pi + 1)) }}
                         </span>
-                        <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-3 py-0.5 rounded-md text-xs font-bold min-w-[80px] text-center">
+                        <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold shrink-0 text-center">
                           {{ g.blueCivs[pi] || '---' }}
                         </span>
                       </div>
@@ -637,29 +707,29 @@
           </div>
 
           <!-- TAB 3: DASHBOARD THỐNG KÊ -->
-          <div v-if="currentTab === 'analytics'" class="space-y-6">
-            <div class="premium-card p-5 rounded-2xl">
-              <h2 class="text-base font-bold text-sky-400 uppercase mb-1">Thống Kê Tỷ Lệ Quân (Civilization Insight)</h2>
-              <p class="text-sm text-slate-400">Tổng hợp từ toàn bộ các trận đấu đã diễn ra trên hệ thống.</p>
+          <div v-if="currentTab === 'analytics'" class="space-y-4 sm:space-y-6">
+            <div class="premium-card p-4 sm:p-5 rounded-2xl">
+              <h2 class="text-sm sm:text-base font-bold text-sky-400 uppercase mb-1">Thống Kê Tỷ Lệ Quân (Civilization Insight)</h2>
+              <p class="text-xs sm:text-sm text-slate-400">Tổng hợp từ toàn bộ các trận đấu đã diễn ra trên hệ thống.</p>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="premium-card p-5 rounded-2xl">
-                <h3 class="text-sm font-bold text-slate-200 mb-3 text-center">📊 Các Loại Quân Xuất Hiện Nhiều Nhất</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div class="premium-card p-4 sm:p-5 rounded-2xl">
+                <h3 class="text-xs sm:text-sm font-bold text-slate-200 mb-3 text-center">📊 Các Loại Quân Xuất Hiện Nhiều Nhất</h3>
                 <canvas id="civChart" class="max-h-64"></canvas>
               </div>
-              <div class="premium-card p-5 rounded-2xl">
-                <h3 class="text-sm font-bold text-slate-200 mb-3 text-center">🏹 Tỷ Lệ Quân Cung vs Quân Chém</h3>
+              <div class="premium-card p-4 sm:p-5 rounded-2xl">
+                <h3 class="text-xs sm:text-sm font-bold text-slate-200 mb-3 text-center">🏹 Tỷ Lệ Quân Cung vs Quân Chém</h3>
                 <canvas id="civTypeChart" class="max-h-64"></canvas>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- CỘT PHẢI (4 CỘT): KẾT BẠN & TRẠNG THÁI LIVE + KHUNG CHAT BÌNH LUẬN & TẶNG SAO -->
-        <div class="lg:col-span-4 space-y-5">
+        <!-- CỘT PHẢI (4 CỘT TRÊN PC, HIỆN THEO TAB TRÊN ĐIỆN THOẠI): BẠN BÈ LIVE & KHUNG CHAT -->
+        <div class="lg:col-span-4 space-y-4 sm:space-y-5" :class="(mobileSection === 'chat' || mobileSection === 'friends') ? 'block' : 'hidden lg:block'">
 
           <!-- CARD 1: KẾT BẠN & THEO DÕI BẠN BÈ ĐANG LIVE -->
-          <div class="premium-card p-5 rounded-2xl space-y-3.5">
+          <div class="premium-card p-4 sm:p-5 rounded-2xl space-y-3" :class="mobileSection === 'friends' ? 'block' : 'hidden lg:block'">
             <div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
               <h3 class="text-sm font-bold text-sky-400 uppercase flex items-center gap-2">
                 <i class="fa-solid fa-user-group"></i>
@@ -706,7 +776,7 @@
                   <button v-if="f.isLive"
                           @click="watchFriendLive(f)"
                           class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-lg shadow transition flex items-center gap-1">
-                    <span>🏟️ Vào Sảnh Live</span>
+                    <span>🏟️ Vào Sảnh</span>
                   </button>
                   <button @click="toggleFriend(f.name)"
                           class="text-slate-500 hover:text-red-400 text-xs px-1.5 py-1"
@@ -723,8 +793,8 @@
           </div>
 
           <!-- CARD 2: SẢNH KÈO ĐẤU LIVE — KHUNG CHAT BÌNH LUẬN & TẶNG SAO CỔ VŨ -->
-          <div id="liveLobbyChatCard" class="premium-card p-5 rounded-2xl flex flex-col">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
+          <div id="liveLobbyChatCard" class="premium-card p-4 sm:p-5 rounded-2xl flex flex-col" :class="mobileSection === 'chat' ? 'block' : 'hidden lg:flex'">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3 gap-2">
               <div>
                 <h3 class="text-sm font-bold text-sky-400 uppercase flex items-center gap-2">
                   <i class="fa-solid fa-comments"></i>
@@ -732,68 +802,68 @@
                 </h3>
                 <p class="text-xs text-slate-300 mt-1 flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                  <span>Đang ở sảnh của: <b class="text-amber-300">Máy {{ activeChatStreamer }}</b></span>
+                  <span>Sảnh: <b class="text-white">Máy {{ activeChatStreamer }}</b></span>
                 </p>
               </div>
-              <div class="flex items-center gap-1.5 flex-wrap">
+              <div class="hidden sm:flex items-center gap-1.5 flex-wrap">
                 <button @click="copyFbGroupBridgeScript"
-                        class="text-xs bg-blue-600/25 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 px-2.5 py-1.5 rounded-lg font-semibold transition"
+                        class="text-xs bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/30 px-2.5 py-1.5 rounded-lg font-semibold transition"
                         title="Copy mã tự động bắt Comment từ luồng Live trong Group Facebook đẩy lên OBS">
                   🔵 Kết nối FB Live
                 </button>
                 <button @click="copyChatOverlayLink(activeChatStreamer)"
-                        class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-2.5 py-1.5 rounded-lg font-semibold transition"
-                        title="Copy Link OBS Khung Chat trong suốt (chỉ hiện chữ) để dán vào OBS">
-                  <i class="fa-solid fa-tv mr-1"></i>Link OBS Chat
+                        class="text-xs bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-1.5 rounded-lg font-semibold transition"
+                        title="Copy Link OBS Khung Chat trong suốt">
+                  <i class="fa-solid fa-tv text-sky-400 mr-1"></i>Link OBS Chat
                 </button>
               </div>
             </div>
 
             <!-- Thanh chọn nhanh Sảnh Live của Bạn bè / Các kèo đang Live -->
             <div v-if="liveMatchesList.length > 0" class="mb-3 bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
-              <div class="text-[11px] font-bold text-slate-400 mb-1.5">🏟️ Chọn Sảnh Kèo Đấu Đang Live để vào Chat & Tặng Sao:</div>
+              <div class="text-[11px] font-bold text-slate-400 mb-1.5">🏟️ Chọn Sảnh Đang Live:</div>
               <div class="flex flex-wrap gap-1.5">
                 <button v-for="lm in liveMatchesList" :key="lm.id"
                         @click="enterMatchLobby(lm)"
                         :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase()
-                          ? 'bg-red-600 text-white border-red-400 shadow'
-                          : 'bg-slate-950 text-slate-300 border-slate-700 hover:border-sky-400'"
-                        class="px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1">
+                          ? 'bg-sky-500 text-slate-950 border-sky-400 shadow font-bold'
+                          : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-400'"
+                        class="px-2.5 py-1 rounded-lg text-xs border transition flex items-center gap-1">
                   <span>🔴 {{ lm.streamerName }}</span>
                   <span class="text-[10px] opacity-80">({{ lm.mode }})</span>
                 </button>
               </div>
             </div>
 
-            <!-- Thanh nút Tặng Sao nhanh (Star Gift Effect) -->
-            <div class="bg-slate-900/90 border border-amber-500/30 rounded-xl p-2.5 mb-3">
+            <!-- Thanh nút Tặng Sao nhanh (Tối giản bảng màu Xanh Dương - Xám Đen) -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 mb-3">
               <div class="flex justify-between items-center mb-1.5">
-                <span class="text-xs font-bold text-amber-300 flex items-center gap-1">
-                  <span>🌟</span> Tặng Sao vào sảnh <b>{{ activeChatStreamer }}</b> (Hiện lên Live):
+                <span class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                  <span class="text-sky-400">⭐</span> Tặng Sao cổ vũ sảnh <b class="text-white">{{ activeChatStreamer }}</b>:
                 </span>
               </div>
               <div class="grid grid-cols-4 gap-1.5">
                 <button @click="sendStarGift(1)"
-                        class="bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-lg text-xs transition">
+                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1.5 rounded-lg text-xs transition">
                   ⭐ +1
                 </button>
                 <button @click="sendStarGift(10)"
-                        class="bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-lg text-xs transition">
-                  🌟 +10
+                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1.5 rounded-lg text-xs transition">
+                  ⭐ +10
                 </button>
                 <button @click="sendStarGift(50)"
-                        class="bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold py-1.5 rounded-lg text-xs transition">
+                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1.5 rounded-lg text-xs transition">
                   ✨ +50
                 </button>
                 <button @click="sendStarGift(100)"
-                        class="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black py-1.5 rounded-lg text-xs shadow transition">
+                        class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-1.5 rounded-lg text-xs shadow transition">
                   🔥 +100
                 </button>
               </div>
             </div>
 
             <!-- Danh sách tin nhắn bình luận -->
-            <div ref="webChatBox" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 h-72 overflow-y-auto space-y-2.5 mb-3">
+            <div ref="webChatBox" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 h-72 overflow-y-auto space-y-2 mb-3">
               <div v-if="activeChatMessages.length === 0" class="text-center py-10 text-xs text-slate-500">
                 Chưa có bình luận nào trong sảnh <b>{{ activeChatStreamer }}</b>. Hãy gửi bình luận hoặc tặng Sao cổ vũ!
               </div>
@@ -801,13 +871,13 @@
               <div v-for="m in activeChatMessages" :key="m.id"
                    class="rounded-xl px-3 py-2 text-xs leading-relaxed"
                    :class="m.type === 'STAR'
-                     ? 'bg-amber-500/15 border border-amber-400/40 text-amber-100'
+                     ? 'bg-sky-500/15 border border-sky-400/40 text-sky-100'
                      : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK')
                          ? 'bg-blue-950/60 border border-blue-500/40 text-slate-100'
                          : 'bg-slate-900 border border-slate-800 text-slate-100')">
                 <div class="flex justify-between items-center mb-0.5">
-                  <span class="font-bold" :class="m.type === 'STAR' ? 'text-amber-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-sky-300')">
-                    <span v-if="m.type === 'STAR'">🌟 </span>
+                  <span class="font-bold" :class="m.type === 'STAR' ? 'text-sky-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-white')">
+                    <span v-if="m.type === 'STAR'">⭐ </span>
                     <span v-else-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'">🔵 [FB] </span>
                     {{ m.senderName }}
                   </span>
@@ -820,12 +890,12 @@
             <!-- Form gửi bình luận (BẮT BUỘC ĐĂNG NHẬP) -->
             <div v-if="sessionPlayerName" class="space-y-2">
               <div class="flex items-center justify-between text-xs text-slate-400 px-1">
-                <span>Đang chat với tên: <b class="text-emerald-400">{{ sessionPlayerName }}</b></span>
-                <span>Sảnh đích: <b class="text-amber-300">{{ activeChatStreamer }}</b></span>
+                <span>Nick: <b class="text-white">{{ sessionPlayerName }}</b></span>
+                <span>Sảnh: <b class="text-sky-300">{{ activeChatStreamer }}</b></span>
               </div>
               <div class="flex gap-2">
                 <input type="text" v-model="chatInputText" @keyup.enter="submitChatMessage"
-                       :placeholder="'Bình luận vào sảnh Live của ' + activeChatStreamer + '...'"
+                       :placeholder="'Bình luận vào sảnh ' + activeChatStreamer + '...'"
                        class="flex-1 bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3.5 py-2 text-sm text-slate-100 outline-none">
                 <button @click="submitChatMessage"
                         class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition shrink-0">
@@ -833,19 +903,47 @@
                 </button>
               </div>
             </div>
-            <div v-else class="bg-slate-900/90 border border-slate-700/80 rounded-xl p-3.5 text-center space-y-2">
+            <div v-else class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 text-center space-y-2">
               <div class="text-xs text-slate-300">
-                🔒 Bạn cần <b>đăng nhập tài khoản Player</b> để bình luận và tặng Sao trong sảnh Live.
+                🔒 Bạn cần <b>đăng nhập tài khoản Player</b> để bình luận và tặng Sao.
               </div>
               <button @click="openLoginUpdaterModal"
                       class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold py-2 rounded-xl text-xs shadow transition">
-                🔑 Đăng Nhập Tài Khoản Để Chat & Tặng Sao
+                🔑 Đăng Nhập Để Chat & Tặng Sao
               </button>
             </div>
           </div>
 
         </div>
       </div>
+
+      <!-- THANH ĐIỀU HƯỚNG CỐ ĐỊNH DƯỚI ĐÁY MÀN HÌNH ĐIỆN THOẠI (BOTTOM NAVIGATION BAR) -->
+      <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-[140] bg-[#0b0f17]/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 grid grid-cols-4 gap-1">
+        <button @click="setMobileSection('matches')"
+                :class="mobileSection === 'matches' ? 'text-sky-400 font-bold' : 'text-slate-400'"
+                class="flex flex-col items-center justify-center py-1 rounded-xl text-[11px]">
+          <i class="fa-solid fa-trophy text-sm mb-0.5"></i>
+          <span>Kèo Đấu</span>
+        </button>
+        <button @click="setMobileSection('chat')"
+                :class="mobileSection === 'chat' ? 'text-sky-400 font-bold' : 'text-slate-400'"
+                class="flex flex-col items-center justify-center py-1 rounded-xl text-[11px]">
+          <i class="fa-solid fa-comments text-sm mb-0.5"></i>
+          <span>Chat & Sao</span>
+        </button>
+        <button @click="setMobileSection('friends')"
+                :class="mobileSection === 'friends' ? 'text-sky-400 font-bold' : 'text-slate-400'"
+                class="flex flex-col items-center justify-center py-1 rounded-xl text-[11px]">
+          <i class="fa-solid fa-user-group text-sm mb-0.5"></i>
+          <span>Bạn Bè</span>
+        </button>
+        <button @click="setMobileSection('analytics')"
+                :class="mobileSection === 'analytics' ? 'text-sky-400 font-bold' : 'text-slate-400'"
+                class="flex flex-col items-center justify-center py-1 rounded-xl text-[11px]">
+          <i class="fa-solid fa-chart-simple text-sm mb-0.5"></i>
+          <span>Thống Kê</span>
+        </button>
+      </nav>
 
       <!-- MODAL HƯỚNG DẪN GÁN LINK OBS (BẢNG QUÂN & KHUNG CHAT) -->
       <div v-if="showObsGuideModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[150]">
@@ -1493,6 +1591,8 @@
           databaseMode: 'neon_postgres',
           currentDateTimeText: '',
           currentTab: 'matches',
+          mobileSection: 'matches',
+          showMobileMenu: false,
           filterStatus: 'ALL',
           isLoading: false,
           notification: null,
@@ -1714,6 +1814,7 @@
         enterMatchLobby(matchObj) {
           if (!matchObj) return;
           this.selectMatch(matchObj);
+          this.mobileSection = 'chat';
           this.$nextTick(() => {
             const el = document.getElementById('liveLobbyChatCard');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1970,8 +2071,23 @@
             this.sessionPlayerPass
           );
         },
+        setMobileSection(sec) {
+          this.mobileSection = sec;
+          this.showMobileMenu = false;
+          if (sec === 'analytics') {
+            this.openAnalytics();
+          } else if (sec === 'matches') {
+            if (this.currentTab === 'analytics') {
+              this.currentTab = this.selectedMatch ? 'detail' : 'matches';
+            }
+          } else if (sec === 'chat') {
+            this.scrollToBottomChat();
+          }
+        },
         goHome() {
           this.currentTab = 'matches';
+          this.mobileSection = 'matches';
+          this.showMobileMenu = false;
           this.selectedMatch = null;
           window.history.pushState({}, '', window.location.pathname);
         },
@@ -1995,6 +2111,7 @@
             this.overlayConfigForm = { ...this.overlayConfigForm, ...match.overlayConfig };
           }
           this.currentTab = 'detail';
+          this.mobileSection = 'matches';
           window.history.pushState({}, '', `?matchId=${match.id}`);
           this.scrollToBottomChat();
         },
@@ -2006,12 +2123,14 @@
             if (found) {
               this.selectedMatch = found;
               this.currentTab = 'detail';
+              this.mobileSection = 'matches';
             }
           }
         },
         openAdminModal() { this.adminPasswordInput = ''; this.showAdminModal = true; },
         openAnalytics() {
           this.currentTab = 'analytics';
+          this.mobileSection = 'analytics';
           this.$nextTick(() => { this.renderCharts(); });
         },
         async loginAdmin() {
@@ -2606,8 +2725,8 @@
         getCivTypeClass(civName) {
           const t = this.getCivType(civName);
           return t === 'cung'
-            ? 'bg-sky-950 text-sky-300 border border-sky-700/60'
-            : (t === 'chém' ? 'bg-amber-950 text-amber-300 border border-amber-700/60' : 'bg-slate-800 text-slate-400');
+            ? 'bg-sky-950/90 text-sky-300 border border-sky-700/60'
+            : (t === 'chém' ? 'bg-slate-800 text-slate-200 border border-slate-600/60' : 'bg-slate-900 text-slate-400');
         },
         getMatchScore(match) {
           let red = 0, blue = 0;
@@ -2677,7 +2796,7 @@
             type: 'doughnut',
             data: {
               labels: ['Cung', 'Chém'],
-              datasets: [{ data: [cungCount, chemCount], backgroundColor: ['#38bdf8', '#fbbf24'] }]
+              datasets: [{ data: [cungCount, chemCount], backgroundColor: ['#38bdf8', '#64748b'] }]
             }
           });
         },
