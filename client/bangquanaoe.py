@@ -1374,6 +1374,8 @@ class AOETrackerApp:
         self._build_ui()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        # Dự phòng: nếu tiến trình thoát theo đường khác (sys.exit, lỗi...), vẫn gửi lệnh kết thúc kèo LIVE
+        atexit.register(lambda: self._auto_finish_match_sync() if self.is_logged_in else None)
 
         self._start_clock_loop()
         threading.Thread(target=self._startup_version_check, daemon=True).start()
@@ -6886,38 +6888,70 @@ class AOETrackerApp:
         threading.Thread(target=_task, daemon=True).start()
 
     def _auto_finish_match_sync(self):
-        """Tự động gửi lệnh kết thúc kèo đấu đang LIVE khi người chơi tắt Tool."""
+        """Tự động gửi lệnh kết thúc TOÀN BỘ kèo đấu đang LIVE khi người chơi tắt Tool (đóng cửa sổ / thoát ứng dụng)."""
         if self._did_finish_on_exit:
-            return
+            return False
         self._did_finish_on_exit = True
         try:
-            streamer = self.settings.get("player_name", "").strip()
-            pw = self._get_effective_player_password() or self.settings.get("player_password", "").strip()
+            streamer = ""
+            try:
+                streamer = self.player_name_var.get().strip()
+            except Exception:
+                streamer = ""
+            if not streamer:
+                streamer = str(self.settings.get("player_name", "") or "").strip()
+            pw = self._get_effective_player_password() or str(self.settings.get("player_password", "") or "").strip()
             if not streamer or not pw:
-                return
+                return False
             api_url = self.get_api_endpoint()
-            requests.post(
-                api_url,
-                json={
-                    "action": "finishMatch",
-                    "streamerName": streamer,
-                    "updatedBy": streamer,
-                    "password": pw,
-                    "isAdmin": self.is_admin,
-                    "adminPassword": self.admin_password,
-                },
-                timeout=3.5,
-            )
+            payload = {
+                "action": "finishMatch",
+                "reason": "APP_CLOSED",
+                "streamerName": streamer,
+                "updatedBy": streamer,
+                "password": pw,
+                "isAdmin": self.is_admin,
+                "adminPassword": self.admin_password,
+            }
+            # Thử tối đa 2 lần (Server Render có thể phản hồi chậm) để đảm bảo kèo đấu chắc chắn được kết thúc
+            for attempt in range(2):
+                try:
+                    res = requests.post(api_url, json=payload, timeout=4.0 if attempt == 0 else 3.0)
+                    data = res.json()
+                    if data.get("status") == "success":
+                        return True
+                    # Fallback cho Server cũ chưa hỗ trợ reason=APP_CLOSED
+                    if attempt == 0:
+                        payload.pop("reason", None)
+                except Exception:
+                    continue
         except Exception:
             pass
+        return False
 
     def on_closing(self):
-        """Sự kiện đóng cửa sổ Tool: lưu cấu hình và thoát (giữ nguyên kèo LIVE trên Web/OBS cho đến khi bấm Kết thúc kèo)."""
+        """Sự kiện đóng cửa sổ Tool: lưu cấu hình, TỰ ĐỘNG KẾT THÚC kèo đấu đang LIVE trên Web/OBS rồi thoát."""
+        if getattr(self, "_is_closing", False):
+            return
+        self._is_closing = True
         self.running = False
         try:
             self.save_current_config()
         except Exception:
             pass
+
+        if self.is_logged_in:
+            # Hiện thông báo ngắn trong lúc gửi lệnh kết thúc kèo lên Server
+            try:
+                self.root.title(f"{APP_TITLE} — 🏁 Đang kết thúc kèo đấu & thoát...")
+                if hasattr(self, "status_lbl"):
+                    self.status_lbl.config(text="🏁 Đang kết thúc kèo đấu LIVE trước khi thoát...", fg="#fbbf24")
+                self.root.update_idletasks()
+                self.root.update()
+            except Exception:
+                pass
+            self._auto_finish_match_sync()
+
         try:
             self.root.destroy()
         except Exception:
@@ -7210,7 +7244,8 @@ class AOETrackerApp:
                     last_social_sync = time.time()
                     self.refresh_initial_state()
 
-                if self.is_logged_in and (time.time() - last_heartbeat > 50.0):
+                # Gửi heartbeat mỗi 25 giây để Server biết App PC còn mở (quá 3 phút mất tín hiệu → Server tự kết thúc kèo)
+                if self.is_logged_in and (time.time() - last_heartbeat > 25.0):
                     last_heartbeat = time.time()
                     try:
                         requests.post(

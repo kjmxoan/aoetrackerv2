@@ -261,6 +261,8 @@ async function checkAndAutoFinishDeadMatches() {
   const matches = await db.getMatches();
   const now = Date.now();
   const FOUR_HOURS = 4 * 60 * 60 * 1000;
+  const TOOL_OFFLINE_FINISH_MS = 3 * 60 * 1000;
+  const toolOfflineFinished = [];
   const bogusIds = [];
   const liveByStreamer = new Map();
 
@@ -298,6 +300,16 @@ async function checkAndAutoFinishDeadMatches() {
       changed = true;
     }
 
+    // Dự phòng khi App PC bị tắt đột ngột (Task Manager / crash / mất điện / mất mạng):
+    // App gửi tín hiệu heartbeat mỗi 30 giây — nếu quá 3 phút không còn tín hiệu từ App thì tự động kết thúc kèo
+    if (m.status === 'LIVE' && m.toolHeartbeatAt && (now - Number(m.toolHeartbeatAt) > TOOL_OFFLINE_FINISH_MS)) {
+      m.status = 'FINISHED';
+      m.finishedReason = 'TOOL_OFFLINE';
+      m.finishedAt = now;
+      toolOfflineFinished.push(m);
+      changed = true;
+    }
+
     if (m.status === 'LIVE') {
       const sKey = String(m.streamerName || '').trim().toLowerCase();
       if (sKey) {
@@ -330,6 +342,14 @@ async function checkAndAutoFinishDeadMatches() {
 
   if (bogusIds.length > 0) {
     await db.deleteMatches(bogusIds);
+  }
+
+  for (const fm of toolOfflineFinished) {
+    broadcastUpdate('match_finished', {
+      matchId: fm.id,
+      streamerName: fm.streamerName,
+      reason: 'TOOL_OFFLINE'
+    });
   }
 }
 
@@ -646,6 +666,7 @@ async function handleAutoAddGame(data, authResult) {
       previous.redColors = redColors;
       previous.blueColors = blueColors;
       liveMatch.lastHeartbeat = Date.now();
+      liveMatch.toolHeartbeatAt = Date.now();
       await db.saveMatch(liveMatch);
       broadcastUpdate('match_updated', {
         matchId: liveMatch.id,
@@ -665,6 +686,7 @@ async function handleAutoAddGame(data, authResult) {
       id: 'MATCH_' + Date.now(),
       createdAt: Date.now(),
       lastHeartbeat: Date.now(),
+      toolHeartbeatAt: Date.now(),
       streamerName,
       mode,
       redTeam: redPlayers,
@@ -687,6 +709,7 @@ async function handleAutoAddGame(data, authResult) {
     liveMatch.blueColors = blueColors;
     liveMatch.overlayConfig = effectiveOverlayCfg;
     liveMatch.lastHeartbeat = Date.now();
+    liveMatch.toolHeartbeatAt = Date.now();
     if (!Array.isArray(liveMatch.chatMessages)) liveMatch.chatMessages = [];
     if (typeof liveMatch.starsCount !== 'number') liveMatch.starsCount = 0;
   }
@@ -1506,6 +1529,7 @@ app.post('/api', async (req, res) => {
       );
       if (match) {
         match.lastHeartbeat = Date.now();
+        match.toolHeartbeatAt = Date.now();
         await db.saveMatch(match);
       }
       return res.json({
@@ -1723,6 +1747,53 @@ app.post('/api', async (req, res) => {
 
     if (action === 'finishMatch') {
       const matches = await db.getMatches();
+      const closeReason = String(data.reason || '').toUpperCase().trim();
+
+      // Khi App PC bị đóng: kết thúc TOÀN BỘ kèo LIVE của Streamer (không báo lỗi nếu không còn kèo nào đang LIVE)
+      if (closeReason === 'APP_CLOSED' && data.streamerName && !data.matchId) {
+        const auth = await validatePlayerAccount(data.streamerName, data.password);
+        if (!auth.valid && !isAdminAuthorized(data)) {
+          return res.json({ status: 'error', message: auth.reason || 'Xác thực thất bại!' });
+        }
+        const sLowerClose = String((auth && auth.canonicalName) || data.streamerName).toLowerCase();
+        const liveList = matches.filter(
+          item => item.status === 'LIVE' && String(item.streamerName || '').toLowerCase() === sLowerClose
+        );
+        const nowClose = Date.now();
+        for (const lm of liveList) {
+          lm.status = 'FINISHED';
+          lm.finishedReason = 'APP_CLOSED';
+          lm.finishedAt = nowClose;
+          if (!Array.isArray(lm.chatMessages)) lm.chatMessages = [];
+          lm.chatMessages.push({
+            id: 'SYS_' + nowClose + '_' + Math.floor(Math.random() * 1000),
+            matchId: lm.id,
+            streamerName: lm.streamerName,
+            senderName: 'HỆ THỐNG',
+            senderTier: 'SYSTEM',
+            type: 'SYSTEM',
+            text: '🏁 Streamer đã đóng ứng dụng — Kèo đấu đã kết thúc.',
+            message: '🏁 Streamer đã đóng ứng dụng — Kèo đấu đã kết thúc.',
+            createdAt: nowClose,
+            timeText: formatShortTimeVN(nowClose)
+          });
+          if (lm.chatMessages.length > 60) lm.chatMessages = lm.chatMessages.slice(-60);
+          await db.saveMatch(lm);
+          broadcastUpdate('match_finished', {
+            matchId: lm.id,
+            streamerName: lm.streamerName,
+            reason: 'APP_CLOSED'
+          });
+        }
+        return res.json({
+          status: 'success',
+          finishedCount: liveList.length,
+          message: liveList.length
+            ? `🏁 Đã kết thúc ${liveList.length} kèo đấu LIVE do đóng ứng dụng.`
+            : 'Không còn kèo đấu LIVE nào cần kết thúc.'
+        });
+      }
+
       let match = null;
       if (data.matchId) {
         match = matches.find(item => item.id === data.matchId);
@@ -2289,4 +2360,9 @@ db.initDb().then(() => {
     console.log(`[*] Link OBS Bảng Quân : http://localhost:${PORT}/overlay.html?streamer=XO`);
     console.log(`[*] Link OBS Khung Chat: http://localhost:${PORT}/chat-overlay.html?streamer=XO`);
   });
+
+  // Quét định kỳ mỗi 45 giây: tự động kết thúc các kèo LIVE khi App PC đã tắt / mất tín hiệu quá 3 phút
+  setInterval(() => {
+    checkAndAutoFinishDeadMatches().catch(() => {});
+  }, 45 * 1000);
 });
