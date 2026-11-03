@@ -4,45 +4,52 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AOE COMMAND CENTER — TOOL BẢNG QUÂN AOE BY XO</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/brand-tokens.css">
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto+Condensed:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;500;600;700;800;900&family=Roboto+Condensed:wght@700;900&display=swap');
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #0b0f17;
-      color: #f1f5f9;
+      background-color: #080c14;
+      background-image:
+        radial-gradient(circle at 15% 0%, rgba(236, 161, 51, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 85% 5%, rgba(56, 189, 248, 0.07) 0%, transparent 40%);
+      color: #f8fafc;
       -webkit-tap-highlight-color: transparent;
     }
 
     .font-display {
-      font-family: 'Roboto Condensed', 'Inter', sans-serif;
+      font-family: 'Chakra Petch', 'Roboto Condensed', 'Inter', sans-serif;
+      letter-spacing: 0.02em;
     }
 
-    /* Minimalist Dark Esports Theme (Nền Xám Đen + Trắng Sáng + Xanh Dương dịu, hạn chế màu vàng/cam) */
+    /* Imperial Wood-Gold & Tactical Obsidian Theme (UI/UX Pro Max v5.4) */
     .premium-card {
-      background: #131b26;
-      border: 1px solid #222f42;
-      box-shadow: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
-      transition: border-color 0.2s ease, transform 0.2s ease;
+      background: linear-gradient(180deg, #131b28 0%, #0e1420 100%);
+      border: 1px solid #243247;
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .premium-card-hover:hover {
-      border-color: #38bdf8;
+      border-color: rgba(236, 161, 51, 0.55);
+      box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.78), 0 0 18px rgba(236, 161, 51, 0.12);
     }
 
-    /* Team Đỏ & Team Xanh tối giản, dịu mắt, tôn chữ trắng rõ nét */
+    /* Team Đỏ & Team Xanh độ tương phản cao (WCAG AAA cho chữ trắng) */
     .team-red-box {
-      background: #1a1418;
-      border: 1px solid #4c1d24;
+      background: linear-gradient(145deg, #211319 0%, #160d11 100%);
+      border: 1px solid rgba(244, 63, 94, 0.38);
     }
 
     .team-blue-box {
-      background: #121a26;
-      border: 1px solid #1e3a5f;
+      background: linear-gradient(145deg, #111c2d 0%, #0c1422 100%);
+      border: 1px solid rgba(56, 189, 248, 0.38);
     }
 
     /* Ẩn thanh cuộn ngang trên thanh tab điện thoại */
@@ -77,16 +84,38 @@
         {{ st.icon }}
       </span>
 
-      <!-- BANNER THÔNG BÁO KHI CÓ NGƯỜI TẶNG SAO -->
+      <!-- BANNER VINH DANH HOÀNG GIA KHI NGƯỜI CHƠI TẶNG SAO / VẬT PHẨM ĐẾ CHẾ -->
       <div v-if="activeStarBanner"
-           class="fixed top-4 left-1/2 -translate-x-1/2 z-[180] w-[92vw] max-w-md bg-sky-500 text-slate-950 px-4 py-2.5 rounded-2xl shadow-2xl border border-white/80 flex items-center gap-3 animate-bounce">
-        <span class="text-xl">🌟</span>
-        <div class="min-w-0">
-          <div class="text-xs sm:text-sm font-black truncate">
-            {{ activeStarBanner.senderName }} tặng +{{ activeStarBanner.starCount }} ⭐ cho {{ activeStarBanner.streamerName }}!
-          </div>
-          <div class="text-[11px] font-semibold text-slate-900 truncate">"{{ activeStarBanner.message }}"</div>
+           class="fixed top-4 left-1/2 -translate-x-1/2 z-[180] w-[94vw] max-w-xl aoe-honor-plate px-4 sm:px-5 py-3.5 shadow-2xl flex items-center gap-3.5 sm:gap-4">
+        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-950/90 border-2 border-amber-400/80 flex items-center justify-center shrink-0 shadow-lg">
+          <span class="text-2xl sm:text-3xl aoe-honor-emblem">{{ activeStarBanner.giftIcon || '🌟' }}</span>
         </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
+            <span class="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow">
+              👑 Vinh Danh Tiếp Sức
+            </span>
+            <span class="text-[11px] font-bold text-amber-300 bg-slate-950/80 border border-amber-400/40 px-2 py-0.5 rounded-full">
+              +{{ activeStarBanner.starCount }} ⭐
+            </span>
+            <span class="text-[11px] font-semibold text-sky-300 truncate">
+              &rarr; Sảnh Máy {{ activeStarBanner.streamerName }}
+            </span>
+          </div>
+          <div class="font-display text-sm sm:text-base font-black text-white leading-snug truncate">
+            <span class="text-amber-300">{{ activeStarBanner.senderName }}</span>
+            <span class="text-slate-200 font-semibold mx-1">đã trao tặng</span>
+            <span class="text-sky-300 underline decoration-amber-400/60">{{ activeStarBanner.giftName || (activeStarBanner.starCount + ' Sao') }}</span>!
+          </div>
+          <div class="text-xs font-medium text-amber-100/95 italic truncate mt-0.5">
+            "{{ activeStarBanner.message }}"
+          </div>
+        </div>
+        <button @click="activeStarBanner = null"
+                class="text-slate-300 hover:text-white bg-slate-950/60 hover:bg-slate-900 w-7 h-7 rounded-lg flex items-center justify-center text-sm shrink-0 transition"
+                title="Đóng thông báo vinh danh">
+          &times;
+        </button>
       </div>
 
       <!-- NOTIFICATION ALERT -->
@@ -100,33 +129,35 @@
         <button @click="notification = null" class="text-slate-400 hover:text-white ml-3 text-lg">&times;</button>
       </div>
 
-      <!-- 1. HEADER GỌN GÀNG CHO CẢ ĐIỆN THOẠI & MÁY TÍNH -->
-      <header class="premium-card p-3.5 sm:p-5 rounded-2xl mb-3 sm:mb-5">
-        <div class="flex justify-between items-center gap-2">
-          <!-- Cụm Logo & Tiêu đề -->
-          <div class="flex items-center gap-2.5 sm:gap-4 cursor-pointer min-w-0" @click="goHome">
-            <div class="w-10 h-10 sm:w-12 sm:h-12 shrink-0 flex items-center justify-center bg-slate-900 border border-sky-500/40 rounded-xl shadow">
-              <span class="text-lg sm:text-xl">⚔️</span>
+      <!-- 1. HEADER THƯƠNG HIỆU AOE BY XO (ĐỒNG BỘ WEB • OBS • APP PC) -->
+      <header class="premium-card p-3.5 sm:p-5 rounded-2xl mb-3 sm:mb-5 border-t-2 border-t-amber-500/50">
+        <div class="flex justify-between items-center gap-3">
+          <!-- Cụm Logo Vector Chính Thức & Tiêu đề -->
+          <div class="flex items-center gap-3 sm:gap-4 cursor-pointer min-w-0 group" @click="goHome">
+            <div class="w-11 h-11 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center bg-slate-950 border-2 border-amber-500/50 group-hover:border-amber-400 rounded-2xl shadow-lg p-1.5 transition">
+              <img src="/logo.svg" alt="AOE BY XO Logo" class="w-full h-full object-contain drop-shadow" />
             </div>
             <div class="min-w-0">
-              <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <span class="text-[10px] sm:text-xs font-bold text-sky-400 uppercase tracking-wider">AOE BY XO</span>
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span v-if="liveMatchesCount > 0" class="bg-red-500/20 border border-red-500/40 text-red-300 text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold">
-                  🔴 {{ liveMatchesCount }} Live
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[10px] sm:text-xs font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                  ⚔️ AOE BY XO
+                </span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span v-if="liveMatchesCount > 0" class="bg-red-600/25 border border-red-500/50 text-red-200 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold">
+                  🔴 {{ liveMatchesCount }} Sảnh Đang Live
                 </span>
               </div>
-              <h1 class="font-display text-base sm:text-2xl font-black text-white tracking-wide uppercase truncate">
-                TOOL BẢNG QUÂN AOE BY XO
+              <h1 class="font-display text-base sm:text-2xl font-black text-white tracking-wide uppercase truncate mt-0.5">
+                TOOL BẢNG QUÂN <span class="aoe-gold-gradient-text">AOE BY XO</span>
               </h1>
-              <p class="hidden sm:block text-xs text-slate-400 mt-0.5">
-                Theo dõi tỉ số kèo đấu trực tiếp, bình luận Live & đồng bộ OBS Overlay
+              <p class="hidden sm:block text-xs text-slate-300 mt-0.5">
+                Hệ thống Bảng Quân Tự Động F2 &bull; Sảnh Live Đế Chế &bull; Vinh Danh Vật Phẩm &amp; OBS Broadcast
               </p>
             </div>
           </div>
 
           <!-- Cụm Nút Bên Phải Trên Điện Thoại (Chỉ hiện Đăng nhập/Tài khoản + Nút Menu Thu Gọn) -->
-          <div class="flex lg:hidden items-center gap-1.5 shrink-0">
+          <div class="flex lg:hidden items-center gap-2 shrink-0">
             <button v-if="sessionPlayerName"
                     @click="openMyProfileModal"
                     class="bg-slate-900 border border-slate-700 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
@@ -406,68 +437,183 @@
         <!-- CỘT CHÍNH (8 CỘT TRÊN MÀN HÌNH LỚN) -->
         <div class="lg:col-span-8 space-y-4" :class="(mobileSection === 'matches' || mobileSection === 'analytics') ? 'block' : 'hidden lg:block'">
 
-          <!-- TAB 1: DANH SÁCH KÈO ĐẤU (LIVESCORE HORIZONTAL LAYOUT CHO CẢ ĐIỆN THOẠI & PC) -->
-          <div v-if="currentTab === 'matches'" class="space-y-3 sm:space-y-4">
-            <div class="flex justify-between items-center premium-card px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl gap-2">
-              <div class="flex gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
+          <!-- TAB 1: DANH SÁCH KÈO ĐẤU & SẢNH CÁC TRẬN ĐẤU ĐANG LIVE (UI/UX PRO MAX v5.4) -->
+          <div v-if="currentTab === 'matches'" class="space-y-4">
+
+            <!-- KHU VỰC TIÊU ĐIỂM: 🏟️ SẢNH CÁC TRẬN ĐẤU ĐANG LIVE (LIVE ARENA LOBBY) -->
+            <div class="premium-card p-4 sm:p-5 rounded-2xl border-l-4 border-l-amber-400">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3.5 border-b border-slate-800">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                  <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
+                  <h2 class="font-display text-sm sm:text-lg font-black text-white uppercase tracking-wide">
+                    🏟️ SẢNH CÁC TRẬN ĐẤU ĐANG LIVE
+                  </h2>
+                  <span class="bg-amber-500/15 border border-amber-400/40 text-amber-300 text-xs font-extrabold px-2.5 py-0.5 rounded-full">
+                    {{ liveMatchesList.length }} Sảnh Trực Tiếp
+                  </span>
+                </div>
+                <span class="text-xs text-slate-300">
+                  Bấm <b class="text-sky-300">Vào Sảnh &amp; Chat</b> để theo dõi bảng quân thời gian thực &amp; thả Voi / Phù Thủy Sét
+                </span>
+              </div>
+
+              <!-- Grid các sảnh đang Live -->
+              <div v-if="liveMatchesList.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div v-for="lm in liveMatchesList" :key="'lobby-' + lm.id"
+                     @click="enterMatchLobby(lm)"
+                     :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? 'is-active-room' : ''"
+                     class="aoe-live-arena-card p-3.5 sm:p-4 cursor-pointer flex flex-col justify-between gap-3">
+                  <!-- Hàng trên: Streamer + Chế độ + Sao -->
+                  <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="bg-red-600 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 shrink-0">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>LIVE
+                      </span>
+                      <span class="font-display font-bold text-sm text-amber-300 truncate">
+                        🎥 Máy {{ lm.streamerName || 'XO' }}
+                      </span>
+                      <span class="text-[11px] font-bold bg-slate-900 text-sky-300 border border-slate-700 px-2 py-0.5 rounded-md shrink-0">
+                        {{ lm.mode }}
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <span class="text-[11px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
+                        ⭐ {{ lm.starsCount || 0 }}
+                      </span>
+                      <span class="text-[11px] font-semibold text-slate-300 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-md">
+                        💬 {{ (lm.chatMessages || []).length }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Giữa: Bảng Tỉ Số Mini Đỏ vs Xanh -->
+                  <div class="grid grid-cols-11 gap-2 items-center bg-slate-950/85 border border-slate-800/90 rounded-xl p-2.5">
+                    <div class="col-span-4 text-left min-w-0">
+                      <div class="text-[10px] font-extrabold text-rose-400 uppercase">🔴 Team Đỏ</div>
+                      <div class="text-xs sm:text-sm font-bold text-white truncate mt-0.5">
+                        {{ (lm.redTeam || []).join(', ') || 'Team Đỏ' }}
+                      </div>
+                    </div>
+                    <div class="col-span-3 text-center">
+                      <div class="font-display font-black text-lg sm:text-2xl leading-none whitespace-nowrap">
+                        <span class="text-rose-400">{{ getMatchScore(lm).red }}</span>
+                        <span class="text-slate-500 mx-1">-</span>
+                        <span class="text-sky-400">{{ getMatchScore(lm).blue }}</span>
+                      </div>
+                      <div class="text-[10px] font-semibold text-slate-300 mt-1">
+                        Trận #{{ (lm.games || []).length || 1 }}
+                      </div>
+                    </div>
+                    <div class="col-span-4 text-right min-w-0">
+                      <div class="text-[10px] font-extrabold text-sky-400 uppercase">🔵 Team Xanh</div>
+                      <div class="text-xs sm:text-sm font-bold text-white truncate mt-0.5">
+                        {{ (lm.blueTeam || []).join(', ') || 'Team Xanh' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Hàng dưới: Cụm nút hành động chuẩn khoảng cách 8px (gap-2) -->
+                  <div class="flex items-center justify-between gap-2 pt-1">
+                    <button @click.stop="enterMatchLobby(lm)"
+                            class="flex-1 bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold py-1.5 px-3 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5">
+                      <i class="fa-solid fa-door-open"></i>
+                      <span>Vào Sảnh &amp; Chat</span>
+                    </button>
+                    <button @click.stop="sendQuickStar(lm, 22, 'ELEPHANT')"
+                            class="bg-slate-900 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-bold py-1.5 px-2.5 rounded-xl text-xs transition shrink-0"
+                            title="Thả Voi Điên 22 Sao cổ vũ sảnh này">
+                      🐘 22⭐
+                    </button>
+                    <button @click.stop="sendQuickStar(lm, 100, 'PRIEST_LIGHTNING')"
+                            class="bg-slate-900 hover:bg-amber-400 text-sky-300 hover:text-slate-950 border border-sky-500/40 font-bold py-1.5 px-2.5 rounded-xl text-xs transition shrink-0"
+                            title="Triệu hồi Phù Thủy Sét 100 Sao (Wololo)">
+                      ⚡ 100⭐
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Trạng thái chờ khi chưa có sảnh Live -->
+              <div v-else class="bg-slate-950/70 border border-slate-800/90 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-slate-300">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl">🛡️</span>
+                  <div>
+                    <div class="font-bold text-white">Hiện chưa có sảnh nào đang phát sóng trực tiếp (LIVE)</div>
+                    <div class="text-xs text-slate-300 mt-0.5">Streamer chỉ cần mở <b>Tool PC AOE BY XO</b> và ấn <b>F2 (Diplomacy)</b> trong game để mở sảnh Live tự động!</div>
+                  </div>
+                </div>
+                <button @click="downloadPcTool" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shrink-0 transition">
+                  <i class="fa-solid fa-download mr-1"></i>Tải Tool PC Ngay
+                </button>
+              </div>
+            </div>
+
+            <!-- Thanh lọc danh sách toàn bộ kèo đấu -->
+            <div class="flex justify-between items-center premium-card px-3.5 sm:px-4 py-3 rounded-xl gap-2">
+              <div class="flex gap-2 overflow-x-auto no-scrollbar">
                 <button @click="filterStatus = 'ALL'"
-                        :class="filterStatus === 'ALL' ? 'bg-sky-500 text-slate-950 font-bold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
-                        class="px-3 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0">
+                        :class="filterStatus === 'ALL' ? 'bg-amber-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
                   Tất cả ({{ matches.length }})
                 </button>
                 <button @click="filterStatus = 'LIVE'"
-                        :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-bold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
-                        class="px-3 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0">
-                  🔴 Live ({{ liveMatchesCount }})
+                        :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
+                  🔴 Đang Live ({{ liveMatchesCount }})
                 </button>
                 <button @click="filterStatus = 'FINISHED'"
-                        :class="filterStatus === 'FINISHED' ? 'bg-slate-700 text-white font-bold' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
-                        class="px-3 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0">
-                  🏁 Đã xong
+                        :class="filterStatus === 'FINISHED' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
+                  🏁 Đã kết thúc
                 </button>
               </div>
-              <button @click="fetchInitialData" class="text-xs sm:text-sm text-slate-300 hover:text-sky-400 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 shrink-0">
+              <button @click="fetchInitialData" class="text-xs sm:text-sm text-slate-200 hover:text-amber-300 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 shrink-0 transition">
                 <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i>
-                <span class="hidden sm:inline">Làm mới</span>
+                <span class="hidden sm:inline font-semibold">Làm mới</span>
               </button>
             </div>
 
             <div v-if="filteredMatches.length > 0" class="space-y-3 sm:space-y-4">
               <div v-for="match in filteredMatches" :key="match.id" @click="selectMatch(match)"
                    class="premium-card premium-card-hover p-3.5 sm:p-5 rounded-2xl cursor-pointer">
-                <!-- Dòng thông tin trên cùng của Card (Gọn gàng trên 1 hàng) -->
-                <div class="flex justify-between items-center mb-3 gap-2">
-                  <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
-                    <span class="font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs bg-slate-900 text-sky-400 border border-slate-800">
+                <!-- Dòng thông tin trên cùng của Card (Chuẩn khoảng cách nút gap-2 >= 8px) -->
+                <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                  <div class="flex items-center gap-2 flex-wrap min-w-0">
+                    <span class="font-extrabold px-2.5 py-1 rounded-lg text-[11px] sm:text-xs bg-slate-900 text-sky-300 border border-slate-700">
                       {{ match.mode }}
                     </span>
-                    <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-[11px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-bold">
+                    <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-[11px] sm:text-xs px-2.5 py-1 rounded-lg font-extrabold">
                       🔴 LIVE
                     </span>
-                    <span v-else class="bg-slate-900 text-slate-400 border border-slate-800 text-[11px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-medium">
+                    <span v-else class="bg-slate-900 text-slate-300 border border-slate-700 text-[11px] sm:text-xs px-2.5 py-1 rounded-lg font-semibold">
                       Đã kết thúc
                     </span>
-                    <span v-if="match.streamerName" class="text-[11px] sm:text-xs bg-slate-900 text-slate-200 border border-slate-800 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-semibold truncate">
-                      🎮 {{ match.streamerName }}
+                    <span v-if="match.streamerName" class="text-[11px] sm:text-xs bg-slate-900 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold truncate">
+                      🎮 Máy {{ match.streamerName }}
                     </span>
-                    <span v-if="match.starsCount > 0" class="text-[11px] sm:text-xs bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-lg font-bold">
+                    <span v-if="match.starsCount > 0" class="text-[11px] sm:text-xs bg-amber-500/15 text-amber-300 border border-amber-400/40 px-2.5 py-1 rounded-lg font-extrabold">
                       ⭐ {{ match.starsCount }}
                     </span>
                   </div>
 
-                  <div class="flex items-center gap-1.5 shrink-0">
-                    <button @click.stop="sendQuickStar(match, 1)"
-                            class="text-[11px] sm:text-xs bg-slate-900 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 font-bold px-2.5 py-1 rounded-lg transition"
-                            title="Tặng Sao cổ vũ">
-                      ⭐ Tặng Sao
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button @click.stop="enterMatchLobby(match)"
+                            class="text-[11px] sm:text-xs bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 font-bold px-2.5 py-1 rounded-lg transition"
+                            title="Vào Sảnh xem chi tiết & Chat Live">
+                      🏟️ Vào Sảnh
+                    </button>
+                    <button @click.stop="sendQuickStar(match, 22, 'ELEPHANT')"
+                            class="text-[11px] sm:text-xs bg-slate-900 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-bold px-2.5 py-1 rounded-lg transition"
+                            title="Thả Voi Điên 22 Sao cổ vũ">
+                      🐘 Thả Voi
                     </button>
                     <button @click.stop="copyOverlayLink(match.streamerName)"
-                            class="hidden sm:inline-flex items-center text-xs bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-800 transition">
-                      <i class="fa-solid fa-tv mr-1 text-sky-400"></i>Link OBS
+                            class="hidden sm:inline-flex items-center text-xs bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+                      <i class="fa-solid fa-tv mr-1.5 text-sky-400"></i>Link OBS
                     </button>
-                    <span class="hidden md:inline text-xs text-slate-400">{{ match.formattedTime }}</span>
+                    <span class="hidden md:inline text-xs text-slate-300 font-medium">{{ match.formattedTime }}</span>
                     <button v-if="isAdmin" @click.stop="deleteSingleMatch(match.id)"
-                            class="bg-red-950 hover:bg-red-600 text-red-300 hover:text-white border border-red-800/60 text-xs font-bold px-2 py-1 rounded-lg">
+                            class="bg-red-950 hover:bg-red-600 text-red-200 hover:text-white border border-red-700/60 text-xs font-bold px-2.5 py-1 rounded-lg transition">
                       <i class="fa-solid fa-trash-can"></i>
                     </button>
                   </div>
@@ -813,27 +959,27 @@
             </div>
           </div>
 
-          <!-- CARD 2: SẢNH KÈO ĐẤU LIVE — KHUNG CHAT BÌNH LUẬN & TẶNG SAO CỔ VŨ -->
-          <div id="liveLobbyChatCard" class="premium-card p-4 sm:p-5 rounded-2xl flex flex-col" :class="mobileSection === 'chat' ? 'block' : 'hidden lg:flex'">
+          <!-- CARD 2: SẢNH KÈO ĐẤU LIVE — KHUNG CHAT BÌNH LUẬN & TẶNG VẬT PHẨM ĐẾ CHẾ -->
+          <div id="liveLobbyChatCard" class="premium-card p-4 sm:p-5 rounded-2xl flex flex-col border-t-2 border-t-sky-400/60" :class="mobileSection === 'chat' ? 'block' : 'hidden lg:flex'">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3 gap-2">
               <div>
-                <h3 class="text-sm font-bold text-sky-400 uppercase flex items-center gap-2">
-                  <i class="fa-solid fa-comments"></i>
-                  <span>Sảnh Chat & Tặng Sao Live</span>
+                <h3 class="font-display text-sm sm:text-base font-black text-amber-300 uppercase flex items-center gap-2 tracking-wide">
+                  <i class="fa-solid fa-comments text-sky-400"></i>
+                  <span>Sảnh Chat &amp; Vinh Danh Live</span>
                 </h3>
-                <p class="text-xs text-slate-300 mt-1 flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                  <span>Sảnh: <b class="text-white">Máy {{ activeChatStreamer }}</b></span>
+                <p class="text-xs text-slate-200 mt-1 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Đang ở sảnh: <b class="text-amber-300 font-extrabold">Máy {{ activeChatStreamer }}</b></span>
                 </p>
               </div>
-              <div class="hidden sm:flex items-center gap-1.5 flex-wrap">
+              <div class="hidden sm:flex items-center gap-2 flex-wrap">
                 <button @click="copyFbGroupBridgeScript"
-                        class="text-xs bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/30 px-2.5 py-1.5 rounded-lg font-semibold transition"
+                        class="text-xs bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 px-2.5 py-1.5 rounded-xl font-bold transition"
                         title="Copy mã tự động bắt Comment từ luồng Live trong Group Facebook đẩy lên OBS">
                   🔵 Kết nối FB Live
                 </button>
                 <button @click="copyChatOverlayLink(activeChatStreamer)"
-                        class="text-xs bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-1.5 rounded-lg font-semibold transition"
+                        class="text-xs bg-slate-900 hover:bg-slate-800 text-slate-100 border border-slate-700 px-2.5 py-1.5 rounded-xl font-semibold transition"
                         title="Copy Link OBS Khung Chat trong suốt">
                   <i class="fa-solid fa-tv text-sky-400 mr-1"></i>Link OBS Chat
                 </button>
@@ -841,102 +987,105 @@
             </div>
 
             <!-- Thanh chọn nhanh Sảnh Live của Bạn bè / Các kèo đang Live -->
-            <div v-if="liveMatchesList.length > 0" class="mb-3 bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
-              <div class="text-[11px] font-bold text-slate-300 mb-2 flex items-center justify-between">
-                <span>🏟️ Sảnh Các Trận Đấu Đang Live ({{ liveMatchesList.length }}):</span>
-                <span class="text-[10px] text-sky-400">Bấm để vào theo dõi &amp; chat</span>
+            <div v-if="liveMatchesList.length > 0" class="mb-3 bg-slate-950/90 border border-slate-800 rounded-xl p-2.5">
+              <div class="text-xs font-extrabold text-slate-200 mb-2 flex items-center justify-between">
+                <span>🏟️ Chuyển Nhanh Sảnh Live ({{ liveMatchesList.length }}):</span>
+                <span class="text-[11px] text-sky-300 font-semibold">Chạm để đổi phòng</span>
               </div>
-              <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
                 <div v-for="lm in liveMatchesList" :key="lm.id"
                      @click="enterMatchLobby(lm)"
                      :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase()
-                       ? 'bg-sky-500/20 text-white border-sky-400 shadow'
-                       : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-400'"
-                     class="px-2.5 py-1.5 rounded-lg text-xs border transition cursor-pointer flex items-center justify-between gap-2">
+                       ? 'bg-sky-500/20 text-white border-sky-400 shadow-md'
+                       : 'bg-slate-900/90 text-slate-200 border-slate-800 hover:border-amber-400/60'"
+                     class="px-3 py-2 rounded-xl text-xs border transition cursor-pointer flex items-center justify-between gap-2">
                   <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-1.5 font-bold">
-                      <span class="text-red-400">🔴 {{ lm.streamerName }}</span>
-                      <span class="text-[10px] bg-slate-900 text-sky-300 px-1.5 py-0.5 rounded border border-slate-700">{{ lm.mode }}</span>
+                    <div class="flex items-center gap-2 font-bold">
+                      <span class="text-red-400 font-extrabold">🔴 {{ lm.streamerName }}</span>
+                      <span class="text-[10px] bg-slate-950 text-sky-300 px-1.5 py-0.5 rounded border border-slate-700 font-bold">{{ lm.mode }}</span>
                     </div>
-                    <div class="text-[11px] text-slate-400 truncate mt-0.5">
-                      <span class="text-red-300">{{ (lm.redTeam || []).join(', ') }}</span>
-                      <b class="text-amber-300 mx-1">{{ getMatchScore(lm).red }} - {{ getMatchScore(lm).blue }}</b>
-                      <span class="text-sky-300">{{ (lm.blueTeam || []).join(', ') }}</span>
+                    <div class="text-[11px] text-slate-200 truncate mt-0.5">
+                      <span class="text-rose-300 font-semibold">{{ (lm.redTeam || []).join(', ') }}</span>
+                      <b class="font-display text-amber-300 mx-1.5">{{ getMatchScore(lm).red }} - {{ getMatchScore(lm).blue }}</b>
+                      <span class="text-sky-300 font-semibold">{{ (lm.blueTeam || []).join(', ') }}</span>
                     </div>
                   </div>
-                  <span class="text-[10px] font-bold px-2 py-1 rounded shrink-0"
-                        :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? 'bg-sky-500 text-slate-950' : 'bg-slate-900 text-sky-300 border border-slate-700'">
-                    {{ activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? 'Đang xem' : '👁️ Vào Sảnh' }}
+                  <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-lg shrink-0"
+                        :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? 'bg-amber-400 text-slate-950 shadow' : 'bg-slate-950 text-sky-300 border border-slate-700'">
+                    {{ activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? '✓ Đang xem' : '👁️ Vào Sảnh' }}
                   </span>
                 </div>
               </div>
             </div>
 
-            <!-- Thanh Vật Phẩm Đế Chế & Tặng Sao (Quy đổi trực tiếp từ Quỹ Sao của người chơi) -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 mb-3 space-y-2">
-              <div class="flex justify-between items-center flex-wrap gap-1">
-                <span class="text-xs font-semibold text-slate-300 flex items-center gap-1">
-                  <span class="text-amber-400">⚔️</span> Vật phẩm Đế Chế tặng sảnh <b class="text-white">{{ activeChatStreamer }}</b>:
+            <!-- Thanh Vật Phẩm Đế Chế & Tặng Sao (Chuẩn khoảng cách nút gap-2 >= 8px) -->
+            <div class="bg-slate-950/90 border border-amber-500/30 rounded-xl p-3 mb-3 space-y-2.5">
+              <div class="flex justify-between items-center flex-wrap gap-1.5">
+                <span class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                  <span class="text-amber-400">⚔️</span> Tiếp sức sảnh <b class="text-amber-300">{{ activeChatStreamer }}</b>:
                 </span>
-                <span v-if="myPlayerObj" class="text-[11px] font-bold text-amber-300 bg-slate-950 px-2 py-0.5 rounded-lg border border-amber-500/30">
-                  💰 Quỹ Sao của bạn: {{ myPlayerObj.starsBalance || 0 }} ⭐
+                <span v-if="myPlayerObj" class="text-[11px] font-extrabold text-amber-300 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-amber-400/40">
+                  💰 Quỹ Sao: {{ myPlayerObj.starsBalance || 0 }} ⭐
                 </span>
               </div>
 
-              <!-- Hàng 1: 6 Vật Phẩm Đặc Trưng AOE 1 -->
-              <div class="grid grid-cols-3 gap-1.5">
+              <!-- Hàng 1: 6 Vật Phẩm Đặc Trưng AOE 1 (gap-2 = 8px) -->
+              <div class="grid grid-cols-3 gap-2">
                 <button v-for="item in aoeGiftCatalog" :key="item.code"
                         @click="sendStarGift(item.stars, item.code)"
-                        class="bg-slate-950 hover:bg-amber-500 hover:text-slate-950 text-slate-100 border border-slate-700/90 hover:border-amber-400 py-1.5 px-1.5 rounded-lg text-[11px] transition flex flex-col items-center justify-center leading-tight"
+                        class="bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-100 border border-slate-700 hover:border-amber-300 py-2 px-2 rounded-xl text-[11px] transition flex flex-col items-center justify-center leading-tight group shadow-sm"
                         :title="item.name + ' (' + item.stars + ' Sao) — ' + item.defaultMsg">
-                  <span class="font-bold">{{ item.icon }} {{ item.shortLabel }}</span>
-                  <span class="text-[10px] text-amber-300 font-extrabold mt-0.5">{{ item.stars }} ⭐</span>
+                  <span class="font-extrabold group-hover:scale-105 transition">{{ item.icon }} {{ item.shortLabel }}</span>
+                  <span class="text-[10px] text-amber-300 group-hover:text-slate-950 font-black mt-0.5">{{ item.stars }} ⭐</span>
                 </button>
               </div>
 
-              <!-- Hàng 2: Nút Tặng Sao Nhanh -->
-              <div class="grid grid-cols-4 gap-1.5 pt-1 border-t border-slate-800/80">
+              <!-- Hàng 2: Nút Tặng Sao Nhanh (gap-2 = 8px) -->
+              <div class="grid grid-cols-4 gap-2 pt-1.5 border-t border-slate-800">
                 <button @click="sendStarGift(1)"
-                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1 rounded-lg text-xs transition">
+                        class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
                   ⭐ +1
                 </button>
                 <button @click="sendStarGift(10)"
-                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1 rounded-lg text-xs transition">
+                        class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
                   ⭐ +10
                 </button>
                 <button @click="sendStarGift(50)"
-                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1 rounded-lg text-xs transition">
+                        class="bg-slate-900 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-extrabold py-1.5 rounded-xl text-xs transition">
                   ✨ +50
                 </button>
                 <button @click="sendStarGift(100)"
-                        class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-1 rounded-lg text-xs shadow transition">
+                        class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-1.5 rounded-xl text-xs shadow transition">
                   🔥 +100
                 </button>
               </div>
             </div>
 
-            <!-- Danh sách tin nhắn bình luận -->
-            <div ref="webChatBox" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 h-72 overflow-y-auto space-y-2 mb-3">
-              <div v-if="activeChatMessages.length === 0" class="text-center py-10 text-xs text-slate-500">
-                Chưa có bình luận nào trong sảnh <b>{{ activeChatStreamer }}</b>. Hãy gửi bình luận hoặc tặng Sao cổ vũ!
+            <!-- Danh sách tin nhắn bình luận & Thẻ Vinh Danh trong luồng Chat -->
+            <div ref="webChatBox" class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 h-72 overflow-y-auto space-y-2.5 mb-3">
+              <div v-if="activeChatMessages.length === 0" class="text-center py-10 text-xs text-slate-300">
+                Chưa có bình luận nào trong sảnh <b class="text-amber-300">{{ activeChatStreamer }}</b>. Hãy gửi bình luận hoặc thả Voi / Phù Thủy Sét cổ vũ!
               </div>
 
               <div v-for="m in activeChatMessages" :key="m.id"
-                   class="rounded-xl px-3 py-2 text-xs leading-relaxed"
+                   class="rounded-xl px-3 py-2.5 text-xs leading-relaxed transition"
                    :class="m.type === 'STAR'
-                     ? 'bg-sky-500/15 border border-sky-400/40 text-sky-100'
+                     ? 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-slate-900 border-2 border-amber-400/60 text-amber-100 shadow-md'
                      : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK')
-                         ? 'bg-blue-950/60 border border-blue-500/40 text-slate-100'
-                         : 'bg-slate-900 border border-slate-800 text-slate-100')">
-                <div class="flex justify-between items-center mb-0.5">
-                  <span class="font-bold" :class="m.type === 'STAR' ? 'text-amber-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-white')">
-                    <span v-if="m.type === 'STAR'">{{ m.giftIcon || '⭐' }} </span>
-                    <span v-else-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'">🔵 [FB] </span>
-                    {{ m.senderName }}
+                         ? 'bg-blue-950/70 border border-blue-500/40 text-slate-100'
+                         : 'bg-slate-900/95 border border-slate-800 text-slate-100')">
+                <div class="flex justify-between items-center mb-1 gap-2">
+                  <span class="font-extrabold flex items-center gap-1.5" :class="m.type === 'STAR' ? 'text-amber-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-sky-300' : 'text-white')">
+                    <span v-if="m.type === 'STAR'" class="text-base">{{ m.giftIcon || '🌟' }}</span>
+                    <span v-else-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'">🔵 [FB Live]</span>
+                    <span>{{ m.senderName }}</span>
+                    <span v-if="m.type === 'STAR'" class="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded font-black uppercase">
+                      Vinh Danh {{ m.starCount ? ('+' + m.starCount + '⭐') : '' }}
+                    </span>
                   </span>
-                  <span class="text-[10px] text-slate-500 font-mono">{{ m.timeText }}</span>
+                  <span class="text-[10px] text-slate-300 font-mono shrink-0">{{ m.timeText }}</span>
                 </div>
-                <div class="text-slate-200 break-words">{{ m.text }}</div>
+                <div class="text-slate-100 font-medium break-words">{{ m.text }}</div>
               </div>
             </div>
 
@@ -1835,11 +1984,13 @@
         },
         triggerStarBurstUI(gift) {
           if (!gift) return;
-          const icons = ['⭐', '🌟', '✨', '💫', '🔥'];
-          this.starBurstParticles = Array.from({ length: 16 }, (_, idx) => ({
+          const icons = (Array.isArray(gift.particles) && gift.particles.length > 0)
+            ? gift.particles
+            : [gift.giftIcon || '⭐', '🌟', '✨', '💫', '🔥'];
+          this.starBurstParticles = Array.from({ length: 18 }, (_, idx) => ({
             id: Date.now() + '_' + idx,
-            left: 15 + Math.floor(Math.random() * 70),
-            delay: (Math.random() * 0.5).toFixed(2),
+            left: 12 + Math.floor(Math.random() * 76),
+            delay: (Math.random() * 0.55).toFixed(2),
             icon: icons[idx % icons.length]
           }));
           this.activeStarBanner = gift;
@@ -1847,7 +1998,7 @@
           this.starBannerTimer = setTimeout(() => {
             this.activeStarBanner = null;
             this.starBurstParticles = [];
-          }, 4800);
+          }, 5600);
         },
         async toggleFriend(friendName) {
           if (!this.sessionPlayerName) {
@@ -1989,13 +2140,14 @@
             this.showNotify('Không thể gửi tặng sao!', 'error');
           }
         },
-        async sendQuickStar(match, starCount = 1) {
+        async sendQuickStar(match, starCount = 1, giftCode = '') {
           if (!this.sessionPlayerName || !this.sessionPlayerPass) {
-            this.showNotify('Bạn bắt buộc phải đăng nhập tài khoản Player để tặng Sao cổ vũ!', 'error');
+            this.showNotify('Bạn bắt buộc phải đăng nhập tài khoản Player để tặng Sao / Vật phẩm cổ vũ!', 'error');
             this.openLoginUpdaterModal();
             return;
           }
           const sender = this.sessionPlayerName;
+          const giftItem = giftCode ? this.aoeGiftCatalog.find(g => g.code === giftCode) : null;
           try {
             const res = await fetch(API_URL, {
               method: 'POST',
@@ -2009,11 +2161,18 @@
                 isAdmin: this.isAdmin,
                 adminPassword: this.adminPasswordSession,
                 starCount,
-                message: 'Đánh quá đỉnh! Tặng Sao cổ vũ!'
+                giftCode: giftCode || 'STAR',
+                giftName: giftItem ? giftItem.name : `${starCount} Sao`,
+                giftIcon: giftItem ? giftItem.icon : '⭐',
+                message: giftItem ? giftItem.defaultMsg : 'Đánh quá đỉnh! Tặng Sao cổ vũ!'
               })
             });
             const data = await res.json();
             if (data.status === 'success') {
+              if (data.senderStarsBalance !== undefined && this.myPlayerObj) {
+                this.myPlayerObj.starsBalance = data.senderStarsBalance;
+              }
+              this.fetchInitialData();
               this.showNotify(data.message);
             } else {
               this.showNotify(data.message || 'Không thể tặng sao!', 'error');

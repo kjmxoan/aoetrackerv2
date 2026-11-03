@@ -2,11 +2,13 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>AOE Live Chat & Star Overlay OBS (Transparent Text Only)</title>
+  <title>AOE Live Chat & Star Overlay OBS (Transparent Text Only — AOE BY XO)</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/brand-tokens.css">
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Inter:wght@600;700;800;900&display=swap');
     html, body {
       font-family: 'Inter', sans-serif;
       background: transparent !important;
@@ -14,6 +16,9 @@
       overflow: hidden;
       margin: 0;
       padding: 0;
+    }
+    .font-honor {
+      font-family: 'Chakra Petch', 'Inter', sans-serif;
     }
     /* Viền đen sắc nét bao quanh chữ để đọc rõ trên mọi địa hình bản đồ AOE mà KHÔNG cần khung nền */
     .stroke-text {
@@ -67,31 +72,32 @@
       <div v-if="displayMessages.length > 0 || totalStars > 0"
            class="flex items-center justify-between px-1 pb-1.5 stroke-text">
         <div class="flex items-center gap-1.5">
+          <img src="/logo.svg" alt="AOE BY XO" class="w-4 h-4 object-contain drop-shadow" />
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-[12px] font-extrabold text-sky-300 uppercase tracking-wider">
-            💬 LIVE CHAT {{ streamerFilter ? ('• ' + streamerFilter) : '' }}
+          <span class="font-honor text-[12px] font-extrabold text-amber-300 uppercase tracking-wider">
+            LIVE CHAT {{ streamerFilter ? ('• MÁY ' + streamerFilter) : '• AOE BY XO' }}
           </span>
         </div>
-        <div v-if="totalStars > 0" class="text-[12px] font-black text-amber-300 stroke-gold">
+        <div v-if="totalStars > 0" class="font-honor text-[12px] font-black text-amber-300 stroke-gold">
           ⭐ {{ totalStars }} Sao
         </div>
       </div>
 
-      <!-- Dòng vinh danh nổi khi có người vừa Tặng Sao / Vật phẩm AOE (Chỉ hiển thị Text nổi, nền trong suốt 100%) -->
+      <!-- Khung Vinh Danh Hoàng Gia khi có người vừa Tặng Sao / Vật phẩm AOE -->
       <div v-if="activeStarGift"
-           class="px-1 py-1.5 mb-1 flex items-center gap-2 msg-item stroke-gold"
-           style="background: transparent !important;">
-        <span class="text-2xl animate-bounce">{{ activeStarGift.giftIcon || '🌟' }}</span>
+           class="aoe-honor-plate px-3 py-2 mb-2 flex items-center gap-2.5 msg-item shadow-xl">
+        <span class="text-2xl aoe-honor-emblem shrink-0">{{ activeStarGift.giftIcon || '🌟' }}</span>
         <div class="flex-1 min-w-0">
-          <div class="text-[14px] font-black text-amber-300 leading-tight">
+          <div class="font-honor text-[13px] font-black text-amber-300 leading-tight">
+            <span class="bg-amber-400 text-slate-950 text-[9px] px-1.5 py-0.5 rounded uppercase mr-1">👑 Vinh Danh</span>
             <template v-if="activeStarGift.giftName && activeStarGift.giftCode && activeStarGift.giftCode !== 'STAR'">
-              {{ activeStarGift.senderName }} vừa tặng {{ activeStarGift.giftIcon }} {{ activeStarGift.giftName.toUpperCase() }} ({{ activeStarGift.starCount }} ⭐)!
+              {{ activeStarGift.senderName }} tặng {{ activeStarGift.giftIcon }} {{ activeStarGift.giftName.toUpperCase() }} (+{{ activeStarGift.starCount }} ⭐)!
             </template>
             <template v-else>
-              {{ activeStarGift.senderName }} vừa tặng +{{ activeStarGift.starCount }} ⭐!
+              {{ activeStarGift.senderName }} tặng +{{ activeStarGift.starCount }} ⭐!
             </template>
           </div>
-          <div class="text-[12px] font-bold text-yellow-100 truncate">
+          <div class="text-[11px] font-bold text-amber-100 italic truncate mt-0.5">
             "{{ activeStarGift.message }}"
           </div>
         </div>
@@ -147,9 +153,11 @@
               gift.streamerName.toLowerCase() !== this.streamerFilter.toLowerCase()) {
             return;
           }
-          const icons = (Array.isArray(gift.giftParticles) && gift.giftParticles.length > 0)
-            ? gift.giftParticles
-            : ['⭐', '🌟', '✨', '💫'];
+          const icons = (Array.isArray(gift.particles) && gift.particles.length > 0)
+            ? gift.particles
+            : ((Array.isArray(gift.giftParticles) && gift.giftParticles.length > 0)
+                ? gift.giftParticles
+                : [gift.giftIcon || '⭐', '🌟', '✨', '💫']);
           this.starParticles = Array.from({ length: 12 }, (_, idx) => ({
             id: Date.now() + '_' + idx,
             left: 10 + Math.floor(Math.random() * 80),

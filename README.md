@@ -20,9 +20,16 @@ aoe-tracker/
 │       ├── manifest.json            # Khai báo Chrome Extension Manifest V3
 │       └── content.js               # Script quét DOM bình luận luồng Live Facebook đẩy về Server
 ├── public/
-│   ├── index.html                   # Trang chủ Web: Danh sách kèo, Sảnh Chat & Tặng Sao, Thống kê, Quản trị Admin
-│   ├── overlay.html                 # Link OBS 1: Bảng Quân, Màu Cờ, Tỉ Số, Chữ Chạy & Bảng Phụ Đánh Theo C
-│   └── chat-overlay.html            # Link OBS 2: Khung Chat & Hiệu ứng Sao bay nền trong suốt 100% (chỉ hiện chữ)
+│   ├── logo.svg                     # Logo Vector chính thức của thương hiệu AOE BY XO (Khiên Obsidian, Song Kiếm Vàng, Vương Miện "XO")
+│   ├── brand-tokens.css             # Hệ thống Design Tokens 3 tầng (Primitive -> Semantic -> Component) & Animation Vinh Danh
+│   ├── index.html                   # Trang chủ Web: Sảnh Các Trận Đấu Đang Live, Hộp Chat & Vật Phẩm AOE, Thống kê, Admin
+│   ├── overlay.html                 # Link OBS 1: Bảng Quân, Màu Cờ, Tỉ Số, Chữ Chạy, Bảng Phụ C & Bảng Vinh Danh Hoàng Gia
+│   └── chat-overlay.html            # Link OBS 2: Khung Chat & Bảng Vinh Danh Vật Phẩm AOE nền trong suốt
+├── docs/
+│   └── brand-guidelines.md          # Tài liệu Bộ Nhận Diện Thương Hiệu & Chuẩn UI/UX Pro Max của AOE BY XO
+├── design-system/
+│   └── aoe-by-xo/
+│       └── MASTER.md                # Thiết kế tổng thể sinh tự động từ bộ kỹ năng ui-ux-pro-max
 ├── server/
 │   ├── index.js                     # Backend API Server (Express + SSE Realtime Stream + Quản lý User/VIP/Version)
 │   └── db.js                        # Tầng lưu trữ dữ liệu (Tự động dùng MongoDB hoặc fallback về data/db.json)
@@ -272,3 +279,8 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
       - **Chống bắt nhầm cửa sổ nền tối (`med_bg_v`) trên màn 4K**: Bổ sung kiểm tra độ sáng trung vị nền hộp thoại (`58.0 <= med_bg_v <= 220.0`) trong `verify_is_diplomacy_dialog` để loại bỏ ngay cửa sổ nền tối của chính Tool.
     - **Tích hợp bộ 7 Kỹ năng Thiết kế UI/UX (`ui-ux-pro-max-skill` v2.0) vào `.agents/skills/`**:
       - Cài đặt đầy đủ 7 kỹ năng (`ui-ux-pro-max`, `design-system`, `ui-styling`, `design`, `brand`, `banner-design`, `slides`) vào `.agents/skills/` ở cả 2 kho mã nguồn (`aoe-tracker` & `aoetrackerv2`), hỗ trợ tra cứu 79 phong cách UI, 192 bảng màu ngành nghề, 74 cặp font chữ và 119 quy tắc UX trực tiếp qua công cụ `scripts/search.py`.
+    - **Thiết kế Bộ Nhận Diện Thương Hiệu `AOE BY XO` & Tái Thiết Kế Toàn Diện bằng `ui-ux-pro-max` (Web • OBS Overlay • App PC)**:
+      - **Logo Vector & Bộ Nhận Diện Thương Hiệu (`public/logo.svg`, `public/brand-tokens.css`, `docs/brand-guidelines.md`)**: Thiết kế biểu tượng chính thức **AOE BY XO** gồm Khiên Chiến Thuật Obsidian (`#0F172A`), Song Kiếm Chéo Vàng Hoàng Gia (`#FEF08A` $\rightarrow$ `#D97706`), Vương Miện 3 Đỉnh và Monogram `"XO"`; đồng bộ trên Web/OBS qua `/logo.svg` và vẽ trực tiếp bằng Vector Canvas (`_create_brand_crest_canvas`) trên Màn hình Đăng nhập + Header của App PC (`client/bangquanaoe.py`).
+      - **Tái thiết kế khu vực `🏟️ Sảnh Các Trận Đấu Đang Live` (`Live Arena Showcase`)**: Bổ sung khu vực tiêu điểm Đấu Trường Trực Tiếp ngay đầu trang Web (`public/index.html`) và nâng cấp danh sách Sảnh Live trên App PC (`self.live_matches_list_frame`), hiển thị rõ Streamer, thể thức, bảng tỉ số ngang Đỏ vs Xanh bằng font điện tử `Chakra Petch`, tổng Sao, bình luận và cụm nút hành động 1 chạm (**`👁️ Vào Sảnh & Chat`**, **`🐘 Thả Voi 22⭐`**, **`⚡ Phù Thủy 100⭐`**).
+      - **Làm mới Hiệu ứng Vinh Danh Hoàng Gia (`Royal Honor Plate` — `.aoe-honor-plate`)**: Khi người chơi tặng Sao hoặc Vật Phẩm Đế Chế (`🐘 Con Voi`, `⚡🧙‍♂️ Phù Thủy Sét`, `🥩 1000 Thực`, `🏹 Song Mã`), cả 3 nền tảng (**Web Dashboard**, **OBS Overlay `overlay.html` / `chat-overlay.html`**, và **Đỉnh Hộp Chat Đứng trên App PC `self.chat_honor_banner_frame`**) đồng loạt hiển thị Bảng Vinh Danh Hoàng Gia viền vàng ánh kim chuyển động kèm mưa biểu tượng vật phẩm bay lên.
+      - **Kiểm tra & Chuẩn hóa Độ Tương Phản (WCAG AA/AAA), Khoảng Cách Nút Bấm (`>= 8px`) & Tỷ Lệ Chữ**: Nâng độ tương phản chữ phụ từ `#8e99a7` / `text-slate-500` lên `#cbd5e1` / `text-slate-200` (`>= 11.2:1`), chuẩn hóa khoảng cách nút `gap-2` (`8px`) và `padx=3..6` trên toàn bộ Dashboard.

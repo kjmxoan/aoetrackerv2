@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <!-- Imperial Gold Metallic Gradient -->
+    <linearGradient id="aoeGold" x1="16" y1="8" x2="112" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FEF08A"/>
+      <stop offset="35%" stop-color="#F59E0B"/>
+      <stop offset="70%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#FEF08A"/>
+    </linearGradient>
+
+    <!-- Royal Obsidian Shield Fill -->
+    <linearGradient id="aoeObsidian" x1="64" y1="14" x2="64" y2="114" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="50%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#060913"/>
+    </linearGradient>
+
+    <!-- Esports Cyan Accent Gradient -->
+    <linearGradient id="aoeCyan" x1="28" y1="24" x2="100" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7DD3FC"/>
+      <stop offset="50%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+
+    <!-- Crimson Flame Accent -->
+    <linearGradient id="aoeCrimson" x1="64" y1="20" x2="64" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FB7185"/>
+      <stop offset="100%" stop-color="#E11D48"/>
+    </linearGradient>
+
+    <!-- Soft Drop Shadow -->
+    <filter id="aoeGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#F59E0B" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Crossed Broadswords Behind Shield -->
+  <g filter="url(#aoeGlow)">
+    <!-- Left-to-Right Sword -->
+    <path d="M18 18 L32 22 L106 96 L96 106 L22 32 Z" fill="url(#aoeGold)" opacity="0.92"/>
+    <path d="M90 86 L108 68 L113 73 L95 91 Z" fill="url(#aoeGold)"/>
+    <circle cx="109" cy="109" r="6" fill="url(#aoeGold)"/>
+
+    <!-- Right-to-Left Sword -->
+    <path d="M110 18 L96 22 L22 96 L32 106 L106 32 Z" fill="url(#aoeGold)" opacity="0.92"/>
+    <path d="M38 86 L20 68 L15 73 L33 91 Z" fill="url(#aoeGold)"/>
+    <circle cx="19" cy="109" r="6" fill="url(#aoeGold)"/>
+  </g>
+
+  <!-- Outer Imperial Shield Frame -->
+  <path d="M64 10 L108 26 V62 C108 89 88 109 64 118 C40 109 20 89 20 62 V26 L64 10 Z"
+        fill="url(#aoeObsidian)"
+        stroke="url(#aoeGold)"
+        stroke-width="4.5"
+        stroke-linejoin="round"
+        filter="url(#aoeGlow)"/>
+
+  <!-- Inner Tactical Shield Rim -->
+  <path d="M64 18 L100 31 V61 C100 83 83 100 64 108 C45 100 28 83 28 61 V31 L64 18 Z"
+        fill="none"
+        stroke="url(#aoeCyan)"
+        stroke-width="1.5"
+        stroke-dasharray="6 3"
+        opacity="0.65"/>
+
+  <!-- Imperial Crown at Top of Shield -->
+  <path d="M46 37 L51 26 L64 33 L77 26 L82 37 Z"
+        fill="url(#aoeGold)"/>
+  <circle cx="51" cy="24" r="2.2" fill="#FEF08A"/>
+  <circle cx="64" cy="21" r="2.8" fill="#38BDF8"/>
+  <circle cx="77" cy="24" r="2.2" fill="#FEF08A"/>
+
+  <!-- Monogram "XO" Inside Shield -->
+  <!-- Letter X (Imperial Gold) -->
+  <path d="M36 48 L45 48 L53 60 L61 48 L69 48 L57 65 L70 84 L61 84 L52 70 L43 84 L35 84 L48 65 Z"
+        fill="url(#aoeGold)"/>
+
+  <!-- Letter O (Hexagonal Tactical Ring in Esports Cyan & Gold) -->
+  <path d="M81 48 H91 L97 56 V76 L91 84 H81 L75 76 V56 Z"
+        fill="none"
+        stroke="url(#aoeGold)"
+        stroke-width="6.5"
+        stroke-linejoin="round"/>
+  <circle cx="86" cy="66" r="3.5" fill="url(#aoeCyan)"/>
+
+  <!-- Bottom Laurel Gem -->
+  <polygon points="64,92 69,98 64,104 59,98" fill="url(#aoeCrimson)" stroke="#FEF08A" stroke-width="1"/>
+</svg>

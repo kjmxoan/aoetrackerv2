@@ -2,25 +2,30 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>AOE Overlay OBS - Premium Esports HUD</title>
+  <title>AOE Overlay OBS - AOE BY XO Broadcast HUD</title>
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/brand-tokens.css">
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Roboto+Condensed:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Inter:wght@500;600;700;800&family=Roboto+Condensed:wght@700;900&display=swap');
     body {
       font-family: 'Roboto Condensed', 'Inter', sans-serif;
       background: transparent;
       overflow: hidden;
     }
+    .font-score {
+      font-family: 'Chakra Petch', 'Roboto Condensed', sans-serif;
+    }
     .premium-panel {
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(9, 14, 26, 0.98) 100%);
-      border: 1px solid rgba(148, 163, 184, 0.28);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.65);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.97) 0%, rgba(8, 12, 22, 0.99) 100%);
+      border: 1px solid rgba(236, 161, 51, 0.35);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
     .premium-tab {
-      background: rgba(15, 23, 42, 0.94);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      background: rgba(13, 19, 33, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
     }
     @keyframes marquee {
       0% { transform: translateX(100%); opacity: 0; }
@@ -67,7 +72,8 @@
         <!-- Thanh Header trên cùng -->
         <div class="flex justify-between items-center gap-1.5 mb-1">
           <div class="flex items-center gap-1.5 shrink-0">
-            <div class="premium-tab border-amber-500/50 px-2.5 py-0.5 rounded-t-lg">
+            <div class="premium-tab border-amber-500/60 px-2.5 py-0.5 rounded-t-lg flex items-center gap-1.5">
+              <img src="/logo.svg" alt="AOE BY XO" class="w-4 h-4 object-contain drop-shadow" />
               <span class="text-xs font-black uppercase text-amber-400 tracking-wide">
                 MÁY {{ playerOverride || activeMatch.streamerName || 'XO' }}
               </span>
@@ -127,7 +133,7 @@
             <div class="w-full bg-gradient-to-r from-red-700 to-amber-600 text-white font-black text-xs py-1 uppercase tracking-wider">
               {{ overlayCfg.cModeEnabled ? ('CHẠM ' + (overlayCfg.cTargetWins || 3) + ' / C') : ('CHẠM ' + (overlayCfg.targetScore || 100)) }}
             </div>
-            <div class="my-auto text-3xl font-black text-amber-400 tracking-tight">
+            <div class="my-auto font-score text-3xl font-black text-amber-400 tracking-tight">
               {{ mainScoreDisplay.red }} <span class="text-slate-500 text-xl mx-0.5">-</span> {{ mainScoreDisplay.blue }}
             </div>
             <div class="w-full bg-slate-950/90 py-1 border-t border-slate-800">
@@ -161,37 +167,45 @@
           <span class="text-emerald-400">Vào game ấn F2 sẽ tự lên bảng quân thật</span>
         </div>
 
-        <!-- HIỆU ỨNG TẶNG SAO (STAR GIFT EFFECT) XUẤT HIỆN TRỰC TIẾP TRÊN LIVESTREAM -->
+        <!-- HIỆU ỨNG VINH DANH HOÀNG GIA (STAR & AOE GIFT HONOR PLATE) TRÊN SÓNG LIVESTREAM -->
         <div v-if="activeStarGift"
              :key="activeStarGift.id"
              class="mt-2 relative overflow-visible">
-          <!-- Các ngôi sao bay lấp lánh -->
+          <!-- Các biểu tượng vật phẩm & sao bay lấp lánh -->
           <span v-for="st in starParticles" :key="st.id"
-                class="floating-star text-lg"
-                :style="{ left: st.left + '%', bottom: '8px', animationDelay: st.delay + 's' }">
+                class="floating-star text-xl"
+                :style="{ left: st.left + '%', bottom: '10px', animationDelay: st.delay + 's' }">
             {{ st.icon }}
           </span>
 
-          <div class="star-banner-anim bg-gradient-to-r from-amber-500/95 via-yellow-400/95 to-amber-500/95 text-slate-950 px-4 py-2 rounded-xl shadow-2xl border-2 border-white/70 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <span class="text-2xl animate-bounce">{{ activeStarGift.giftIcon || '🌟' }}</span>
-              <div>
-                <div class="text-sm font-black leading-tight">
-                  {{ activeStarGift.senderName }} vừa tặng
-                  <span v-if="activeStarGift.giftName && activeStarGift.giftCode && activeStarGift.giftCode !== 'STAR'"
-                        class="bg-slate-950 text-amber-300 px-2 py-0.5 rounded-full uppercase">
-                    {{ activeStarGift.giftIcon }} {{ activeStarGift.giftName }} ({{ activeStarGift.starCount }} ⭐)
+          <div class="star-banner-anim aoe-honor-plate px-3.5 py-2.5 shadow-2xl flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-11 h-11 rounded-xl bg-slate-950/95 border-2 border-amber-400 flex items-center justify-center shrink-0 shadow">
+                <span class="text-2xl aoe-honor-emblem">{{ activeStarGift.giftIcon || '🌟' }}</span>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded">
+                    👑 VINH DANH
                   </span>
-                  <span v-else class="bg-slate-950 text-amber-300 px-2 py-0.5 rounded-full">
+                  <span class="font-score text-sm font-black text-amber-300 truncate">
+                    {{ activeStarGift.senderName }}
+                  </span>
+                  <span class="text-xs font-bold text-slate-200">tặng</span>
+                  <span v-if="activeStarGift.giftName && activeStarGift.giftCode && activeStarGift.giftCode !== 'STAR'"
+                        class="bg-amber-500/20 border border-amber-400/60 text-amber-200 text-xs font-black px-2 py-0.5 rounded-full uppercase">
+                    {{ activeStarGift.giftIcon }} {{ activeStarGift.giftName }} (+{{ activeStarGift.starCount }} ⭐)
+                  </span>
+                  <span v-else class="bg-amber-500/20 border border-amber-400/60 text-amber-200 text-xs font-black px-2 py-0.5 rounded-full">
                     +{{ activeStarGift.starCount }} ⭐
                   </span>
                 </div>
-                <div class="text-xs font-bold text-slate-900 truncate max-w-[360px]">
+                <div class="text-xs font-semibold text-amber-100/95 italic truncate max-w-[340px] mt-0.5">
                   "{{ activeStarGift.message || 'Đánh hay quá! Tặng sao cổ vũ!' }}"
                 </div>
               </div>
             </div>
-            <div class="text-right font-black text-xs bg-slate-950/90 text-amber-300 px-2.5 py-1 rounded-lg">
+            <div class="text-right font-score font-black text-xs bg-slate-950/95 border border-amber-400/50 text-amber-300 px-2.5 py-1 rounded-lg shrink-0">
               ⭐ {{ activeStarGift.totalMatchStars || activeMatch.starsCount || activeStarGift.starCount }}
             </div>
           </div>
