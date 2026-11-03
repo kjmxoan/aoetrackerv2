@@ -18,6 +18,18 @@ from PIL import Image, ImageGrab, ImageDraw, ImageFont
 
 import re
 
+# Kích hoạt Per-Monitor DPI Awareness trên Windows ngay khi khởi động để ImageGrab.grab()
+# luôn chụp đủ 100% độ phân giải thật (1366x768, 1600x900, 1920x1080, 2K, 4K) mà không bị cắt góc bởi Windows Scaling (125%, 150%)
+if os.name == "nt":
+    try:
+        import ctypes
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
 APP_VERSION_NUMBER = "5.3"
 APP_VERSION = f"v{APP_VERSION_NUMBER} Wood-Gold Esports"
 APP_TITLE = "TOOL BẢNG QUÂN AOE BY XO"
@@ -92,22 +104,22 @@ COLOR_HEX = {
 
 # Danh sách tên máy (AI) chuẩn theo từng loại quân trong AOE 1 Rise of Rome
 CIV_AI_NAMES = {
-    "Assyrian": ["Ashurbanipal", "Sargon", "Sennacherib", "Shalmaneser", "Tiglath-Pileser", "Tukulti-Ninurta", "Adad-nirari", "Esarhaddon"],
-    "Babylonian": ["Nabonidus", "Hammurabi", "Nebuchadnezzar", "Tiglath-Pileser", "Sumu-abum", "Samsu-iluna", "Burna-Buriash"],
-    "Carthaginian": ["Hamilcar Barca", "Matho", "Hannibal", "Hasdrubal", "Hanno", "Mago", "Gisco", "Bomilcar"],
-    "Choson": ["Hyon", "Dangun", "Gwanggaeto", "Jumong", "Kija", "Ugeo", "Wiman", "Ulji Mundok"],
-    "Egyptian": ["Amenophis", "Ramses", "Cleopatra", "Hatshepsut", "Khufu", "Nefertiti", "Ptolemy", "Seti", "Thutmose", "Tutankhamun"],
-    "Greek": ["Leonidas", "Erythrus", "Pericles", "Alexander", "Hippocrates", "Themistocles", "Pyrrhus", "Lysander", "Alcibiades"],
-    "Hittite": ["Tudhalyas", "Suppiluliumas", "Hattusilis", "Labarnas", "Mursilis", "Muwatalli", "Telipinus"],
-    "Macedonian": ["Alexander", "Antigonus", "Antipater", "Cassander", "Craterus", "Demetrius", "Lysimachus", "Philip", "Ptolemy", "Seleucus"],
-    "Minoan": ["Erythrus", "Minos", "Asterion", "Deucalion", "Idomeneus", "Rhadamanthus", "Sarpedon", "Talos"],
-    "Palmyran": ["Zobdas", "Syphax", "Jugurtha", "Zenobia", "Odaenathus", "Vaballathus", "Hairan", "Longinus"],
-    "Persian": ["Astyages", "Cyrus", "Mithridates", "Darius", "Xerxes", "Cambyses", "Artaxerxes", "Shapur", "Tigranes"],
-    "Phoenician": ["Ahiram", "Hiram", "Abibaal", "Dido", "Ethbaal", "Ittobaal", "Pygmalion", "Zakarbaal"],
-    "Roman": ["Marcus Aurelius", "Caesar", "Augustus", "Pompey", "Scipio", "Sulla", "Trajan", "Crassus", "Marius"],
-    "Shang": ["Zhou Xin", "Tang", "Wu Ding", "Pan Geng", "Tai Jia", "Zu Yi", "Di Yi", "Tai Wu"],
-    "Sumerian": ["Enmerkar", "Gilgamesh", "Sargon", "Ur-Nammu", "Shulgi", "Eannatum", "Gudea", "Lugal-zage-si"],
-    "Yamato": ["Keiko", "Kammu", "Jimmu", "Himiko", "Nintoku", "Ojin", "Suinin", "Sujin", "Shotoku"],
+    "Assyrian": ["Ashurbanipal", "Sargon", "Sennacherib", "Shalmaneser", "Tiglath-Pileser", "Tukulti-Ninurta", "Adad-nirari", "Esarhaddon", "Nimrod", "Semiramis", "Ashurnasirpal", "Shamshi-Adad"],
+    "Babylonian": ["Nabonidus", "Hammurabi", "Nebuchadnezzar", "Tiglath-Pileser", "Sumu-abum", "Samsu-iluna", "Burna-Buriash", "Nabopolassar", "Belshazzar", "Marduk", "Neriglissar", "Rim-Sin"],
+    "Carthaginian": ["Hamilcar Barca", "Matho", "Hannibal", "Hasdrubal", "Hanno", "Mago", "Gisco", "Bomilcar", "Spendius", "Adherbal", "Himilco", "Maharbal", "Xanthippus"],
+    "Choson": ["Hyon", "Dangun", "Gwanggaeto", "Jumong", "Kija", "Ugeo", "Wiman", "Ulji Mundok", "Koi", "Piru", "Kunchogo", "Sosurim", "Kwanggaeto", "Changsu"],
+    "Egyptian": ["Amenophis", "Ramses", "Cleopatra", "Hatshepsut", "Khufu", "Nefertiti", "Ptolemy", "Seti", "Thutmose", "Tutankhamun", "Akhenaten", "Cheops", "Menes", "Necho", "Psamtik", "Sneferu", "Zoser"],
+    "Greek": ["Leonidas", "Erythrus", "Pericles", "Alexander", "Hippocrates", "Themistocles", "Pyrrhus", "Lysander", "Alcibiades", "Agamemnon", "Achilles", "Odysseus", "Miltiades", "Cimon", "Epaminondas", "Pelopidas", "Xenophon"],
+    "Hittite": ["Tudhalyas", "Suppiluliumas", "Hattusilis", "Labarnas", "Mursilis", "Muwatalli", "Telipinus", "Anittas", "Hantilis", "Zidantas", "Ammunas", "Arnuwandas"],
+    "Macedonian": ["Alexander", "Antigonus", "Antipater", "Cassander", "Craterus", "Demetrius", "Lysimachus", "Philip", "Ptolemy", "Seleucus", "Parmenion", "Perdiccas", "Eumenes", "Polyperchon", "Pyrrhus"],
+    "Minoan": ["Gortys", "Aeacus", "Erythrus", "Minos", "Asterion", "Deucalion", "Idomeneus", "Rhadamanthus", "Sarpedon", "Talos", "Phaestus", "Knossos", "Cydon", "Catres", "Tylus", "Lyctus", "Mallia", "Zakros"],
+    "Palmyran": ["Zobdas", "Syphax", "Jugurtha", "Zenobia", "Odaenathus", "Vaballathus", "Hairan", "Longinus", "Maeonius", "Zabdas", "Antiochus", "Septimius", "Vorodes"],
+    "Persian": ["Astyages", "Cyrus", "Mithridates", "Darius", "Xerxes", "Cambyses", "Artaxerxes", "Shapur", "Tigranes", "Ardashir", "Bardiya", "Chosroes", "Hystaspes", "Phraates", "Tissaphernes"],
+    "Phoenician": ["Ahiram", "Hiram", "Abibaal", "Dido", "Ethbaal", "Ittobaal", "Pygmalion", "Zakarbaal", "Azemilcus", "Baal", "Eshmunazar", "Luli", "Rib-Addi", "Strato", "Tabnit"],
+    "Roman": ["Marcus Aurelius", "Caesar", "Augustus", "Pompey", "Scipio", "Sulla", "Trajan", "Crassus", "Marius", "Cicero", "Constantine", "Fabius", "Germanicus", "Hadrian", "Mark Antony", "Nero", "Tiberius", "Vespasian"],
+    "Shang": ["Zhou Xin", "Tang", "Wu Ding", "Pan Geng", "Tai Jia", "Zu Yi", "Di Yi", "Tai Wu", "Bu Bing", "Wai Ren", "Zhong Ding", "Zu Geng", "Zu Jia", "Lin Xin", "Geng Ding"],
+    "Sumerian": ["Enmerkar", "Gilgamesh", "Sargon", "Ur-Nammu", "Shulgi", "Eannatum", "Gudea", "Lugal-zage-si", "Aka", "Dungi", "Enmebaragesi", "Ibbi-Sin", "Lugalbanda", "Mesilim", "Urukagina", "Utu-hegal"],
+    "Yamato": ["Keiko", "Kammu", "Jimmu", "Himiko", "Nintoku", "Ojin", "Suinin", "Sujin", "Shotoku", "Annei", "Itoku", "Kaika", "Kogen", "Kosho", "Koan", "Korei", "Richu", "Seinei", "Yuryaku"],
 }
 
 KNOWN_AI_NAMES = []
@@ -147,16 +159,26 @@ def build_text_templates(word_list, max_w=110):
     if font is None:
         return templates
 
+    # Đo khung dọc chuẩn cố định (từ đỉnh chữ hoa đến đáy nét móc chữ g/p/y) để giữ nguyên tỷ lệ baseline
+    ref_img = Image.new("L", (140, 24), 0)
+    ImageDraw.Draw(ref_img).text((0, 2), "Agpy", fill=255, font=font)
+    ref_ys, _ = np.where(np.array(ref_img) > 80)
+    if len(ref_ys) > 0:
+        y0_fixed, y1_fixed = int(ref_ys.min()), int(ref_ys.max() + 1)
+    else:
+        y0_fixed, y1_fixed = 4, 15
+    fh_fixed = max(1, y1_fixed - y0_fixed)
+
     for word in word_list:
         img = Image.new("L", (140, 24), 0)
         draw = ImageDraw.Draw(img)
         draw.text((0, 2), word, fill=255, font=font)
         arr = np.array(img)
-        ys, xs = np.where(arr > 80)
+        _, xs = np.where(arr > 80)
         if len(xs) == 0:
             continue
-        patch = arr[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-        new_w = max(1, int(round(patch.shape[1] * (12.0 / patch.shape[0]))))
+        patch = arr[y0_fixed:y1_fixed, xs.min():xs.max() + 1]
+        new_w = max(1, int(round(patch.shape[1] * (12.0 / fh_fixed))))
         resized = cv2.resize(patch, (new_w, 12), interpolation=cv2.INTER_AREA)
         canvas = np.zeros((12, max_w), dtype=np.float32)
         w_clip = min(max_w, new_w)
@@ -351,11 +373,26 @@ class DiplomacyScanner:
             if box is not None:
                 return box, sc
 
-        # Lượt 2: Quét trực tiếp trên độ phân giải gốc (bắt chuẩn hộp thoại 468x301 unscaled trên màn 1920x1080 / 2560x1440)
+        # Lượt 2: Quét trực tiếp trên độ phân giải gốc (bắt chuẩn hộp thoại 468x301 / 624x400 unscaled trên màn 1920x1080 / 2560x1440)
         box, sc = cls._search_box_on_image(img_bgr, img_bgr, 1.0, 1.0, hw_min_ratio=0.075)
         best_score = max(best_score, sc)
         if box is not None:
             return box, sc
+
+        # Lượt 3: Hỗ trợ khi người chơi chỉnh Screen Size trong Game Settings (1600x900, 1366x768, 1280x720, 1024x768)
+        # nhỏ hơn độ phân giải màn hình chính (ví dụ màn 1920x1080 hoặc 2K khiến khung game nằm ở góc trên bên trái 0,0)
+        for vw, vh in [(1600, 900), (1366, 768), (1280, 720), (1024, 768)]:
+            if w > vw + 40 and h >= vh and vw >= 600 and vh >= 400:
+                sub_bgr = img_bgr[:vh, :vw]
+                det_w = min(1024, vw)
+                det_h = max(300, int(round(vh * (float(det_w) / vw))))
+                det_sub = cv2.resize(sub_bgr, (det_w, det_h), interpolation=cv2.INTER_AREA) if det_w < vw else sub_bgr
+                box, sc = cls._search_box_on_image(
+                    det_sub, sub_bgr, vw / float(det_w), vh / float(det_h), hw_min_ratio=0.135
+                )
+                best_score = max(best_score, sc)
+                if box is not None:
+                    return box, sc
 
         return None, best_score
 
@@ -377,18 +414,28 @@ class DiplomacyScanner:
         if w_left > 120 or w_right > 120:
             return False
 
-        # 2. Check chữ 'OK' màu vàng ở nút dưới bên trái (y: 368..396, x: 65..155)
-        ok_crop = norm_624x400[368:396, 65:155]
+        # 2. Check bộ 3 nút đặc trưng riêng của bảng DIPLOMACY ở đáy hộp thoại (y: 368..396):
+        #    - Nút trái (x: 75..145): Chữ 'OK' màu vàng (nhiều hơn hẳn vùng x: 170..235 của bảng Game Settings)
+        #    - Nút giữa (x: 230..395): Chữ 'CLEAR TRIBUTES' màu trắng
+        #    - Nút phải (x: 470..560): Chữ 'CANCEL' màu trắng
+        ok_crop = norm_624x400[368:396, 75:145]
         b_ok, g_ok, r_ok = cv2.split(ok_crop)
-        yellow_ok_px = int(np.sum((r_ok > 140) & (g_ok > 130) & (b_ok < 110) & ((r_ok.astype(np.int16) - b_ok.astype(np.int16)) > 60)))
-        if yellow_ok_px < 10:
+        yellow_ok_px = int(np.sum((r_ok > 140) & (g_ok > 130) & (b_ok < 115) & ((r_ok.astype(np.int16) - b_ok.astype(np.int16)) > 55)))
+        if yellow_ok_px < 12:
             return False
 
-        # 2b. Check chữ 'Cancel' màu vàng ở nút kế bên (y: 368..396, x: 185..295) - Đặc trưng riêng của hộp thoại Diplomacy
-        cancel_crop = norm_624x400[368:396, 185:295]
-        b_ca, g_ca, r_ca = cv2.split(cancel_crop)
-        yellow_cancel_px = int(np.sum((r_ca > 140) & (g_ca > 130) & (b_ca < 110) & ((r_ca.astype(np.int16) - b_ca.astype(np.int16)) > 60)))
-        if yellow_cancel_px < 12:
+        clear_crop = norm_624x400[368:396, 230:395]
+        min_cl = np.min(clear_crop, axis=2).astype(np.float32)
+        max_cl = np.max(clear_crop, axis=2).astype(np.float32)
+        white_clear_px = int(np.sum((min_cl > 150) & ((max_cl - min_cl) < 55)))
+        if white_clear_px < 140:
+            return False
+
+        cancel_crop = norm_624x400[368:396, 470:560]
+        min_ca = np.min(cancel_crop, axis=2).astype(np.float32)
+        max_ca = np.max(cancel_crop, axis=2).astype(np.float32)
+        white_cancel_px = int(np.sum((min_ca > 150) & ((max_ca - min_ca) < 55)))
+        if white_cancel_px < 60:
             return False
 
         # 3. Check hàng tiêu đề cột 'Name' / 'Civilization' (y: 52..74, x: 10..240) và 'Ally' / 'Neutral' / 'Enemy' (x: 235..430)
@@ -615,48 +662,63 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         if CIV_TEMPLATES:
             yc = int(round(95.0 + row_idx * 29.8))
-            crop = norm_624x400[yc - 9:yc + 9, 139:235]
+            crop = norm_624x400[yc - 7:yc + 4, 139:235]
             min_rgb = np.min(crop, axis=2).astype(np.float32)
             max_rgb = np.max(crop, axis=2).astype(np.float32)
-            val = np.clip((min_rgb - (max_rgb - min_rgb) * 0.6 - 110.0) / 110.0, 0.0, 1.0)
-            mask = val > 0.35
+            sh_rgb = np.roll(np.roll(min_rgb, -1, axis=0), -1, axis=1)
+            wh = min_rgb - 0.55 * (max_rgb - min_rgb) + 0.35 * np.maximum(0.0, min_rgb - sh_rgb)
+            thr = max(float(np.percentile(wh, 65)) + 16.0, 125.0)
+            val = np.clip((wh - thr) / 50.0, 0.0, 1.0)
+            mask = val > 0.25
             col_counts = np.sum(mask, axis=0)
             valid_xs = np.where(col_counts >= 1)[0]
             if len(valid_xs) >= 8:
-                x_min, x_max = valid_xs[0], valid_xs[-1]
-                row_counts = np.sum(mask[:, x_min:x_max + 1], axis=1)
-                valid_ys = np.where(row_counts >= 2)[0]
-                if len(valid_ys) >= 4:
-                    y_min, y_max = valid_ys[0], valid_ys[-1]
-                    patch = val[y_min:y_max + 1, x_min:x_max + 1]
-                    new_w = max(1, int(round(patch.shape[1] * (12.0 / max(patch.shape[0], 9.0)))))
-                    resized = cv2.resize(patch, (new_w, 12), interpolation=cv2.INTER_LINEAR)
-                    feat = np.zeros((12, 90), dtype=np.float32)
-                    w_clip = min(90, new_w)
-                    feat[:, :w_clip] = resized[:, :w_clip]
+                x_min = int(valid_xs[0])
+                x_max = x_min
+                empty_run = 0
+                for x_col in range(x_min, len(col_counts)):
+                    if col_counts[x_col] >= 1:
+                        x_max = x_col
+                        empty_run = 0
+                    else:
+                        empty_run += 1
+                        if empty_run >= 6 and (x_max - x_min) >= 14:
+                            break
+                patch = val[:, x_min:x_max + 1]
+                new_w = max(1, int(round(patch.shape[1] * 1.0)))
+                resized = cv2.resize(patch, (new_w, 12), interpolation=cv2.INTER_LINEAR)
+                feat = np.zeros((12, 90), dtype=np.float32)
+                w_clip = min(90, new_w)
+                feat[:, :w_clip] = resized[:, :w_clip]
 
-                    for full, _, _ in CIV_LIST:
-                        if full not in CIV_TEMPLATES:
-                            continue
-                        tmpl, _ = CIV_TEMPLATES[full]
-                        max_corr = -1.0
-                        for dx in range(-2, 3):
-                            if dx >= 0:
-                                a = feat[:, dx:]
-                                b_t = tmpl[:, :a.shape[1]]
-                            else:
-                                b_t = tmpl[:, -dx:]
-                                a = feat[:, :b_t.shape[1]]
-                            num = float(np.sum((a - a.mean()) * (b_t - b_t.mean())))
-                            den = float(np.sqrt(np.sum((a - a.mean()) ** 2) * np.sum((b_t - b_t.mean()) ** 2))) + 1e-6
-                            corr = num / den
-                            if corr > max_corr:
-                                max_corr = corr
-                        overall_best_tmpl_corr = max(overall_best_tmpl_corr, max_corr)
-                        scores[full] += max(0.0, max_corr) * 0.75
+                for full, _, _ in CIV_LIST:
+                    if full not in CIV_TEMPLATES:
+                        continue
+                    tmpl, tw = CIV_TEMPLATES[full]
+                    max_corr = -1.0
+                    for dx in range(-2, 3):
+                        if dx >= 0:
+                            a = feat[:, dx:]
+                            b_t = tmpl[:, :a.shape[1]]
+                        else:
+                            b_t = tmpl[:, -dx:]
+                            a = feat[:, :b_t.shape[1]]
+                        num = float(np.sum((a - a.mean()) * (b_t - b_t.mean())))
+                        den = float(np.sqrt(np.sum((a - a.mean()) ** 2) * np.sum((b_t - b_t.mean()) ** 2))) + 1e-6
+                        corr = num / den
+                        if corr > max_corr:
+                            max_corr = corr
+                    t_patch = tmpl[:, :tw]
+                    p_res = cv2.resize(patch, (tw, 12), interpolation=cv2.INTER_LINEAR)
+                    num_n = float(np.sum((p_res - p_res.mean()) * (t_patch - t_patch.mean())))
+                    den_n = float(np.sqrt(np.sum((p_res - p_res.mean()) ** 2) * np.sum((t_patch - t_patch.mean()) ** 2))) + 1e-6
+                    mc_norm = num_n / den_n
+                    comb_corr = 0.55 * max(0.0, max_corr) + 0.45 * max(0.0, mc_norm)
+                    overall_best_tmpl_corr = max(overall_best_tmpl_corr, max_corr, mc_norm)
+                    scores[full] += comb_corr * 0.85
 
         # Bắt buộc phải có độ khớp chữ OCR hoặc mẫu 2D đủ tin cậy (không đoán mò quân chỉ dựa vào độ rộng pixel)
-        if overall_best_str_sim < 0.50 and overall_best_tmpl_corr < 0.52:
+        if overall_best_str_sim < 0.45 and overall_best_tmpl_corr < 0.34:
             return None, None
 
         best_full = max(scores, key=lambda k: scores[k])
@@ -693,7 +755,14 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 if ch.isascii() and ch.isalpha():
                     out.append(ch)
             res_s = "".join(out)
-            res_s = res_s.replace("rn", "m").replace("nt", "m").replace("lt", "m").replace("ll", "l")
+            res_s = (
+                res_s.replace("rn", "m")
+                .replace("gott", "gort")
+                .replace("gotm", "gort")
+                .replace("gonw", "gort")
+                .replace("allalh", "allath")
+                .replace("allh", "allth")
+            )
             return res_s
 
         best_raw = ""
@@ -717,7 +786,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 best_raw = cleaned
 
         civ_specific_ai = CIV_AI_NAMES.get(full_civ, [])
-        pool = list(civ_specific_ai) + [n for n in KNOWN_AI_NAMES if n not in civ_specific_ai]
+        pool = list(civ_specific_ai)
         human_pool = []
         if known_players:
             for p in known_players:
@@ -732,6 +801,45 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         all_candidates = [c for c in ocr_name_candidates if c]
         if best_raw:
             all_candidates.insert(0, best_raw)
+
+        # Đo chiều rộng thực tế (nw) và trích xuất đặc trưng 2D của chữ tên người chơi trên dòng hiện tại (từ x=9 để không cắt mất chữ cái đầu ở x=11)
+        crop = norm_624x400[yc - 7:yc + 4, 9:120]
+        min_rgb = np.min(crop, axis=2).astype(np.float32)
+        max_rgb = np.max(crop, axis=2).astype(np.float32)
+        sh_rgb = np.roll(np.roll(min_rgb, -1, axis=0), -1, axis=1)
+        wh = min_rgb - 0.45 * (max_rgb - min_rgb) + 0.45 * np.maximum(0.0, min_rgb - sh_rgb)
+        thr = max(float(np.percentile(wh, 76)) + 14.0, 122.0)
+        val = np.clip((wh - thr) / 50.0, 0.0, 1.0)
+        mask = val > 0.22
+        col_sum = np.sum(mask, axis=0)
+        xmin = 0
+        while xmin < len(col_sum) and col_sum[xmin] < 1:
+            xmin += 1
+        xmax = xmin
+        empty_run = 0
+        for x in range(xmin, len(col_sum)):
+            if col_sum[x] >= 1:
+                xmax = x
+                empty_run = 0
+            else:
+                empty_run += 1
+                if empty_run >= 5 and (xmax - xmin) >= 12:
+                    break
+        nw_obs = max(1, int(round((xmax - xmin + 1) * 1.0))) if xmax > xmin + 6 else 0
+
+        # Tính trước độ tương quan mẫu chữ 2D chuẩn hóa theo chiều rộng (width-normalized 2D correlation)
+        tmpl_corr_map = {}
+        if AI_NAME_TEMPLATES and xmax > xmin + 6:
+            patch = val[:, xmin:xmax + 1]
+            for ai_name in pool:
+                if ai_name not in AI_NAME_TEMPLATES:
+                    continue
+                tmpl, tw = AI_NAME_TEMPLATES[ai_name]
+                t_patch = tmpl[:, :tw]
+                p_res = cv2.resize(patch, (tw, 12), interpolation=cv2.INTER_LINEAR)
+                num = float(np.sum((p_res - p_res.mean()) * (t_patch - t_patch.mean())))
+                den = float(np.sqrt(np.sum((p_res - p_res.mean()) ** 2) * np.sum((t_patch - t_patch.mean()) ** 2))) + 1e-6
+                tmpl_corr_map[ai_name] = max(0.0, num / den)
 
         best_match_name = None
         best_sim = 0.0
@@ -750,9 +858,17 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 if len(cand_i) >= 3 and (target_i.endswith(cand_i) or target_i.startswith(cand_i)):
                     len_ratio = min(len(cand_i), len(target_i)) / max(len(cand_i), len(target_i))
                     sim = max(sim, 0.74 + 0.18 * len_ratio)
+                if "ll" in cand_alpha and "ll" in target_alpha:
+                    sim += 0.18
                 # Điểm thưởng lớn nếu tên AI thuộc đúng loại quân (full_civ) của dòng này
                 if target in civ_specific_ai:
                     sim += 0.22
+                # Điểm thưởng độ khớp chiều rộng pixel chữ tên & tương quan hình ảnh 2D (giúp phân biệt chính xác Gortys, Aeacus, Vaballathus ở mọi độ phân giải)
+                if nw_obs > 0 and target in AI_NAME_TEMPLATES:
+                    _, tw = AI_NAME_TEMPLATES[target]
+                    w_sc = max(0.0, 1.0 - abs(nw_obs - tw) / 20.0)
+                    mc = tmpl_corr_map.get(target, 0.0)
+                    sim = sim * 0.55 + mc * 0.45 + w_sc * 0.25
                 if sim > best_sim:
                     best_sim = sim
                     best_match_name = target
@@ -767,71 +883,31 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             span_w = int(cols_fc[-1] - cols_fc[0] + 1) if len(cols_fc) >= 2 else 0
             best_match_name = "Kammu" if span_w >= 34 else "Jimmu"
 
-        if best_match_name and best_sim >= 0.60:
+        if best_match_name and best_sim >= 0.58:
             return best_match_name
 
-        # Fallback thông minh cho dòng cờ Xám trắng (hoặc ảnh độ phân giải thấp) khi đấu với AI:
+        # Fallback thông minh cho dòng cờ màu (Vàng, Đỏ, Nâu, Xám trắng) hoặc độ phân giải 1600x900 / 1920x1080 khi đấu với AI:
         # So khớp chiều rộng & mẫu chữ 2D với danh sách AI chuẩn của đúng loại quân (full_civ)
-        if civ_specific_ai and AI_NAME_TEMPLATES:
-            crop = norm_624x400[yc - 7:yc + 3, 14:120]
-            min_rgb = np.min(crop, axis=2).astype(np.float32)
-            max_rgb = np.max(crop, axis=2).astype(np.float32)
-            wh = min_rgb - 0.55 * (max_rgb - min_rgb)
-            thr = max(float(np.percentile(wh, 84)) + 14.0, 168.0)
-            val = np.clip((wh - thr) / 55.0, 0.0, 1.0)
-            mask = val > 0.25
-            col_sum = np.sum(mask, axis=0)
-            xmin = 0
-            while xmin < len(col_sum) and col_sum[xmin] < 2:
-                xmin += 1
-            xmax = xmin
-            empty_run = 0
-            for x in range(xmin, len(col_sum)):
-                if col_sum[x] >= 2:
-                    xmax = x
-                    empty_run = 0
-                else:
-                    empty_run += 1
-                    if empty_run >= 5 and (xmax - xmin) >= 12:
-                        break
-            if xmax > xmin + 8:
-                patch = val[:, xmin:xmax + 1]
-                nw = max(1, int(round(patch.shape[1] * (12.0 / 10.0))))
-                resized = cv2.resize(patch, (nw, 12), interpolation=cv2.INTER_LINEAR)
-                feat = np.zeros((12, 110), dtype=np.float32)
-                wc = min(110, nw)
-                feat[:, :wc] = resized[:, :wc]
-                best_ai_t = None
-                best_ai_sc = -1.0
-                for ai_name in civ_specific_ai:
-                    if ai_name not in AI_NAME_TEMPLATES:
-                        continue
-                    tmpl, tw = AI_NAME_TEMPLATES[ai_name]
-                    w_score = max(0.0, 1.0 - abs(nw - tw) / 20.0) * 0.55
-                    max_corr = -1.0
-                    for dx in range(-2, 3):
-                        if dx >= 0:
-                            a = feat[:, dx:]
-                            b_t = tmpl[:, :a.shape[1]]
-                        else:
-                            b_t = tmpl[:, -dx:]
-                            a = feat[:, :b_t.shape[1]]
-                        num = float(np.sum((a - a.mean()) * (b_t - b_t.mean())))
-                        den = float(np.sqrt(np.sum((a - a.mean()) ** 2) * np.sum((b_t - b_t.mean()) ** 2))) + 1e-6
-                        corr = num / den
-                        if corr > max_corr:
-                            max_corr = corr
-                    total_sc = max(0.0, max_corr) * 0.45 + w_score
-                    if total_sc > best_ai_sc:
-                        best_ai_sc = total_sc
-                        best_ai_t = ai_name
-                if best_ai_t in ("Kammu", "Jimmu") and full_civ == "Yamato":
-                    first_char = norm_624x400[yc - 7:yc + 2, 14:22]
-                    wh_fc = np.min(first_char, axis=2).astype(np.float32)
-                    top_left_ink = float(np.mean(wh_fc[:4, :3] > 165))
-                    best_ai_t = "Kammu" if top_left_ink >= 0.25 else "Jimmu"
-                if best_ai_t and best_ai_sc >= 0.48:
-                    return best_ai_t
+        if civ_specific_ai and tmpl_corr_map and nw_obs > 0:
+            best_ai_t = None
+            best_ai_sc = -1.0
+            for ai_name in civ_specific_ai:
+                if ai_name not in AI_NAME_TEMPLATES:
+                    continue
+                _, tw = AI_NAME_TEMPLATES[ai_name]
+                w_score = max(0.0, 1.0 - abs(nw_obs - tw) / 20.0) * 0.42
+                mc = tmpl_corr_map.get(ai_name, 0.0)
+                total_sc = mc * 0.58 + w_score
+                if total_sc > best_ai_sc:
+                    best_ai_sc = total_sc
+                    best_ai_t = ai_name
+            if best_ai_t in ("Kammu", "Jimmu") and full_civ == "Yamato":
+                first_char = norm_624x400[yc - 7:yc + 2, 14:22]
+                wh_fc = np.min(first_char, axis=2).astype(np.float32)
+                top_left_ink = float(np.mean(wh_fc[:4, :3] > 165))
+                best_ai_t = "Kammu" if top_left_ink >= 0.25 else "Jimmu"
+            if best_ai_t and best_ai_sc >= 0.42:
+                return best_ai_t
 
         return best_raw if best_raw else None
 
@@ -881,7 +957,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         for r in range(8):
             yc = int(round(95.0 + r * 29.8))
-            name_crop_check = norm[yc - 9:yc + 7, 14:134]
+            name_crop_check = norm[yc - 9:yc + 7, 8:134]
             min_nc = np.min(name_crop_check, axis=2).astype(np.float32)
             max_nc = np.max(name_crop_check, axis=2).astype(np.float32)
             wh_nc = min_nc - 0.55 * (max_nc - min_nc)
@@ -899,7 +975,21 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
             col_counts = np.sum(mask_c, axis=0)
             valid_xs = np.where(col_counts >= 1)[0]
-            w_obs = int(valid_xs[-1] - valid_xs[0] + 1) if len(valid_xs) > 0 else 0
+            if len(valid_xs) > 0:
+                x0 = int(valid_xs[0])
+                x1_w = x0
+                empty_r = 0
+                for xc in range(x0, len(col_counts)):
+                    if col_counts[xc] >= 1:
+                        x1_w = xc
+                        empty_r = 0
+                    else:
+                        empty_r += 1
+                        if empty_r >= 6 and (x1_w - x0) >= 14:
+                            break
+                w_obs = int(x1_w - x0 + 1)
+            else:
+                w_obs = 0
 
             s_ally = float(np.mean(edges[yc - 6:yc + 6, 248:262]))
             s_neut = float(np.mean(edges[yc - 6:yc + 6, 317:331]))
@@ -923,49 +1013,41 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 "w_obs": w_obs,
             })
 
-            for x_start, x_end, base_x in [(12, 136, 20), (140, 238, 320)]:
-                cell = norm[yc - 11:yc + 11, x_start:x_end]
+            for x_start, x_end, base_x in [(8, 136, 20), (140, 238, 320)]:
+                cell = norm[yc - 8:yc + 4, x_start:x_end]
                 up1 = cv2.resize(cell, (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_LANCZOS4)
                 min1 = np.min(up1, axis=2).astype(np.float32)
                 max1 = np.max(up1, axis=2).astype(np.float32)
-                wh1 = min1 - 0.55 * (max1 - min1)
-                bg1 = float(np.percentile(wh1, 60))
+                wh1 = min1 - 0.65 * (max1 - min1)
+                bg1 = float(np.percentile(wh1, 65))
 
-                # Phơi sáng 1: Mềm (giữ nét mảnh)
-                a1 = np.clip((wh1 - (bg1 + 14.0)) / 42.0, 0.0, 1.0)
+                # Phơi sáng 1: Khử vân gỗ vàng (Tan Wood) & giữ nét chữ trắng thuần khiết
+                a1 = np.clip((wh1 - (bg1 + 18.0)) / 42.0, 0.0, 1.0)
                 ink1 = cv2.cvtColor((255.0 * (1.0 - a1)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
 
-                # Phơi sáng 2: Đậm + nối nét ngang
-                a2 = np.clip((wh1 - (bg1 + 22.0)) / 45.0, 0.0, 1.0)
-                kernel = np.array([[0.2, 1.0, 0.2]], dtype=np.float32)
-                a2_dil = np.clip(cv2.filter2D(a2, -1, kernel), 0.0, 1.0)
-                ink2 = cv2.cvtColor((255.0 * (1.0 - a2_dil)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+                # Phơi sáng 2: Tăng cường bóng đổ chữ trắng (Drop-shadow enhancement) cho cả nền gỗ và nền cờ màu
+                sh1 = np.roll(np.roll(min1, -2, axis=0), -2, axis=1)
+                wh_sh = wh1 + 0.45 * np.maximum(0.0, min1 - sh1)
+                bg_sh = float(np.percentile(wh_sh, 68))
+                a2 = np.clip((wh_sh - (bg_sh + 22.0)) / 48.0, 0.0, 1.0)
+                ink2 = cv2.cvtColor((255.0 * (1.0 - a2)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
 
-                # Phơi sáng 3: Khử bóng đổ (Shadow subtraction)
-                b_ch, g_ch, r_ch = cv2.split(up1)
-                lum = (0.2 * r_ch + 0.4 * g_ch + 0.4 * b_ch).astype(np.float32)
-                shadow = np.roll(np.roll(lum, 2, axis=0), 2, axis=1)
-                contrast = lum - 0.5 * shadow
-                bg3 = float(np.percentile(contrast, 65))
-                a3 = np.clip((contrast - (bg3 + 15.0)) / 45.0, 0.0, 1.0)
+                # Phơi sáng 3: Ngưỡng cao sắc nét (High-percentile)
+                bg3 = float(np.percentile(wh1, 78))
+                a3 = np.clip((wh1 - (bg3 + 12.0)) / 36.0, 0.0, 1.0)
                 ink3 = cv2.cvtColor((255.0 * (1.0 - a3)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
 
-                # Phơi sáng 4: Thích ứng ngưỡng cao trên nền cờ màu (cắt sát dòng yc-10..yc+10)
-                cell4 = norm[yc - 10:yc + 10, x_start:x_end]
-                up4 = cv2.resize(cell4, (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_LANCZOS4)
-                min4 = np.min(up4, axis=2).astype(np.float32)
-                max4 = np.max(up4, axis=2).astype(np.float32)
-                wh4 = min4 - 0.55 * (max4 - min4)
-                bg_high = max(float(np.percentile(wh4, 65)) + 16.0, float(np.percentile(wh4, 88)) + 6.0)
-                a4 = np.clip((wh4 - bg_high) / 38.0, 0.0, 1.0)
+                # Phơi sáng 4: Nối nét ngang nhẹ trên kênh bóng đổ
+                kernel = np.array([[0.15, 1.0, 0.15]], dtype=np.float32)
+                a4 = np.clip(cv2.filter2D(a2, -1, kernel), 0.0, 1.0)
                 ink4 = cv2.cvtColor((255.0 * (1.0 - a4)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
                 hp4, wp4 = ink4.shape[:2]
 
                 hp, wp = ink1.shape[:2]
-                multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x:base_x + wp] = ink1
-                multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x + 600:base_x + 600 + wp] = ink2
-                multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
-                multi_canvas[r * 70 + 8:r * 70 + 8 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
+                multi_canvas[r * 70 + 18:r * 70 + 18 + hp, base_x:base_x + wp] = ink1
+                multi_canvas[r * 70 + 18:r * 70 + 18 + hp, base_x + 600:base_x + 600 + wp] = ink2
+                multi_canvas[r * 70 + 18:r * 70 + 18 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
+                multi_canvas[r * 70 + 18:r * 70 + 18 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
 
         # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 (người mở F2) bắt buộc phải có mặt
         if len(active_rows) < 2 or len(active_rows) % 2 != 0 or active_rows[0]["row_idx"] != 0:
@@ -4873,11 +4955,13 @@ class AOETrackerApp:
             self.log(f"❌ Lỗi gửi dữ liệu lên Server: {e}", "ERROR")
 
     def _grab_all_monitors_bgr(self):
-        """Chụp màn hình chính và các màn hình phụ (nếu dùng 2-3 màn hình) để luôn bắt được bảng Diplomacy."""
+        """Chụp màn hình chính, cửa sổ game đang mở và các màn hình phụ để luôn bắt chuẩn bảng Diplomacy ở mọi Screen Size."""
         frames = []
+        primary_bgr = None
         try:
             pil_primary = ImageGrab.grab()
-            frames.append(cv2.cvtColor(np.array(pil_primary), cv2.COLOR_RGB2BGR))
+            primary_bgr = cv2.cvtColor(np.array(pil_primary), cv2.COLOR_RGB2BGR)
+            frames.append(primary_bgr)
         except Exception:
             pass
 
@@ -4886,6 +4970,30 @@ class AOETrackerApp:
                 import ctypes
                 from ctypes import wintypes
                 user32 = ctypes.windll.user32
+
+                # Kiểm tra khung cửa sổ đang active (hoặc cửa sổ Age of Empires ở chế độ 1366x768 / 1600x900 / Windowed)
+                candidate_hwnds = []
+                fg_hwnd = user32.GetForegroundWindow()
+                if fg_hwnd:
+                    candidate_hwnds.append(fg_hwnd)
+                for title in ("Age of Empires Expansion", "Age of Empires"):
+                    h_aoe = user32.FindWindowW(None, title)
+                    if h_aoe and h_aoe not in candidate_hwnds:
+                        candidate_hwnds.append(h_aoe)
+
+                for hwnd in candidate_hwnds:
+                    wrect = wintypes.RECT()
+                    if user32.GetWindowRect(hwnd, ctypes.byref(wrect)):
+                        wl, wt, wr, wb = int(wrect.left), int(wrect.top), int(wrect.right), int(wrect.bottom)
+                        ww, wh = wr - wl, wb - wt
+                        if ww >= 600 and wh >= 400:
+                            if primary_bgr is not None:
+                                ph, pw = primary_bgr.shape[:2]
+                                if 0 <= wl and 0 <= wt and wr <= pw and wb <= ph and (ww < pw - 20 or wh < ph - 20):
+                                    sub_win = primary_bgr[wt:wb, wl:wr]
+                                    if sub_win.size > 0:
+                                        frames.insert(0, sub_win)
+
                 if user32.GetSystemMetrics(80) > 1:
                     MONITORENUMPROC = ctypes.WINFUNCTYPE(
                         ctypes.c_int,
@@ -4903,7 +5011,7 @@ class AOETrackerApp:
 
                     user32.EnumDisplayMonitors(0, 0, MONITORENUMPROC(_cb), 0)
                     for left, top, right, bottom in rects:
-                        if left == 0 and top == 0 and frames:
+                        if left == 0 and top == 0 and primary_bgr is not None:
                             continue
                         if right - left >= 450 and bottom - top >= 300:
                             pil_mon = ImageGrab.grab(bbox=(left, top, right, bottom), all_screens=True)
@@ -5139,12 +5247,9 @@ class AOETrackerApp:
         last_social_sync = time.time()
         while self.running:
             try:
-                now = time.time()
-                if (
-                    self.is_logged_in
-                    and self.auto_scan_var.get()
-                    and now <= getattr(self, "_diplomacy_scan_window_until", 0.0)
-                ):
+                # Tự động quét màn hình khi bật Auto Scan (kể cả khi game AOE chạy quyền Administrator chặn phím tắt UIPI)
+                # Bộ lọc verify_is_diplomacy_dialog + OCR đảm bảo chỉ kích hoạt khi bảng DIPLOMACY thực sự đang mở trên màn hình
+                if self.is_logged_in and self.auto_scan_var.get():
                     frames = self._grab_all_monitors_bgr()
                     force_scan = self.current_match is None
                     for img_bgr in frames:
