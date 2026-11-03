@@ -8,7 +8,7 @@ Mỗi khi thêm tính năng mới, sửa lỗi hoặc chỉnh sửa hệ thống
 2. **Đóng gói lại bản chạy `.exe` khi có thay đổi ở `client/bangquanaoe.py`**:
    - Kiểm tra cú pháp: `python -m py_compile client/bangquanaoe.py` và `node -c server/index.js`.
    - Build lại bằng PyInstaller: `C:\Users\APC\.gemini\antigravity\scratch\aoe-tracker\client\.venv\Scripts\pyinstaller.exe --noconfirm bangquanaoe.spec`.
-   - Copy `client/dist/bangquanaoe.exe` sang `client/dist/TOOL_BANG_QUAN_AOE_BY_XO.exe` để đường dẫn `/download-tool` trên Web luôn trả về bản `.exe` mới nhất.
+   - Copy `client/dist/bangquanaoe.exe` sang cả `client/dist/TOOL_BANG_QUAN_AOE_BY_XO.exe` VÀ file gốc `TOOL_BANG_QUAN_AOE_BY_XO.exe` ở thư mục root (file được Git track và đẩy lên Render) để đường dẫn `/download-tool` trên Web luôn trả về bản `.exe` mới nhất.
 
 3. **Đồng bộ 2 kho mã nguồn (`aoe-tracker` & `aoetrackerv2`)**:
    - Mọi thay đổi ở `C:\Users\APC\.gemini\antigravity\scratch\aoe-tracker` (bao gồm `server/`, `public/`, `client/`, `README.md`, `GEMINI.md`) phải được đồng bộ sang `C:\Users\APC\.gemini\antigravity\scratch\aoetrackerv2` và commit vào Git ở cả 2 thư mục.

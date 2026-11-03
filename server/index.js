@@ -2199,13 +2199,23 @@ app.get('/download-tool', async (req, res) => {
     }
     const rootExe = path.join(__dirname, '..', 'TOOL_BANG_QUAN_AOE_BY_XO.exe');
     const distExe = path.join(__dirname, '..', 'client', 'dist', 'bangquanaoe.exe');
-    if (fs.existsSync(rootExe)) {
-      return res.download(rootExe, 'TOOL_BANG_QUAN_AOE_BY_XO.exe');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    const hasRoot = fs.existsSync(rootExe);
+    const hasDist = fs.existsSync(distExe);
+    if (hasRoot && hasDist) {
+      const rootMtime = fs.statSync(rootExe).mtimeMs || 0;
+      const distMtime = fs.statSync(distExe).mtimeMs || 0;
+      return res.download(distMtime >= rootMtime ? distExe : rootExe, 'TOOL_BANG_QUAN_AOE_BY_XO.exe');
     }
-    if (fs.existsSync(distExe)) {
+    if (hasDist) {
       return res.download(distExe, 'TOOL_BANG_QUAN_AOE_BY_XO.exe');
     }
-    return res.redirect('https://github.com/buiviet2306-arch/aoetrackerv2/releases');
+    if (hasRoot) {
+      return res.download(rootExe, 'TOOL_BANG_QUAN_AOE_BY_XO.exe');
+    }
+    return res.redirect('https://github.com/kjmxoan/aoetrackerv2/releases');
   } catch (e) {
     return res.status(500).send('Không thể tải file cài đặt lúc này.');
   }
