@@ -1475,23 +1475,6 @@ class AOETrackerApp:
         )
         self._bind_hover(self.btn_test_img, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
 
-        btn_end_match = tk.Button(
-            quick_bar,
-            text="🗑 Kết thúc kèo",
-            command=self.finish_current_match,
-            font=("Segoe UI", 9, "bold"),
-            bg="#11151b",
-            fg="#f0657b",
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground="#c94a61",
-            padx=10,
-            pady=4,
-            cursor="hand2",
-        )
-        btn_end_match.pack(side="left")
-        self._bind_hover(btn_end_match, "#11151b", "#2b161d", "#f0657b", "#fda4af")
-
         # Cụm nút Copy Link OBS & Hướng dẫn OBS đặt ngay trên Bảng Điều Khiển (bên phải)
         self.open_web_btn = tk.Button(
             quick_bar,
@@ -1642,8 +1625,8 @@ class AOETrackerApp:
             bg="#11151b",
             highlightthickness=1,
             highlightbackground="#2b3541",
-            padx=14,
-            pady=12,
+            padx=12,
+            pady=10,
         )
         center_hud.grid(row=0, column=1, sticky="nsew", padx=4)
 
@@ -1656,16 +1639,16 @@ class AOETrackerApp:
             padx=10,
             pady=3,
         )
-        self.match_mode_lbl.pack(pady=(0, 6))
+        self.match_mode_lbl.pack(pady=(0, 4))
 
         self.score_lbl = tk.Label(
             center_hud,
             text="0  -  0",
-            font=("Segoe UI", 32, "bold"),
+            font=("Segoe UI", 30, "bold"),
             fg="#e7ebf0",
             bg="#11151b",
         )
-        self.score_lbl.pack(pady=6)
+        self.score_lbl.pack(pady=2)
 
         self.c_mode_summary_lbl = tk.Label(
             center_hud,
@@ -1676,7 +1659,7 @@ class AOETrackerApp:
             wraplength=240,
             justify="center",
         )
-        self.c_mode_summary_lbl.pack(pady=(4, 2))
+        self.c_mode_summary_lbl.pack(pady=(2, 2))
 
         self.stars_counter_lbl = tk.Label(
             center_hud,
@@ -1685,7 +1668,25 @@ class AOETrackerApp:
             fg="#eca133",
             bg="#11151b",
         )
-        self.stars_counter_lbl.pack(pady=(2, 0))
+        self.stars_counter_lbl.pack(pady=(0, 6))
+
+        self.btn_end_match = tk.Button(
+            center_hud,
+            text="🗑 Kết thúc kèo đấu",
+            command=self.finish_current_match,
+            font=("Segoe UI", 10, "bold"),
+            bg="#181e28",
+            fg="#f0657b",
+            activebackground="#2b161d",
+            activeforeground="#fda4af",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#c94a61",
+            pady=6,
+            cursor="hand2",
+        )
+        self.btn_end_match.pack(side="bottom", fill="x")
+        self._bind_hover(self.btn_end_match, "#181e28", "#2b161d", "#f0657b", "#fda4af")
 
         # --- CARD PHẢI: TEAM XANH ---
         self.blue_card = tk.Frame(
