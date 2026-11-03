@@ -1063,6 +1063,75 @@ app.post('/api', async (req, res) => {
       return res.json({ status: 'success' });
     }
 
+    if (action === 'adminCleanupMatchHistory') {
+      if (!isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền xóa lịch sử đấu!' });
+      }
+      const mode = String(data.mode || 'OLDER_THAN_DAYS').toUpperCase().trim();
+      const keepLive = data.keepLive !== undefined ? Boolean(data.keepLive) : true;
+      const days = Math.max(1, Number(data.days || 7));
+      const targetStreamer = String(data.streamerName || '').trim().toLowerCase();
+      const now = Date.now();
+      const cutoffTs = now - days * 24 * 60 * 60 * 1000;
+
+      const allMatches = await db.getMatches();
+      const toDeleteIds = [];
+      let modeDesc = '';
+
+      for (const m of allMatches) {
+        if (!m || !m.id) continue;
+        if (keepLive && m.status === 'LIVE' && mode !== 'ALL_FORCE') {
+          continue;
+        }
+        const mCreated = Number(m.createdAt || m.lastHeartbeat || 0);
+        if (mode === 'ALL' || mode === 'ALL_FORCE') {
+          toDeleteIds.push(m.id);
+          modeDesc = keepLive && mode !== 'ALL_FORCE' ? 'tất cả kèo đã kết thúc' : 'toàn bộ lịch sử kèo đấu';
+        } else if (mode === 'FINISHED_ONLY') {
+          if (m.status !== 'LIVE') {
+            toDeleteIds.push(m.id);
+          }
+          modeDesc = 'tất cả các kèo đã kết thúc';
+        } else if (mode === 'OLDER_THAN_DAYS') {
+          if (!mCreated || mCreated < cutoffTs) {
+            toDeleteIds.push(m.id);
+          }
+          modeDesc = `các kèo cũ hơn ${days} ngày trước`;
+        } else if (mode === 'BY_STREAMER') {
+          if (targetStreamer && String(m.streamerName || '').toLowerCase() === targetStreamer) {
+            toDeleteIds.push(m.id);
+          }
+          modeDesc = `lịch sử đấu của Streamer "${data.streamerName}"`;
+        } else if (mode === 'EMPTY_MATCHES') {
+          const games = Array.isArray(m.games) ? m.games : [];
+          const hasScoredGame = games.some(g => g && (g.winner === 'RED' || g.winner === 'BLUE'));
+          if (games.length === 0 || (!hasScoredGame && m.status !== 'LIVE')) {
+            toDeleteIds.push(m.id);
+          }
+          modeDesc = 'các kèo trống / chưa có tỉ số';
+        }
+      }
+
+      if (toDeleteIds.length > 0) {
+        await db.deleteMatches(toDeleteIds);
+      }
+      if ((mode === 'ALL' && !keepLive) || mode === 'ALL_FORCE') {
+        globalChatBuffer.length = 0;
+      }
+
+      const remainingMatches = await db.getMatches();
+      broadcastUpdate('matches_deleted', { matchIds: toDeleteIds, mode });
+      return res.json({
+        status: 'success',
+        deletedCount: toDeleteIds.length,
+        remainingCount: remainingMatches.length,
+        matches: remainingMatches,
+        message: toDeleteIds.length > 0
+          ? `🗑️ Đã xóa ${toDeleteIds.length} kèo đấu (${modeDesc}). Còn lại ${remainingMatches.length} kèo trên hệ thống!`
+          : `ℹ️ Không có kèo đấu nào thỏa điều kiện xóa (${modeDesc}).`
+      });
+    }
+
     // ==================== ADMIN USER, VIP TIER & SUBSCRIPTION MANAGEMENT ====================
     if (action === 'adminSavePlayer') {
       if (!isAdminAuthorized(data)) {

@@ -3147,6 +3147,153 @@ class AOETrackerApp:
         ).pack(side="right")
 
         # ======================================================================
+        # 0B. DỌN DẸP & XÓA LỊCH SỬ KÈO ĐẤU (1 TUẦN, 1 THÁNG, TÙY CHỈNH, TẤT CẢ)
+        # ======================================================================
+        hist_clean_card = tk.Frame(win, bg="#181e28", highlightthickness=1, highlightbackground="#2b3541", padx=14, pady=8)
+        hist_clean_card.pack(fill="x", padx=14, pady=(2, 4))
+
+        tk.Label(
+            hist_clean_card,
+            text="🗑️ Xóa lịch sử đấu:",
+            font=("Segoe UI", 9, "bold"),
+            fg="#f0657b",
+            bg="#181e28",
+        ).pack(side="left")
+
+        cleanup_mode_options = [
+            "Cũ hơn 1 tuần trước (> 7 ngày)",
+            "Cũ hơn 1 tháng trước (> 30 ngày)",
+            "Tất cả kèo đã kết thúc (Giữ kèo đang LIVE)",
+            "Kèo trống / 0 trận / Chưa có tỉ số",
+            "Tùy chỉnh: Cũ hơn số ngày nhập bên cạnh",
+            "Tùy chỉnh: Theo tên Streamer nhập bên cạnh",
+            "🔥 Xóa TẤT CẢ lịch sử kèo đấu",
+        ]
+        cleanup_mode_var = tk.StringVar(value=cleanup_mode_options[0])
+        cleanup_cb = ttk.Combobox(
+            hist_clean_card,
+            textvariable=cleanup_mode_var,
+            values=cleanup_mode_options,
+            state="readonly",
+            width=36,
+            style="Premium.TCombobox",
+        )
+        cleanup_cb.pack(side="left", padx=(6, 10))
+
+        tk.Label(
+            hist_clean_card,
+            text="Giá trị tùy chỉnh (Số ngày / Tên Streamer):",
+            font=("Segoe UI", 8, "bold"),
+            fg="#8e99a7",
+            bg="#181e28",
+        ).pack(side="left")
+        cleanup_param_var = tk.StringVar(value="14")
+        tk.Entry(
+            hist_clean_card,
+            textvariable=cleanup_param_var,
+            font=("Consolas", 9, "bold"),
+            bg="#11151b",
+            fg="#eca133",
+            width=12,
+            justify="center",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+        ).pack(side="left", padx=(4, 10), ipady=3)
+
+        keep_live_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            hist_clean_card,
+            text="Giữ lại kèo đang LIVE",
+            variable=keep_live_var,
+            font=("Segoe UI", 8, "bold"),
+            fg="#e7ebf0",
+            bg="#181e28",
+            selectcolor="#11151b",
+            activebackground="#181e28",
+            activeforeground="#eca133",
+        ).pack(side="left", padx=(0, 8))
+
+        def _exec_cleanup_history(quick_mode=None, quick_days=None):
+            sel_label = cleanup_mode_var.get()
+            raw_param = cleanup_param_var.get().strip()
+            keep_live = bool(keep_live_var.get())
+
+            if quick_mode:
+                mode = quick_mode
+                days = quick_days or 7
+                streamer_filter = ""
+            elif "1 tuần" in sel_label:
+                mode, days, streamer_filter = "OLDER_THAN_DAYS", 7, ""
+            elif "1 tháng" in sel_label:
+                mode, days, streamer_filter = "OLDER_THAN_DAYS", 30, ""
+            elif "đã kết thúc" in sel_label:
+                mode, days, streamer_filter = "FINISHED_ONLY", 0, ""
+            elif "Kèo trống" in sel_label:
+                mode, days, streamer_filter = "EMPTY_MATCHES", 0, ""
+            elif "số ngày nhập" in sel_label:
+                try:
+                    days = max(1, int(raw_param or "7"))
+                except Exception:
+                    self.messagebox.showwarning("Số ngày không hợp lệ", "Vui lòng nhập số ngày hợp lệ (VD: 3, 14, 60)!", parent=win)
+                    return
+                mode, streamer_filter = "OLDER_THAN_DAYS", ""
+            elif "tên Streamer" in sel_label:
+                if not raw_param:
+                    self.messagebox.showwarning("Thiếu tên Streamer", "Vui lòng nhập tên Streamer cần xóa lịch sử vào ô bên cạnh!", parent=win)
+                    return
+                mode, days, streamer_filter = "BY_STREAMER", 0, raw_param
+            else:
+                mode, days, streamer_filter = "ALL", 0, ""
+
+            confirm_msg = f"Bạn có chắc chắn muốn thực hiện: [{sel_label if not quick_mode else quick_mode}] không?\n(Hành động này không thể hoàn tác)"
+            if not self.messagebox.askyesno("Xác nhận xóa lịch sử đấu", confirm_msg, parent=win):
+                return
+
+            def _t():
+                try:
+                    res = requests.post(
+                        self.get_api_endpoint(),
+                        json={
+                            "action": "adminCleanupMatchHistory",
+                            "isAdmin": True,
+                            "adminPassword": self.admin_password,
+                            "mode": mode,
+                            "days": days,
+                            "streamerName": streamer_filter,
+                            "keepLive": keep_live,
+                        },
+                        timeout=12,
+                    )
+                    d = res.json()
+                    if d.get("status") == "success":
+                        msg = d.get("message", "Đã xóa lịch sử kèo đấu!")
+                        win.after(0, lambda: status_bar_lbl.config(text=f"✅ {msg}", fg="#34d399"))
+                        self.log(f"✅ {msg}", "SUCCESS")
+                        self.refresh_initial_state()
+                    else:
+                        win.after(0, lambda: status_bar_lbl.config(text=f"⚠️ {d.get('message', 'Lỗi xóa lịch sử')}", fg="#eca133"))
+                except Exception as e:
+                    win.after(0, lambda: status_bar_lbl.config(text=f"❌ Lỗi xóa lịch sử: {e}", fg="#f0657b"))
+
+            threading.Thread(target=_t, daemon=True).start()
+
+        tk.Button(
+            hist_clean_card,
+            text="🗑️ Xóa Lịch Sử Đấu",
+            command=_exec_cleanup_history,
+            font=("Segoe UI", 9, "bold"),
+            bg="#11151b",
+            fg="#f0657b",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#c94a61",
+            padx=12,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right")
+
+        # ======================================================================
         # 1. FORM TẠO MỚI / CHỈNH SỬA ĐẦY ĐỦ THÔNG TIN USER (NGÀY TẠO, NGÀY HẾT HẠN, MẬT KHẨU, SAO)
         # ======================================================================
         top_card = tk.Frame(win, bg="#181e28", highlightthickness=1, highlightbackground="#2b3541", padx=14, pady=10)

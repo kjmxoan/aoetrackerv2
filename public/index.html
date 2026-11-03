@@ -1105,6 +1105,59 @@
             </div>
           </div>
 
+          <!-- 0B. Dọn Dẹp & Xóa Lịch Sử Kèo Đấu (Admin) -->
+          <div class="bg-slate-950/90 border border-rose-500/30 p-3.5 rounded-xl space-y-2.5 shrink-0">
+            <div class="text-xs font-bold text-rose-300 flex items-center justify-between flex-wrap gap-2">
+              <span>🗑️ Dọn Dẹp & Xóa Lịch Sử Kèo Đấu (Hiện có <b class="text-white">{{ matches.length }}</b> kèo trên hệ thống):</span>
+              <label class="flex items-center gap-1.5 text-[11px] text-slate-300 cursor-pointer">
+                <input type="checkbox" v-model="historyCleanupForm.keepLive" class="accent-amber-400">
+                <span>Giữ lại các kèo đang LIVE (Không xóa kèo đang thi đấu)</span>
+              </label>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button @click="cleanupMatchHistoryAdmin('OLDER_THAN_DAYS', 7)"
+                        class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg font-bold transition">
+                  🗓️ Xóa &gt; 1 Tuần trước (7N)
+                </button>
+                <button @click="cleanupMatchHistoryAdmin('OLDER_THAN_DAYS', 30)"
+                        class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg font-bold transition">
+                  📅 Xóa &gt; 1 Tháng trước (30N)
+                </button>
+                <button @click="cleanupMatchHistoryAdmin('EMPTY_MATCHES')"
+                        class="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 px-3 py-1.5 rounded-lg font-bold transition">
+                  🧹 Xóa kèo trống / 0 trận
+                </button>
+                <button @click="cleanupMatchHistoryAdmin('FINISHED_ONLY')"
+                        class="bg-slate-900 hover:bg-slate-800 text-sky-300 border border-slate-700 px-3 py-1.5 rounded-lg font-bold transition">
+                  🏁 Xóa mọi kèo đã kết thúc
+                </button>
+                <button @click="cleanupMatchHistoryAdmin('ALL')"
+                        class="btn-danger-outline px-3 py-1.5 rounded-lg font-bold transition">
+                  🔥 Xóa TẤT CẢ lịch sử đấu
+                </button>
+              </div>
+
+              <!-- Tùy chỉnh nâng cao: Xóa theo số ngày bất kỳ hoặc theo tên Streamer -->
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <select v-model="historyCleanupForm.customType" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 font-semibold">
+                  <option value="OLDER_THAN_DAYS">Tùy chỉnh: Cũ hơn X ngày</option>
+                  <option value="BY_STREAMER">Tùy chỉnh: Theo tên Streamer</option>
+                </select>
+                <input v-if="historyCleanupForm.customType === 'OLDER_THAN_DAYS'"
+                       type="number" min="1" v-model.number="historyCleanupForm.customDays" placeholder="Số ngày..."
+                       class="w-20 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-amber-300 font-bold text-center">
+                <input v-else
+                       type="text" v-model="historyCleanupForm.streamerName" placeholder="Nhập tên Streamer..."
+                       class="w-36 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-bold">
+                <button @click="cleanupMatchHistoryCustomAdmin"
+                        class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg font-bold transition">
+                  Thực hiện xóa
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- 1. Form Cấp Tạo Tài Khoản Mới Nhanh -->
           <div class="bg-slate-950/80 border border-slate-800 p-3.5 rounded-xl space-y-2 shrink-0">
             <div class="text-xs font-bold text-slate-200 flex items-center justify-between">
@@ -1419,6 +1472,12 @@
             downloadUrl: '/download-tool',
             releaseNotes: 'Giao diện Wood-Gold mới, Màn hình Đăng nhập riêng, Tab Cài đặt VIP góc phải.',
             forceUpdate: false
+          },
+          historyCleanupForm: {
+            keepLive: true,
+            customType: 'OLDER_THAN_DAYS',
+            customDays: 14,
+            streamerName: ''
           },
           databaseMode: 'neon_postgres',
           currentDateTimeText: '',
@@ -2221,6 +2280,64 @@
             }
           } catch (e) {
             this.showNotify('Lỗi kết nối khi lưu phiên bản!', 'error');
+          }
+        },
+        async cleanupMatchHistoryAdmin(mode, days = 7, streamerName = '') {
+          const keepLive = Boolean(this.historyCleanupForm.keepLive);
+          let desc = '';
+          if (mode === 'ALL') {
+            desc = keepLive
+              ? 'XÓA TẤT CẢ lịch sử kèo đã kết thúc (giữ lại kèo đang LIVE)'
+              : 'XÓA SẠCH 100% TẤT CẢ lịch sử kèo đấu trên hệ thống (bao gồm cả kèo đang LIVE)';
+          } else if (mode === 'FINISHED_ONLY') {
+            desc = 'xóa toàn bộ các kèo đã kết thúc';
+          } else if (mode === 'OLDER_THAN_DAYS') {
+            desc = `xóa các kèo đấu cũ hơn ${days} ngày trước`;
+          } else if (mode === 'BY_STREAMER') {
+            if (!streamerName || !streamerName.trim()) {
+              this.showNotify('Vui lòng nhập tên Streamer cần xóa lịch sử đấu!', 'error');
+              return;
+            }
+            desc = `xóa lịch sử kèo đấu của Streamer "${streamerName.trim()}"`;
+          } else if (mode === 'EMPTY_MATCHES') {
+            desc = 'xóa các kèo trống / 0 trận / chưa có tỉ số';
+          }
+          if (!confirm(`⚠️ Xác nhận Admin: Bạn có chắc chắn muốn ${desc} không?\n(Hành động này không thể hoàn tác)`)) {
+            return;
+          }
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminCleanupMatchHistory',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                mode,
+                days,
+                streamerName: (streamerName || '').trim(),
+                keepLive
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              if (Array.isArray(data.matches)) {
+                this.matches = data.matches;
+              }
+              this.showNotify(data.message || 'Đã dọn dẹp lịch sử kèo đấu!');
+            } else {
+              this.showNotify(data.message || 'Không thể xóa lịch sử kèo đấu!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối khi xóa lịch sử kèo đấu!', 'error');
+          }
+        },
+        cleanupMatchHistoryCustomAdmin() {
+          if (this.historyCleanupForm.customType === 'BY_STREAMER') {
+            this.cleanupMatchHistoryAdmin('BY_STREAMER', 0, this.historyCleanupForm.streamerName);
+          } else {
+            const d = Math.max(1, Number(this.historyCleanupForm.customDays) || 7);
+            this.cleanupMatchHistoryAdmin('OLDER_THAN_DAYS', d);
           }
         },
         async createNewPlayerAdmin() {
