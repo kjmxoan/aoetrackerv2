@@ -57,18 +57,26 @@
     /* Tự động làm mờ 80% (còn 20% opacity) sau 5 giây không có tin nhắn mới */
     .chat-active-bright {
       opacity: 1;
-      transition: opacity 0.25s ease-out;
+      filter: none;
+      transition: opacity 0.25s ease-out, filter 0.25s ease-out;
     }
     .chat-idle-dimmed {
       opacity: 0.20;
-      transition: opacity 0.85s ease-in-out;
+      filter: none;
+      transition: opacity 0.85s ease-in-out, filter 0.35s ease;
+    }
+    /* Làm mờ khung OBS Chat khi ấn F8 (Hiệu ứng "Tay đâu, tayyyy đâuuuuu" chỉ hiển thị bên khung Link OBS Bảng Quân) */
+    .chat-hype-dimmed {
+      opacity: 0.12;
+      filter: blur(2.5px);
+      transition: opacity 0.35s ease, filter 0.35s ease;
     }
   </style>
 </head>
 <body class="p-2">
   <div id="app"
        class="w-[370px] relative select-none"
-       :class="isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright'"
+       :class="isHypeDimmed ? 'chat-hype-dimmed' : (isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright')"
        style="background: transparent !important;">
     <!-- Hiệu ứng sao bay khi có người tặng sao -->
     <span v-for="st in starParticles" :key="st.id"
@@ -116,14 +124,8 @@
         <div v-for="m in displayMessages" :key="m.id"
              class="msg-item text-[13px] leading-snug break-words stroke-text"
              style="background: transparent !important;">
-          <!-- Hiệu ứng F8 Hô hào -->
-          <template v-if="m.giftCode === 'HYPE_F8'">
-            <span class="font-black text-emerald-400">🙌 {{ m.senderName }}</span>
-            <span class="font-bold text-slate-300 mx-1">hô vang:</span>
-            <span class="font-black text-amber-300 stroke-gold">"Tay đâu, tayyyy đâuuuuu" 🔥</span>
-          </template>
           <!-- Tin nhắn Tặng Sao / Vật Phẩm AOE: Tối giản 1 dòng, tách rõ 4 màu (Người tặng Trắng • Vật phẩm Vàng • Người nhận Xanh Ngọc) -->
-          <template v-else-if="m.type === 'STAR' || m.type === 'STAR_GIFT'">
+          <template v-if="m.type === 'STAR' || m.type === 'STAR_GIFT'">
             <span>{{ m.giftIcon || '🎁' }} </span>
             <span class="font-extrabold text-white">{{ m.senderName }}</span>
             <span class="font-semibold text-slate-300 mx-1">tặng</span>
@@ -164,12 +166,15 @@
           starTimer: null,
           isIdleDimmed: false,
           idleTimer: null,
+          isHypeDimmed: false,
+          hypeDimTimer: null,
+          lastSeenHypeId: '',
           lastLatestMsgId: ''
         };
       },
       computed: {
         displayMessages() {
-          return this.messages.slice(-10);
+          return this.messages.filter(m => m.giftCode !== 'HYPE_F8').slice(-10);
         },
         totalStars() {
           return (this.match && this.match.starsCount) || 0;
@@ -225,6 +230,21 @@
             this.starParticles = [];
           }, 5000);
         },
+        triggerHypeDim(hype) {
+          if (!hype) return;
+          if (this.streamerFilter && hype.streamerName &&
+              hype.streamerName.toLowerCase() !== this.streamerFilter.toLowerCase()) {
+            return;
+          }
+          if (hype.id && hype.id === this.lastSeenHypeId) return;
+          if (hype.id) this.lastSeenHypeId = hype.id;
+          const dur = Math.min(12000, Math.max(3500, Number(hype.durationMs) || 6500));
+          this.isHypeDimmed = true;
+          if (this.hypeDimTimer) clearTimeout(this.hypeDimTimer);
+          this.hypeDimTimer = setTimeout(() => {
+            this.isHypeDimmed = false;
+          }, dur);
+        },
         async fetchChatData() {
           const query = new URLSearchParams(location.search);
           this.streamerFilter = (query.get('streamer') || query.get('player') || '').trim();
@@ -232,6 +252,19 @@
             const res = await fetch(`${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.streamerFilter)}`);
             const data = await res.json();
             this.match = data.currentMatch || null;
+            const targetName = (this.streamerFilter || 'XO').toLowerCase();
+            const streamerPlayer = (data.players || []).find(p => String(p.name || '').toLowerCase() === targetName);
+            const candidateHype =
+              (this.match && this.match.lastHypeShout) ||
+              (streamerPlayer && streamerPlayer.overlayConfig && streamerPlayer.overlayConfig.lastHypeShout) ||
+              null;
+            if (candidateHype && candidateHype.createdAt) {
+              const ageMs = Date.now() - Number(candidateHype.createdAt);
+              const maxDur = Number(candidateHype.durationMs) || 6500;
+              if (ageMs >= 0 && ageMs < maxDur) {
+                this.triggerHypeDim(candidateHype);
+              }
+            }
             let nextMsgs = [];
             if (this.match && Array.isArray(this.match.chatMessages) && this.match.chatMessages.length > 0) {
               nextMsgs = this.match.chatMessages;
@@ -240,6 +273,7 @@
                 ? data.recentChat.filter(c => String(c.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase())
                 : data.recentChat;
             }
+            nextMsgs = nextMsgs.filter(c => c.giftCode !== 'HYPE_F8');
             const latestId = nextMsgs.length > 0 ? String(nextMsgs[nextMsgs.length - 1].id || '') : '';
             if (latestId && latestId !== this.lastLatestMsgId) {
               this.lastLatestMsgId = latestId;
@@ -276,27 +310,9 @@
                       this.match.starsCount = payload.gift.totalMatchStars;
                     }
                   }
-                } else if (payload.type === 'hype_shout') {
-                  if (payload.chat && (!this.streamerFilter || String(payload.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase())) {
-                    if (!this.messages.some(m => m.id === payload.chat.id)) {
-                      this.messages.push(payload.chat);
-                    }
-                    this.lastLatestMsgId = String(payload.chat.id || '');
-                    this.wakeUpOverlay();
-                  }
-                  if (payload.hype) {
-                    this.triggerStarEffect({
-                      id: payload.hype.id,
-                      streamerName: payload.hype.streamerName,
-                      senderName: payload.hype.streamerName || 'HOST',
-                      giftCode: 'HYPE_F8',
-                      giftName: 'HỨNG KHỞI [F8]',
-                      giftIcon: '🙌🔥',
-                      starCount: 0,
-                      particles: payload.hype.particles || ['🙌', '🔥', '👏', '⚡', '🏆'],
-                      message: payload.hype.text || 'Tay đâu, tayyyy đâuuuuu'
-                    });
-                  }
+                } else if (payload.type === 'hype_shout' && payload.hype) {
+                  // Khi ấn F8: chỉ làm mờ tạm thời khung OBS Chat, KHÔNG hiển thị chữ "Tay đâu" ở khung OBS Chat
+                  this.triggerHypeDim(payload.hype);
                 } else {
                   this.fetchChatData();
                 }

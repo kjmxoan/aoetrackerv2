@@ -1418,52 +1418,32 @@ app.post('/api', async (req, res) => {
         createdAt: now
       };
 
-      const hypeChatObj = {
-        id: hypePayload.id,
-        matchId: targetMatch ? targetMatch.id : null,
-        streamerName,
-        senderName: streamerName,
-        senderTier: (auth.player && auth.player.tier) || 'DIAMOND',
-        isAdmin: adminOk || sLower === 'xo',
-        isStreamer: true,
-        type: 'STAR',
-        starCount: 0,
-        giftCode: 'HYPE_F8',
-        giftName: 'HỨNG KHỞI [F8]',
-        giftIcon: '🙌🔥',
-        text: `🙌 "${shoutText}" 🔥 — ${subText}`,
-        message: `🙌 "${shoutText}" 🔥 — ${subText}`,
-        createdAt: now,
-        timeText: formatShortTimeVN(now)
-      };
-
-      globalChatBuffer.push(hypeChatObj);
-      if (globalChatBuffer.length > 100) globalChatBuffer.shift();
-
+      // Lưu lastHypeShout trên cả Match và overlayConfig của Streamer để khung 'Link OBS' (overlay.html) luôn bắt được hiệu ứng F8
       if (targetMatch) {
         targetMatch.lastHypeShout = hypePayload;
         targetMatch.lastHeartbeat = now;
-        if (!Array.isArray(targetMatch.chatMessages)) targetMatch.chatMessages = [];
-        targetMatch.chatMessages.push(hypeChatObj);
-        if (targetMatch.chatMessages.length > 60) {
-          targetMatch.chatMessages = targetMatch.chatMessages.slice(-60);
-        }
         await db.saveMatch(targetMatch);
+      }
+      if (auth.player) {
+        auth.player.overlayConfig = {
+          ...(auth.player.overlayConfig || {}),
+          lastHypeShout: hypePayload
+        };
+        auth.player.lastSeenAt = now;
+        await db.upsertPlayer(auth.player);
       }
 
       broadcastUpdate('hype_shout', {
         matchId: targetMatch ? targetMatch.id : null,
         streamerName,
-        hype: hypePayload,
-        chat: hypeChatObj
+        hype: hypePayload
       });
 
       return res.json({
         status: 'success',
         hype: hypePayload,
-        chat: hypeChatObj,
         match: targetMatch || null,
-        message: `🙌🔥 Đã bắn hiệu ứng "${shoutText}" lên OBS Overlay & Sảnh Live!`
+        message: `🙌🔥 Đã bắn hiệu ứng "${shoutText}" lên khung Link OBS Bảng Quân!`
       });
     }
 
@@ -1516,7 +1496,7 @@ app.post('/api', async (req, res) => {
         return res.json({ status: 'error', message: 'Không có quyền hoặc không tìm thấy kèo!' });
       }
       if (!Array.isArray(match.games) || match.games.length === 0) {
-        return res.json({ status: 'error', message: 'Kèo đấu chưa có trận nào!' });
+        return res.json({ status: 'error', message: 'Chưa có bảng quân của trận đấu! Hãy ấn F2 (Diplomacy) trong game để hiển thị quân trước khi bấm F5/F6.' });
       }
 
       const rawWinner = String(data.winner || 'PENDING').toUpperCase().trim();
@@ -1526,35 +1506,37 @@ app.post('/api', async (req, res) => {
       if (data.gameIndex !== undefined && data.gameIndex !== null && data.gameIndex !== '') {
         gameIdx = Number(data.gameIndex);
       } else {
-        // Khi bấm +1 nhanh hoặc phím tắt F5/F6 trong Game (không truyền gameIndex):
-        // Ưu tiên ván đang PENDING, nếu tất cả các ván đã có kết quả thắng/thua thì tự động nối thêm ván mới (+1 tỉ số)
+        // Quy tắc nghiêm ngặt: Phím F5 / F6 (hoặc nút +1) chỉ được chấp thuận khi quân của trận đấu đó đã hiển thị
+        // và mỗi trận đấu chỉ có duy nhất 1 đội chiến thắng (chỉ chấm cho ván đang PENDING, không tự sinh thêm ván).
         const pendingIdx = match.games.findIndex(
           g => !g.winner || String(g.winner).toUpperCase() === 'PENDING'
         );
-        if (pendingIdx !== -1) {
-          gameIdx = pendingIdx;
-        } else if (winnerVal === 'RED' || winnerVal === 'BLUE') {
-          const lastG = match.games[match.games.length - 1] || {};
-          match.games.push({
-            redCivs: Array.isArray(lastG.redCivs) ? [...lastG.redCivs] : [],
-            blueCivs: Array.isArray(lastG.blueCivs) ? [...lastG.blueCivs] : [],
-            redColors: Array.isArray(lastG.redColors) ? [...lastG.redColors] : [],
-            blueColors: Array.isArray(lastG.blueColors) ? [...lastG.blueColors] : [],
-            winner: winnerVal,
-            timestamp: Date.now(),
-            autoAppendedByHotkey: true
+        if (pendingIdx === -1) {
+          const lastW = match.games[match.games.length - 1].winner === 'RED' ? 'Team Đỏ' : 'Team Xanh';
+          return res.json({
+            status: 'error',
+            message: `Trận #${match.games.length} đã ghi nhận ${lastW} chiến thắng! Mỗi trận đấu chỉ có 1 đội thắng duy nhất — hãy ấn F2 (Diplomacy) trong game để hiển thị quân trận mới trước khi bấm F5/F6.`
           });
-          gameIdx = match.games.length - 1;
-        } else {
-          gameIdx = match.games.length - 1;
         }
+        gameIdx = pendingIdx;
       }
 
-      if (!match.games[gameIdx]) {
+      const targetGame = match.games[gameIdx];
+      if (!targetGame) {
         return res.json({ status: 'error', message: 'Không tìm thấy trận đấu!' });
       }
 
-      match.games[gameIdx].winner = winnerVal;
+      // Kiểm tra bắt buộc quân của cả 2 đội trong trận đấu đó đã được hiển thị hợp lệ
+      const hasValidRedCivs = Array.isArray(targetGame.redCivs) && targetGame.redCivs.length > 0 && targetGame.redCivs.every(c => c && c !== '---' && c !== 'Random');
+      const hasValidBlueCivs = Array.isArray(targetGame.blueCivs) && targetGame.blueCivs.length > 0 && targetGame.blueCivs.every(c => c && c !== '---' && c !== 'Random');
+      if (!hasValidRedCivs || !hasValidBlueCivs) {
+        return res.json({
+          status: 'error',
+          message: 'Quân của trận đấu chưa hiển thị đầy đủ! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.'
+        });
+      }
+
+      targetGame.winner = winnerVal;
       match.lastHeartbeat = Date.now();
       match.status = 'LIVE';
 

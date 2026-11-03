@@ -1290,19 +1290,19 @@ class AOETrackerApp:
         self.root = root
         self.root.title(f"AOE COMMAND CENTER — {APP_TITLE} ({APP_VERSION})")
         try:
-            self.root.tk.call("tk", "scaling", 1.26)
+            self.root.tk.call("tk", "scaling", 1.38)
         except Exception:
             pass
         try:
             sw = int(self.root.winfo_screenwidth())
             sh = int(self.root.winfo_screenheight())
-            win_w, win_h = 1366, 768
+            win_w, win_h = 1600, 900
             pos_x = max(0, (sw - win_w) // 2)
             pos_y = max(0, (sh - win_h) // 2 - 15)
             self.root.geometry(f"{win_w}x{win_h}+{pos_x}+{pos_y}")
         except Exception:
-            self.root.geometry("1366x768")
-        self.root.minsize(1100, 680)
+            self.root.geometry("1600x900")
+        self.root.minsize(1200, 720)
         self.root.configure(bg="#080c16")
         self.root.resizable(True, True)
 
@@ -5634,6 +5634,8 @@ class AOETrackerApp:
                 filtered_chats = []
                 prev_sig = None
                 for c in chats[-50:]:
+                    if c.get("giftCode") == "HYPE_F8":
+                        continue
                     c_type = c.get("type", "CHAT")
                     sender = str(c.get("senderName", "Player"))
                     raw_msg = str(c.get("text") or c.get("message") or "")
@@ -6546,17 +6548,17 @@ class AOETrackerApp:
     def _trigger_global_hype_hotkey(self, key_name: str = "F8"):
         """
         Xử lý phím tắt F8 (Cả trong màn hình Game AOE lẫn trên App):
-        Làm mờ bảng quân trên OBS Overlay và bắn dòng chữ rung lắc hứng khởi 'Tay đâu, tayyyy đâuuuuu'
-        để ăn mừng chiến thắng nghẹt thở cùng người xem Live.
+        Chỉ hiển thị hiệu ứng 'Tay đâu, tayyyy đâuuuuu' ở khung 'Link OBS' (overlay.html),
+        đồng thời làm mờ khung 'Link OBS' và khung 'OBS Chat' mỗi khi ấn F8.
         """
         if not self.is_logged_in:
             return
         now = time.time()
-        if now - getattr(self, "_last_global_hype_hotkey_ts", 0.0) < 1.5:
+        if now - getattr(self, "_last_global_hype_hotkey_ts", 0.0) < 1.2:
             return
         self._last_global_hype_hotkey_ts = now
         shout_text = "Tay đâu, tayyyy đâuuuuu"
-        self.log(f"🔥 [Phím tắt {key_name}] Đang bắn hiệu ứng hứng khởi \"{shout_text}\" lên OBS Overlay & Sảnh Live!", "SUCCESS")
+        self.log(f"🔥 [Phím tắt {key_name}] Đang bắn hiệu ứng \"{shout_text}\" lên khung Link OBS Bảng Quân!", "SUCCESS")
 
         # Phát âm báo 2 nốt hứng khởi khi ấn F8 trong Game
         if os.name == "nt":
@@ -6569,23 +6571,14 @@ class AOETrackerApp:
                     pass
             threading.Thread(target=_beep_hype, daemon=True).start()
 
-        # Hiệu ứng rung lắc nhẹ & nổi bật ngay trên Bảng Tỉ Số Trung Tâm của App PC
+        # Hiệu ứng rung lắc nhẹ & nổi bật ngay trên Bảng Tỉ Số Trung Tâm của App PC (không đẩy vào khung Chat)
         def _animate_local_hype(step: int = 0):
             try:
                 if step == 0:
                     self._saved_mode_txt_before_hype = self.match_mode_lbl.cget("text")
                     self.match_mode_lbl.configure(text="🔥 CHIẾN THẮNG NGHẸT THỞ [F8] 🔥", fg="#fef08a")
                     self.c_mode_summary_lbl.configure(text=f"🙌 \"{shout_text}\" 🙌", fg="#fbbf24")
-                    if hasattr(self, "chat_honor_lbl") and hasattr(self, "chat_honor_banner_frame"):
-                        self.chat_honor_banner_frame.configure(highlightbackground="#f59e0b", bg="#2e1d0d")
-                        self.chat_honor_lbl.configure(
-                            text=f"🙌 [HỨNG KHỞI F8] {self.player_name_var.get().strip() or 'HOST'}: \"{shout_text}\" 🔥",
-                            fg="#fef08a",
-                            bg="#2e1d0d",
-                        )
                 if step < 18:
-                    pad_l = 6 if step % 2 == 0 else 2
-                    pad_r = 2 if step % 2 == 0 else 6
                     if hasattr(self, "match_history_lbl"):
                         self.match_history_lbl.configure(
                             text=f"🙌 {shout_text} 🔥",
@@ -6633,6 +6626,45 @@ class AOETrackerApp:
 
         threading.Thread(target=_task, daemon=True).start()
 
+    def _validate_can_score_current_game(self):
+        """
+        Kiểm tra quy tắc chấm tỉ số F5 / F6:
+        1. Phải có trận đấu đang diễn ra và quân của trận đấu đó (redCivs & blueCivs) đã hiển thị hợp lệ.
+        2. Mỗi trận đấu chỉ có duy nhất một đội chiến thắng (chỉ chấm khi trận hiện tại đang PENDING).
+        """
+        match = getattr(self, "current_match", None)
+        if not match or not isinstance(match, dict):
+            return (
+                False,
+                "Quân của trận đấu chưa hiển thị! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.",
+            )
+        games = match.get("games") or []
+        if not games:
+            return (
+                False,
+                "Chưa có bảng quân của trận đấu! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.",
+            )
+        pending_game = next(
+            (g for g in games if not g.get("winner") or str(g.get("winner")).upper() == "PENDING"),
+            None,
+        )
+        if pending_game is None:
+            last_w = "Team Đỏ" if str(games[-1].get("winner")).upper() == "RED" else "Team Xanh"
+            return (
+                False,
+                f"Trận #{len(games)} đã ghi nhận {last_w} chiến thắng! Mỗi trận chỉ có 1 đội thắng duy nhất — hãy ấn F2 trong game để quét quân trận mới.",
+            )
+        red_civs = pending_game.get("redCivs") or []
+        blue_civs = pending_game.get("blueCivs") or []
+        has_valid_red = len(red_civs) > 0 and all(c and str(c).strip() not in ("---", "Random") for c in red_civs)
+        has_valid_blue = len(blue_civs) > 0 and all(c and str(c).strip() not in ("---", "Random") for c in blue_civs)
+        if not (has_valid_red and has_valid_blue):
+            return (
+                False,
+                "Quân của trận đấu chưa hiển thị đầy đủ! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.",
+            )
+        return (True, "")
+
     def _trigger_global_winner_hotkey(self, winner: str, key_name: str = "F5"):
         """Xử lý phím tắt F5 (Thắng Đỏ) / F6 (Thắng Xanh) cả khi đang ở trong màn hình Game AOE lẫn trên App."""
         if not self.is_logged_in:
@@ -6641,6 +6673,22 @@ class AOETrackerApp:
         if now - getattr(self, "_last_global_score_hotkey_ts", 0.0) < 1.0:
             return
         self._last_global_score_hotkey_ts = now
+
+        can_score, reason = self._validate_can_score_current_game()
+        if not can_score:
+            self.log(f"⛔ [Phím tắt {key_name}] Từ chối cập nhật tỉ số: {reason}", "WARN")
+            try:
+                self.root.after(0, lambda: self.c_mode_summary_lbl.config(text=f"⛔ {reason}", fg="#f87171"))
+            except Exception:
+                pass
+            if os.name == "nt":
+                try:
+                    import winsound
+                    threading.Thread(target=lambda: winsound.Beep(330, 140), daemon=True).start()
+                except Exception:
+                    pass
+            return
+
         team_label = "Team Đỏ (+1)" if winner == "RED" else "Team Xanh (+1)"
         self.log(f"⌨️ [Phím tắt {key_name}] Ghi nhận {team_label} từ bàn phím — đang cập nhật tỉ số...", "TEAM")
         # Phát tiếng bíp xác nhận ngắn để người chơi đang trong màn hình Game toàn màn hình biết đã ăn phím F5/F6
@@ -6651,9 +6699,19 @@ class AOETrackerApp:
                 threading.Thread(target=lambda: winsound.Beep(freq, 110), daemon=True).start()
             except Exception:
                 pass
-        self.set_current_winner(winner)
+        self.set_current_winner(winner, skip_local_validation=True)
 
-    def set_current_winner(self, winner: str):
+    def set_current_winner(self, winner: str, skip_local_validation: bool = False):
+        if not skip_local_validation:
+            can_score, reason = self._validate_can_score_current_game()
+            if not can_score:
+                self.log(f"⛔ Từ chối cập nhật tỉ số: {reason}", "WARN")
+                try:
+                    self.root.after(0, lambda: self.c_mode_summary_lbl.config(text=f"⛔ {reason}", fg="#f87171"))
+                except Exception:
+                    pass
+                return
+
         def _task():
             try:
                 api_url = self.get_api_endpoint()
@@ -6677,7 +6735,12 @@ class AOETrackerApp:
                         self._update_battle_arena_ui(data["match"])
                     self.refresh_initial_state()
                 else:
-                    self.log(f"⚠️ {data.get('message', 'Không thể cập nhật tỉ số')}", "WARN")
+                    err_txt = data.get("message", "Không thể cập nhật tỉ số")
+                    self.log(f"⚠️ {err_txt}", "WARN")
+                    try:
+                        self.root.after(0, lambda: self.c_mode_summary_lbl.config(text=f"⛔ {err_txt}", fg="#f87171"))
+                    except Exception:
+                        pass
             except Exception as e:
                 self.log(f"❌ Lỗi cập nhật tỉ số: {e}", "ERROR")
 

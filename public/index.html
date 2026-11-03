@@ -3380,20 +3380,7 @@
                 if (payload.type === 'star_gifted' && payload.gift) {
                   this.triggerStarBurstUI(payload.gift);
                 }
-                if (payload.type === 'hype_shout' && payload.hype) {
-                  this.triggerStarBurstUI({
-                    id: payload.hype.id,
-                    streamerName: payload.hype.streamerName,
-                    senderName: payload.hype.streamerName || 'HOST',
-                    giftCode: 'HYPE_F8',
-                    giftName: 'HỨNG KHỞI [F8]',
-                    giftIcon: '🙌🔥',
-                    starCount: 0,
-                    giftParticles: payload.hype.particles || ['🙌', '🔥', '👏', '⚡', '🏆'],
-                    message: payload.hype.text || 'Tay đâu, tayyyy đâuuuuu'
-                  });
-                }
-                if (payload.type === 'chat_message' || payload.type === 'star_gifted' || payload.type === 'hype_shout') {
+                if (payload.type === 'chat_message' || payload.type === 'star_gifted') {
                   this.fetchInitialData().then(() => this.scrollToBottomChat());
                   return;
                 }

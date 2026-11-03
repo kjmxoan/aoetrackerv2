@@ -118,7 +118,7 @@
            :class="isVirtualPreview ? 'rounded-xl ring-2 ring-amber-400/80 ring-offset-2 ring-offset-transparent' : ''">
         <!-- HIỆU ỨNG BÙNG NỔ F8: LÀM MỜ BẢNG QUÂN & THAY THẾ BẰNG DÒNG CHỮ "Tay đâu, tayyyy đâuuuuu" RUNG LẮC HỨNG KHỞI -->
         <div v-if="activeHypeShout"
-             :key="activeHypeShout.id"
+             :key="activeHypeShout.renderKey || activeHypeShout.id"
              class="hype-takeover-wrap absolute inset-0 z-50 flex items-center justify-center pointer-events-none px-2">
           <!-- Các biểu tượng vỗ tay & lửa bay lên xung quanh -->
           <span v-for="hp in hypeParticles" :key="hp.id"
@@ -596,15 +596,23 @@
           const icons = (Array.isArray(hype.particles) && hype.particles.length > 0)
             ? hype.particles
             : ['🙌', '🔥', '👏', '⚡', '🏆', '💥'];
-          this.hypeParticles = Array.from({ length: 16 }, (_, idx) => ({
+          const nextParticles = Array.from({ length: 16 }, (_, idx) => ({
             id: Date.now() + '_h_' + idx,
             left: 4 + Math.floor(Math.random() * 92),
             delay: (Math.random() * 0.9).toFixed(2),
             icon: icons[idx % icons.length]
           }));
-          this.activeHypeShout = hype;
           const dur = Math.min(12000, Math.max(3500, Number(hype.durationMs) || 6500));
           if (this.hypeTimer) clearTimeout(this.hypeTimer);
+          // Khởi động lại hiệu ứng mượt mà mỗi khi ấn F8 (kể cả khi ấn F8 liên tiếp)
+          this.activeHypeShout = null;
+          this.$nextTick(() => {
+            this.hypeParticles = nextParticles;
+            this.activeHypeShout = {
+              ...hype,
+              renderKey: (hype.id || 'HYPE') + '_' + Date.now()
+            };
+          });
           this.hypeTimer = setTimeout(() => {
             this.activeHypeShout = null;
             this.hypeParticles = [];
@@ -696,12 +704,16 @@
                 this.streamerOverlayConfig = owner.overlayConfig;
                 chosenMatch.overlayConfig = { ...owner.overlayConfig, ...(chosenMatch.overlayConfig || {}) };
               }
-              if (chosenMatch.lastHypeShout && chosenMatch.lastHypeShout.createdAt) {
-                const ageMs = Date.now() - Number(chosenMatch.lastHypeShout.createdAt);
-                const maxDur = Number(chosenMatch.lastHypeShout.durationMs) || 6500;
-                if (ageMs >= 0 && ageMs < maxDur) {
-                  this.triggerHypeShoutAnimation(chosenMatch.lastHypeShout);
-                }
+            }
+            const candidateHype =
+              (chosenMatch && chosenMatch.lastHypeShout) ||
+              (this.streamerOverlayConfig && this.streamerOverlayConfig.lastHypeShout) ||
+              null;
+            if (candidateHype && candidateHype.createdAt) {
+              const ageMs = Date.now() - Number(candidateHype.createdAt);
+              const maxDur = Number(candidateHype.durationMs) || 6500;
+              if (ageMs >= 0 && ageMs < maxDur) {
+                this.triggerHypeShoutAnimation(candidateHype);
               }
             }
             this.match = chosenMatch;
@@ -769,7 +781,7 @@
         this.updateDateStr();
         this.fetchMatch();
         this.connectRealtimeStream();
-        setInterval(this.fetchMatch, 3500);
+        setInterval(this.fetchMatch, 1800);
       }
     }).mount('#app');
   </script>
