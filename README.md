@@ -8,6 +8,8 @@ Hệ thống tự động trích xuất **Bảng Quân, Màu Quân & Phe Đồng
 
 ```text
 aoe-tracker/
+├── .agents/
+│   └── skills/                      # Bộ 7 kỹ năng thiết kế AI (ui-ux-pro-max, design-system, ui-styling, design, brand, banner-design, slides)
 ├── client/
 │   ├── bangquanaoe.py               # Mã nguồn chính của Tool PC (Tkinter GUI + OpenCV Diplomacy Scanner)
 │   ├── bangquanaoe.spec             # Cấu hình đóng gói PyInstaller tạo file thực thi .exe
@@ -268,3 +270,5 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
       - **Sảnh Các Trận Đấu Đang Live (`Live Matches Lobby`)**: Liệt kê trực tiếp các trận đang `LIVE` kèm đội hình 2 bên và tỉ số, cho phép bấm **`👁️ Vào Sảnh & Chat`** để theo dõi trận đấu và tương tác ngay.
       - **Trừ Sao trực tiếp từ Quỹ Sao cá nhân (`starsBalance`) & 6 Biểu tượng Vật Phẩm Đế Chế (`AOE_GIFT_CATALOG`)**: Tặng **`🍖 200 Thực (5⭐)`**, **`🪵 500 Gỗ (10⭐)`**, **`🥩 1000 Thực (15⭐)`**, **`🐘 Con Voi (22⭐)`**, **`🏹 Song Mã (50⭐)`**, **`⚡ Phù Thủy Sét (100⭐)`** quy đổi trực tiếp từ Quỹ Sao của người chơi và bắn hiệu ứng icon bay lên trên OBS.
       - **Chống bắt nhầm cửa sổ nền tối (`med_bg_v`) trên màn 4K**: Bổ sung kiểm tra độ sáng trung vị nền hộp thoại (`58.0 <= med_bg_v <= 220.0`) trong `verify_is_diplomacy_dialog` để loại bỏ ngay cửa sổ nền tối của chính Tool.
+    - **Tích hợp bộ 7 Kỹ năng Thiết kế UI/UX (`ui-ux-pro-max-skill` v2.0) vào `.agents/skills/`**:
+      - Cài đặt đầy đủ 7 kỹ năng (`ui-ux-pro-max`, `design-system`, `ui-styling`, `design`, `brand`, `banner-design`, `slides`) vào `.agents/skills/` ở cả 2 kho mã nguồn (`aoe-tracker` & `aoetrackerv2`), hỗ trợ tra cứu 79 phong cách UI, 192 bảng màu ngành nghề, 74 cặp font chữ và 119 quy tắc UX trực tiếp qua công cụ `scripts/search.py`.
