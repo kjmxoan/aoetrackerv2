@@ -1444,7 +1444,8 @@ class AOETrackerApp:
             cursor="hand2",
         ).pack(side="left", padx=(0, 10))
 
-        btn_scan_now = tk.Button(
+        # Tạm ẩn nút 'Quét màn hình ngay' và 'Test ảnh...' trên giao diện theo yêu cầu
+        self.btn_scan_now = tk.Button(
             quick_bar,
             text="🔍 Quét màn hình ngay",
             command=self.manual_scan_screen,
@@ -1456,10 +1457,9 @@ class AOETrackerApp:
             pady=4,
             cursor="hand2",
         )
-        btn_scan_now.pack(side="left", padx=(0, 6))
-        self._bind_hover(btn_scan_now, "#eca133", "#d98f26", "#11151b", "#11151b")
+        self._bind_hover(self.btn_scan_now, "#eca133", "#d98f26", "#11151b", "#11151b")
 
-        btn_test_img = tk.Button(
+        self.btn_test_img = tk.Button(
             quick_bar,
             text="🖼️ Test ảnh...",
             command=self.test_from_image_file,
@@ -1473,8 +1473,7 @@ class AOETrackerApp:
             pady=4,
             cursor="hand2",
         )
-        btn_test_img.pack(side="left", padx=(0, 6))
-        self._bind_hover(btn_test_img, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
+        self._bind_hover(self.btn_test_img, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
 
         btn_end_match = tk.Button(
             quick_bar,
