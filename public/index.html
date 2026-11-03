@@ -1976,6 +1976,7 @@
           ],
           matches: [],
           selectedMatch: null,
+          hasCheckedInitialUrlMatch: false,
           civChartInstance: null,
           civTypeChartInstance: null
         };
@@ -2249,7 +2250,7 @@
         },
         enterMatchLobby(matchObj) {
           if (!matchObj) return;
-          this.selectMatch(matchObj);
+          this.selectMatch(matchObj, true);
           this.mobileSection = 'chat';
           this.$nextTick(() => {
             const el = document.getElementById('liveLobbyChatCard');
@@ -2557,25 +2558,32 @@
             this.showNotify(`Đã copy Link OBS Khung Chat của ${name}: ${url}`);
           });
         },
-        selectMatch(match) {
+        selectMatch(match, keepMobileSection = false) {
           this.selectedMatch = match;
           if (match.overlayConfig) {
             this.overlayConfigForm = { ...this.overlayConfigForm, ...match.overlayConfig };
           }
           this.currentTab = 'detail';
-          this.mobileSection = 'matches';
+          if (!keepMobileSection) {
+            this.mobileSection = 'matches';
+          }
           window.history.pushState({}, '', `?matchId=${match.id}`);
           this.scrollToBottomChat();
         },
         checkUrlForMatch() {
+          if (this.hasCheckedInitialUrlMatch) return;
           const params = new URLSearchParams(window.location.search);
           const matchId = params.get('matchId');
-          if (matchId && this.matches.length > 0) {
+          if (!matchId) {
+            this.hasCheckedInitialUrlMatch = true;
+            return;
+          }
+          if (this.matches.length > 0) {
+            this.hasCheckedInitialUrlMatch = true;
             const found = this.matches.find(m => m.id === matchId);
             if (found) {
               this.selectedMatch = found;
               this.currentTab = 'detail';
-              this.mobileSection = 'matches';
             }
           }
         },
