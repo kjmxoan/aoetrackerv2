@@ -175,98 +175,219 @@ class DiplomacyScanner:
         self.last_dialog_signature = None
         self.last_scan_time = 0.0
 
-    @staticmethod
-    def find_diplomacy_box(img_bgr: np.ndarray):
+    @classmethod
+    def _search_box_on_image(cls, img_bgr: np.ndarray, orig_bgr: np.ndarray, scale_x: float, scale_y: float, hw_min_ratio: float = 0.13):
+        h, w = img_bgr.shape[:2]
+        orig_h, orig_w = orig_bgr.shape[:2]
+        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+        sobelx = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3))
+        sobely = np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
+
+        cx_base, cy_base = w / 2.0, h / 2.0
+        hw_min = max(70, int(w * hw_min_ratio))
+        hw_max = int(w * 0.46)
+        step = max(1, int(w / 900))
+
+        candidates = []
+        for hw in range(hw_min, hw_max, step):
+            hh = int(round(hw * (301.0 / 468.0)))
+            x1, x2 = int(round(cx_base - hw)), int(round(cx_base + hw))
+            y1, y2 = int(round(cy_base - hh)), int(round(cy_base + hh))
+            if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
+                continue
+
+            left_line = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
+            right_line = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
+            top_line = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
+            bot_line = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
+
+            score = (
+                min(left_line, right_line) * 2.0
+                + min(top_line, bot_line) * 2.0
+                + (left_line + right_line + top_line + bot_line) * 0.5
+            )
+            if score >= 310.0:
+                candidates.append((score, hw, cx_base, cy_base))
+
+        # Sắp xếp các ứng viên có viền khung mạnh nhất để tinh chỉnh và xác thực cấu trúc bảng Diplomacy
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        checked_hws = []
+        best_overall_score = candidates[0][0] if candidates else 0.0
+
+        for cand_score, hw_cand, cx, cy in candidates:
+            if any(abs(hw_cand - prev_hw) <= 4 for prev_hw in checked_hws):
+                continue
+            checked_hws.append(hw_cand)
+            if len(checked_hws) > 6:
+                break
+
+            best_local_sc = -1.0
+            best_local_box = None
+            for hw in range(max(50, hw_cand - 3), hw_cand + 4):
+                hh = int(round(hw * (301.0 / 468.0)))
+                x1, x2 = int(round(cx - hw)), int(round(cx + hw))
+                y1, y2 = int(round(cy - hh)), int(round(cy + hh))
+                if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
+                    continue
+                left_line = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
+                right_line = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
+                top_line = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
+                bot_line = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
+                sc = (
+                    min(left_line, right_line) * 2.0
+                    + min(top_line, bot_line) * 2.0
+                    + (left_line + right_line + top_line + bot_line) * 0.5
+                )
+                if sc > best_local_sc:
+                    best_local_sc = sc
+                    best_local_box = (x1, y1, x2, y2)
+
+            if best_local_box is not None:
+                bx1, by1, bx2, by2 = best_local_box
+                ox1 = max(0, min(orig_w - 1, int(round(bx1 * scale_x))))
+                oy1 = max(0, min(orig_h - 1, int(round(by1 * scale_y))))
+                ox2 = max(ox1 + 10, min(orig_w, int(round(bx2 * scale_x))))
+                oy2 = max(oy1 + 10, min(orig_h, int(round(by2 * scale_y))))
+                crop = orig_bgr[oy1:oy2, ox1:ox2]
+                if crop.size > 0:
+                    norm = cv2.resize(crop, (624, 400), interpolation=cv2.INTER_CUBIC)
+                    if cls.verify_is_diplomacy_dialog(norm):
+                        return (ox1, oy1, ox2, oy2), best_local_sc
+
+        # Dự phòng cho chế độ Cửa sổ (Windowed Mode) hoặc mở ảnh chụp màn hình bị lệch tâm:
+        # Dùng tích phân 2D (Cumulative Sum) trên ảnh chuẩn hóa (w <= 1080) để dò tâm (cx, cy) bị lệch
+        if w <= 1080:
+            v_strip = cv2.blur(sobelx, (3, 1))
+            h_strip = cv2.blur(sobely, (1, 3))
+            cs_v = np.pad(np.cumsum(v_strip, axis=0), ((1, 0), (0, 0)))
+            cs_h = np.pad(np.cumsum(h_strip, axis=1), ((0, 0), (1, 0)))
+
+            cxs = np.arange(int(w * 0.25), int(w * 0.75), 3)
+            cys = np.arange(int(h * 0.25), int(h * 0.75), 3)
+            CX, CY = np.meshgrid(cxs, cys)
+            off_peaks = []
+            for hw in range(max(70, int(w * 0.10)), int(w * 0.45), 2):
+                hh = int(round(hw * (301.0 / 468.0)))
+                x1, x2 = CX - hw, CX + hw
+                y1, y2 = CY - hh, CY + hh
+                valid = (x1 >= 2) & (x2 < w - 2) & (y1 >= 2) & (y2 < h - 2)
+                if not np.any(valid):
+                    continue
+                x1v, x2v, y1v, y2v = x1[valid], x2[valid], y1[valid], y2[valid]
+                l_edge = (cs_v[y2v, x1v] - cs_v[y1v, x1v]) / float(2 * hh)
+                r_edge = (cs_v[y2v, x2v] - cs_v[y1v, x2v]) / float(2 * hh)
+                t_edge = (cs_h[y1v, x2v] - cs_h[y1v, x1v]) / float(2 * hw)
+                b_edge = (cs_h[y2v, x2v] - cs_h[y2v, x1v]) / float(2 * hw)
+                sc_arr = np.minimum(l_edge, r_edge) * 2.0 + np.minimum(t_edge, b_edge) * 2.0 + (l_edge + r_edge + t_edge + b_edge) * 0.5
+                idx = int(np.argmax(sc_arr))
+                if sc_arr[idx] >= 320.0:
+                    off_peaks.append((float(sc_arr[idx]), int(CX[valid][idx]), int(CY[valid][idx]), hw))
+
+            off_peaks.sort(key=lambda item: item[0], reverse=True)
+            refined_candidates = []
+            for sc_p, cx_p, cy_p, hw_p in off_peaks[:12]:
+                best_ref_sc = -1.0
+                best_ref_box = None
+                for hw_r in (hw_p - 1, hw_p, hw_p + 1):
+                    if hw_r < 50:
+                        continue
+                    hh_r = int(round(hw_r * (301.0 / 468.0)))
+                    for dy_r in (-1, 0, 1):
+                        for dx_r in (-1, 0, 1):
+                            x1, x2 = cx_p + dx_r - hw_r, cx_p + dx_r + hw_r
+                            y1, y2 = cy_p + dy_r - hh_r, cy_p + dy_r + hh_r
+                            if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
+                                continue
+                            l_r = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
+                            r_r = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
+                            t_r = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
+                            b_r = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
+                            sc_r = min(l_r, r_r) * 2.0 + min(t_r, b_r) * 2.0 + (l_r + r_r + t_r + b_r) * 0.5
+                            if sc_r > best_ref_sc:
+                                best_ref_sc = sc_r
+                                best_ref_box = (x1, y1, x2, y2)
+                if best_ref_box is not None:
+                    refined_candidates.append((best_ref_sc, best_ref_box))
+
+            refined_candidates.sort(key=lambda item: item[0], reverse=True)
+            for ref_sc, (bx1, by1, bx2, by2) in refined_candidates:
+                ox1 = max(0, min(orig_w - 1, int(round(bx1 * scale_x))))
+                oy1 = max(0, min(orig_h - 1, int(round(by1 * scale_y))))
+                ox2 = max(ox1 + 10, min(orig_w, int(round(bx2 * scale_x))))
+                oy2 = max(oy1 + 10, min(orig_h, int(round(by2 * scale_y))))
+                crop = orig_bgr[oy1:oy2, ox1:ox2]
+                if crop.size > 0:
+                    norm = cv2.resize(crop, (624, 400), interpolation=cv2.INTER_CUBIC)
+                    if cls.verify_is_diplomacy_dialog(norm):
+                        return (ox1, oy1, ox2, oy2), ref_sc
+
+        return None, best_overall_score
+
+    @classmethod
+    def find_diplomacy_box(cls, img_bgr: np.ndarray):
         """
         Dò tìm khung cửa sổ DIPLOMACY ở chính giữa màn hình với tỉ lệ chuẩn 468:301 (~1.555).
-        Hoạt động trên mọi độ phân giải (1024x768, 1366x768, 1600x900, 1920x1080, 2K, 4K)
-        và mọi giao diện (Classic Tan / Dark Stone).
+        Hoạt động trên mọi độ phân giải (800x600, 1024x768, 1366x768, 1600x900, 1920x1080, 2K 2560x1440, 4K)
+        và mọi giao diện (Classic Tan / Dark Stone), kể cả khi màn hình kéo giãn (stretched) hoặc giữ nguyên kích thước 468x301.
         """
         if img_bgr is None or img_bgr.size == 0:
             return None, 0.0
 
         h, w = img_bgr.shape[:2]
-        if w < 600 or h < 400:
+        if w < 450 or h < 300:
             return None, 0.0
 
-        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-        sobelx = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3))
-        sobely = np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
+        best_score = 0.0
 
-        cx, cy = w / 2.0, h / 2.0
-        best_score = -1.0
-        best_box = None
+        # Lượt 1: Chuẩn hóa chiều ngang về 1024px để làm sắc nét các đường viền khi game chạy Fullscreen kéo giãn trên màn 1080p / 2K / 4K
+        if w > 1080:
+            det_w = 1024
+            det_h = max(300, int(round(h * (1024.0 / w))))
+            det_img = cv2.resize(img_bgr, (det_w, det_h), interpolation=cv2.INTER_AREA)
+            box, sc = cls._search_box_on_image(det_img, img_bgr, w / float(det_w), h / float(det_h), hw_min_ratio=0.135)
+            best_score = max(best_score, sc)
+            if box is not None:
+                return box, sc
 
-        for hw in range(int(w * 0.14), int(w * 0.42), max(1, int(w / 1000))):
-            hh = int(round(hw * (301.0 / 468.0)))
-            x1, x2 = int(round(cx - hw)), int(round(cx + hw))
-            y1, y2 = int(round(cy - hh)), int(round(cy + hh))
-            if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
-                continue
+        # Lượt 2: Quét trực tiếp trên độ phân giải gốc (bắt chuẩn hộp thoại 468x301 unscaled trên màn 1920x1080 / 2560x1440)
+        box, sc = cls._search_box_on_image(img_bgr, img_bgr, 1.0, 1.0, hw_min_ratio=0.075)
+        best_score = max(best_score, sc)
+        if box is not None:
+            return box, sc
 
-            left_line = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
-            right_line = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
-            top_line = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
-            bot_line = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
-
-            score = (
-                min(left_line, right_line) * 2.0
-                + min(top_line, bot_line) * 2.0
-                + (left_line + right_line + top_line + bot_line) * 0.5
-            )
-            if score > best_score:
-                best_score = score
-                best_box = (x1, y1, x2, y2)
-
-        if best_box is None or best_score < 480.0:
-            return None, best_score
-
-        bx1, by1, bx2, by2 = best_box
-        hw_base = (bx2 - bx1) // 2
-        for hw in range(max(50, hw_base - 3), hw_base + 4):
-            hh = int(round(hw * (301.0 / 468.0)))
-            x1, x2 = int(round(cx - hw)), int(round(cx + hw))
-            y1, y2 = int(round(cy - hh)), int(round(cy + hh))
-            if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
-                continue
-            left_line = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
-            right_line = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
-            top_line = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
-            bot_line = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
-            score = (
-                min(left_line, right_line) * 2.0
-                + min(top_line, bot_line) * 2.0
-                + (left_line + right_line + top_line + bot_line) * 0.5
-            )
-            if score > best_score:
-                best_score = score
-                best_box = (x1, y1, x2, y2)
-
-        return best_box, best_score
+        return None, best_score
 
     @staticmethod
     def verify_is_diplomacy_dialog(norm_624x400: np.ndarray) -> bool:
-        # 1. Check tiêu đề DIPLOMACY chữ trắng
+        # 1. Check tiêu đề DIPLOMACY chữ trắng nằm ở chính giữa thanh tiêu đề trên cùng (y: 6..32, x: 230..400)
         title_crop = norm_624x400[6:32, 230:400]
         min_t = np.min(title_crop, axis=2).astype(np.float32)
         max_t = np.max(title_crop, axis=2).astype(np.float32)
-        white_title_px = np.sum((min_t > 165) & ((max_t - min_t) < 45))
-        if white_title_px < 120:
+        white_title_px = int(np.sum((min_t > 155) & ((max_t - min_t) < 50)))
+        if white_title_px < 100 or white_title_px > 2600:
             return False
 
-        # 2. Check chữ 'OK' màu vàng ở nút dưới bên trái (y: 370..395, x: 82..135)
-        ok_crop = norm_624x400[370:395, 82:135]
+        # Hai bên trái/phải của chữ DIPLOMACY trên thanh tiêu đề phải là nền đá/gỗ trống (không phải trang web trắng hoặc thanh tiêu đề chữ dài)
+        left_slab = norm_624x400[8:30, 40:190]
+        right_slab = norm_624x400[8:30, 435:585]
+        w_left = int(np.sum((np.min(left_slab, axis=2) > 170) & ((np.max(left_slab, axis=2).astype(np.int16) - np.min(left_slab, axis=2).astype(np.int16)) < 40)))
+        w_right = int(np.sum((np.min(right_slab, axis=2) > 170) & ((np.max(right_slab, axis=2).astype(np.int16) - np.min(right_slab, axis=2).astype(np.int16)) < 40)))
+        if w_left > 120 or w_right > 120:
+            return False
+
+        # 2. Check chữ 'OK' màu vàng ở nút dưới bên trái (y: 368..396, x: 75..145)
+        ok_crop = norm_624x400[368:396, 75:145]
         b_ok, g_ok, r_ok = cv2.split(ok_crop)
-        yellow_ok_px = np.sum((r_ok > 150) & (g_ok > 140) & (b_ok < 100) & ((r_ok.astype(np.int16) - b_ok.astype(np.int16)) > 70))
-        if yellow_ok_px < 15:
+        yellow_ok_px = int(np.sum((r_ok > 140) & (g_ok > 130) & (b_ok < 110) & ((r_ok.astype(np.int16) - b_ok.astype(np.int16)) > 60)))
+        if yellow_ok_px < 12:
             return False
 
-        # 3. Check hàng tiêu đề cột 'Name' / 'Civilization' (y: 54..72, x: 10..230)
-        hdr_crop = norm_624x400[54:72, 10:230]
+        # 3. Check hàng tiêu đề cột 'Name' / 'Civilization' (y: 52..74, x: 10..240)
+        hdr_crop = norm_624x400[52:74, 10:240]
         min_h = np.min(hdr_crop, axis=2).astype(np.float32)
         max_h = np.max(hdr_crop, axis=2).astype(np.float32)
-        white_hdr_px = np.sum((min_h > 160) & ((max_h - min_h) < 50))
-        if white_hdr_px < 40:
+        white_hdr_px = int(np.sum((min_h > 150) & ((max_h - min_h) < 55)))
+        if white_hdr_px < 35:
             return False
 
         return True
@@ -693,25 +814,14 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             return None
 
         sig = self.compute_dialog_signature(norm)
-        if not force and self.last_dialog_signature == sig and (time.time() - self.last_scan_time < 15.0):
+        if not force and self.last_dialog_signature == sig and (time.time() - self.last_scan_time < 4.5):
             return {"status": "unchanged"}
-
-        self.last_dialog_signature = sig
-        self.last_scan_time = time.time()
 
         gray = cv2.cvtColor(norm, cv2.COLOR_BGR2GRAY)
         edges = np.abs(cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)) + np.abs(cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3))
 
         active_rows = []
-        multi_canvas = np.full((8 * 70, 2900, 3), 255, dtype=np.uint8)
-
-        # Đưa tiêu đề DIPLOMACY (norm[4:34, 220:405]) vào vùng phải của multi_canvas (x: 2420..2882, y: 10..85)
-        # để xác thực bằng OCR 100% có chữ "DIPLOMACY" thật trên màn hình, chống nhận diện nhầm tuyệt đối
-        t_crop = cv2.resize(norm[4:34, 220:405], (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_CUBIC)
-        min_t = np.min(t_crop, axis=2).astype(np.float32)
-        ink_t = cv2.cvtColor((255.0 * (1.0 - np.clip((min_t - 130.0) / 60.0, 0.0, 1.0))).astype(np.uint8), cv2.COLOR_GRAY2BGR)
-        ht, wt = ink_t.shape[:2]
-        multi_canvas[10:10 + ht, 2420:2420 + wt] = ink_t
+        multi_canvas = np.full((8 * 70, 2420, 3), 255, dtype=np.uint8)
 
         for r in range(8):
             yc = int(round(95.0 + r * 29.8))
@@ -728,21 +838,24 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             valid_xs = np.where(col_counts >= 1)[0]
             w_obs = int(valid_xs[-1] - valid_xs[0] + 1) if len(valid_xs) > 0 else 0
 
-            if r == 0:
+            s_ally = float(np.mean(edges[yc - 6:yc + 6, 248:262]))
+            s_neut = float(np.mean(edges[yc - 6:yc + 6, 317:331]))
+            s_enem = float(np.mean(edges[yc - 6:yc + 6, 387:401]))
+            max_radio = max(s_ally, s_neut, s_enem)
+
+            # Dòng của chính người chơi mở F2 sẽ không có 3 ô radio Ally/Neutral/Enemy (max_radio < 120)
+            if r == 0 or max_radio < 120.0:
+                stance = "ALLY"
+            elif s_ally > s_neut and s_ally > s_enem and s_ally > 90.0:
                 stance = "ALLY"
             else:
-                s_ally = float(np.mean(edges[yc - 6:yc + 6, 248:262]))
-                s_neut = float(np.mean(edges[yc - 6:yc + 6, 317:331]))
-                s_enem = float(np.mean(edges[yc - 6:yc + 6, 387:401]))
-                if s_ally > s_neut and s_ally > s_enem and s_ally > 90.0:
-                    stance = "ALLY"
-                else:
-                    stance = "ENEMY"
+                stance = "ENEMY"
 
             hsv_feat = self.extract_ribbon_hsv(norm, r)
             active_rows.append({
                 "row_idx": r,
                 "stance": stance,
+                "max_radio": max_radio,
                 "hsv_feat": hsv_feat,
                 "w_obs": w_obs,
             })
@@ -791,25 +904,17 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
 
-        # Bảng Diplomacy hợp lệ trong game AOE 1 luôn có dòng đầu tiên (r == 0) và tối thiểu 2 người chơi
-        if len(active_rows) < 2 or active_rows[0]["row_idx"] != 0:
+        if len(active_rows) < 2:
             return None
+
+        # Đảm bảo dòng người chơi đầu tiên luôn thuộc phe ALLY (Team Đỏ)
+        active_rows[0]["stance"] = "ALLY"
 
         assigned_colors = self.assign_player_colors([item["hsv_feat"] for item in active_rows])
         for item, color_id in zip(active_rows, assigned_colors):
             item["color_id"] = color_id
 
         ocr_words = self.run_windows_ocr_batch(multi_canvas)
-
-        # Kiểm tra OCR tiêu đề phải thực sự đọc được chữ "DIPLOMACY" để loại bỏ 100% trường hợp quét nhầm cửa sổ ngoài game
-        title_words = [
-            str(w.get("text", "")).strip()
-            for w in ocr_words
-            if w.get("x", 0) >= 2400 and w.get("y", 0) <= 110
-        ]
-        title_joined = "".join(ch for ch in "".join(title_words).lower() if ch.isalpha())
-        if not title_joined or difflib.SequenceMatcher(None, title_joined, "diplomacy").ratio() < 0.60:
-            return None
 
         for item in active_rows:
             r = item["row_idx"]
@@ -844,13 +949,17 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         red_rows = [item for item in active_rows if item["stance"] == "ALLY"]
         blue_rows = [item for item in active_rows if item["stance"] != "ALLY"]
 
-        if len(red_rows) == 1 and len(blue_rows) >= 3 and len(active_rows) % 2 == 0:
-            half = len(active_rows) // 2
+        if (len(red_rows) == 1 and len(blue_rows) >= 3 and len(active_rows) % 2 == 0) or not red_rows or not blue_rows:
+            half = max(1, len(active_rows) // 2)
             red_rows = active_rows[:half]
             blue_rows = active_rows[half:]
 
         if not red_rows or not blue_rows:
             return None
+
+        # Chỉ lưu chữ ký sau khi đã nhận diện thành công đầy đủ cả 2 đội
+        self.last_dialog_signature = sig
+        self.last_scan_time = time.time()
 
         return {
             "status": "ok",
@@ -1508,10 +1617,9 @@ class AOETrackerApp:
             cursor="hand2",
         ).pack(side="left", padx=(0, 10))
 
-        # Tạm ẩn nút 'Quét màn hình ngay' và 'Test ảnh...' trên giao diện theo yêu cầu
         self.btn_scan_now = tk.Button(
             quick_bar,
-            text="🔍 Quét màn hình ngay",
+            text="🔍 Quét F2 ngay",
             command=self.manual_scan_screen,
             font=("Segoe UI", 9, "bold"),
             bg="#eca133",
@@ -1521,6 +1629,7 @@ class AOETrackerApp:
             pady=4,
             cursor="hand2",
         )
+        self.btn_scan_now.pack(side="left", padx=(0, 6))
         self._bind_hover(self.btn_scan_now, "#eca133", "#d98f26", "#11151b", "#11151b")
 
         self.btn_test_img = tk.Button(
@@ -1537,6 +1646,7 @@ class AOETrackerApp:
             pady=4,
             cursor="hand2",
         )
+        self.btn_test_img.pack(side="left", padx=(0, 6))
         self._bind_hover(self.btn_test_img, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
 
         # Cụm nút Copy Link OBS & Hướng dẫn OBS đặt ngay trên Bảng Điều Khiển (bên phải)
@@ -2743,7 +2853,6 @@ class AOETrackerApp:
                     self._resolved_xo_player_pass = pw
 
                 if data.get("status") == "success":
-                    self.is_logged_in = True
                     self.is_admin = bool(data.get("isAdmin") or is_master_admin)
                     if self.is_admin:
                         self.admin_password = "00716441516"
@@ -2764,7 +2873,7 @@ class AOETrackerApp:
                         self._check_server_version_and_prompt(data["appRelease"])
 
                     # Khi mới đăng nhập vào phiên làm việc mới trên Tool, tự động làm sạch bảng quân
-                    # và kết thúc các kèo LIVE cũ còn treo từ phiên trước để tránh hiện sẵn quân khi chưa vào game
+                    # và kết thúc các kèo LIVE cũ còn treo từ phiên trước trước khi bật cờ is_logged_in cho luồng quét F2
                     self.current_match = None
                     self.scanner.last_dialog_signature = None
                     self._reset_battle_arena_ui()
@@ -2783,6 +2892,8 @@ class AOETrackerApp:
                         )
                     except Exception:
                         pass
+
+                    self.is_logged_in = True
 
                     status_prefix = "🛡️ ADMIN XO ĐÃ KẾT NỐI" if self.is_admin else f"🟢 Đã kết nối: {canonical}"
                     self.root.after(
@@ -4004,7 +4115,7 @@ class AOETrackerApp:
             if my_live_match:
                 self.current_match = my_live_match
                 self._update_battle_arena_ui(my_live_match)
-            else:
+            elif time.time() - getattr(self, "_last_diplomacy_push_ts", 0.0) > 10.0:
                 self.current_match = None
                 self._reset_battle_arena_ui()
         except Exception:
@@ -4650,6 +4761,8 @@ class AOETrackerApp:
                 }
             ],
         }
+        self._last_diplomacy_push_ts = time.time()
+        self.current_match = preview_match
         self._update_battle_arena_ui(preview_match)
 
         api_url = self.get_api_endpoint()
@@ -4672,6 +4785,7 @@ class AOETrackerApp:
                 self.log(f"⛔ Từ chối: {data.get('message', '')}", "ERROR")
                 self.root.after(0, lambda: self.status_lbl.config(text=f"🔴 {data.get('message', '')}", fg="#f87171"))
                 return
+            self._last_diplomacy_push_ts = time.time()
             self.log(f"✅ ☁️ Đồng bộ Server: {data.get('message', '')}", "SUCCESS")
             if data.get("match"):
                 self.current_match = data["match"]
@@ -4679,21 +4793,61 @@ class AOETrackerApp:
         except Exception as e:
             self.log(f"❌ Lỗi gửi dữ liệu lên Server: {e}", "ERROR")
 
+    def _grab_all_monitors_bgr(self):
+        """Chụp màn hình chính và các màn hình phụ (nếu dùng 2-3 màn hình) để luôn bắt được bảng Diplomacy."""
+        frames = []
+        try:
+            pil_primary = ImageGrab.grab()
+            frames.append(cv2.cvtColor(np.array(pil_primary), cv2.COLOR_RGB2BGR))
+        except Exception:
+            pass
+
+        if os.name == "nt":
+            try:
+                import ctypes
+                from ctypes import wintypes
+                user32 = ctypes.windll.user32
+                if user32.GetSystemMetrics(80) > 1:
+                    MONITORENUMPROC = ctypes.WINFUNCTYPE(
+                        ctypes.c_int,
+                        ctypes.c_ulong,
+                        ctypes.c_ulong,
+                        ctypes.POINTER(wintypes.RECT),
+                        ctypes.c_double,
+                    )
+                    rects = []
+
+                    def _cb(hmon, hdc, lprect, lparam):
+                        r = lprect.contents
+                        rects.append((int(r.left), int(r.top), int(r.right), int(r.bottom)))
+                        return 1
+
+                    user32.EnumDisplayMonitors(0, 0, MONITORENUMPROC(_cb), 0)
+                    for left, top, right, bottom in rects:
+                        if left == 0 and top == 0 and frames:
+                            continue
+                        if right - left >= 450 and bottom - top >= 300:
+                            pil_mon = ImageGrab.grab(bbox=(left, top, right, bottom), all_screens=True)
+                            frames.append(cv2.cvtColor(np.array(pil_mon), cv2.COLOR_RGB2BGR))
+            except Exception:
+                pass
+        return frames
+
     def manual_scan_screen(self):
         def _task():
             try:
-                pil_img = ImageGrab.grab()
-                img_bgr = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-                res = self.scanner.parse_diplomacy_from_image(
-                    img_bgr,
-                    streamer_name=self.player_name_var.get().strip(),
-                    known_players=self.known_players,
-                    force=True,
-                )
-                if not res or res.get("status") != "ok":
-                    self.log("⚠️ Không tìm thấy bảng DIPLOMACY trên màn hình hiện tại!", "WARN")
-                    return
-                self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
+                frames = self._grab_all_monitors_bgr()
+                for img_bgr in frames:
+                    res = self.scanner.parse_diplomacy_from_image(
+                        img_bgr,
+                        streamer_name=self.player_name_var.get().strip(),
+                        known_players=self.known_players,
+                        force=True,
+                    )
+                    if res and res.get("status") == "ok":
+                        self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
+                        return
+                self.log("⚠️ Không tìm thấy bảng DIPLOMACY (F2) trên màn hình hiện tại!", "WARN")
             except Exception as e:
                 self.log(f"❌ Lỗi quét màn hình: {e}", "ERROR")
 
@@ -4824,38 +4978,24 @@ class AOETrackerApp:
         except Exception:
             sys.exit(0)
 
-    def _is_own_window_foreground(self) -> bool:
-        """Kiểm tra cửa sổ đang mở trước mặt có phải chính là giao diện Tool hay không để tránh tự quét chính mình."""
-        if os.name != "nt":
-            return False
-        try:
-            import ctypes
-            hwnd = ctypes.windll.user32.GetForegroundWindow()
-            if not hwnd:
-                return False
-            buf = ctypes.create_unicode_buffer(256)
-            ctypes.windll.user32.GetWindowTextW(hwnd, buf, 255)
-            title = (buf.value or "").upper()
-            return ("AOE COMMAND CENTER" in title) or ("TOOL BẢNG QUÂN AOE" in title)
-        except Exception:
-            return False
-
     def _background_worker(self):
         last_heartbeat = time.time()
         last_social_sync = time.time()
         while self.running:
             try:
-                if self.is_logged_in and self.auto_scan_var.get() and not self._is_own_window_foreground():
-                    pil_img = ImageGrab.grab()
-                    img_bgr = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-                    res = self.scanner.parse_diplomacy_from_image(
-                        img_bgr,
-                        streamer_name=self.player_name_var.get().strip(),
-                        known_players=self.known_players,
-                        force=False,
-                    )
-                    if res and res.get("status") == "ok":
-                        self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
+                if self.is_logged_in and self.auto_scan_var.get():
+                    frames = self._grab_all_monitors_bgr()
+                    force_scan = self.current_match is None
+                    for img_bgr in frames:
+                        res = self.scanner.parse_diplomacy_from_image(
+                            img_bgr,
+                            streamer_name=self.player_name_var.get().strip(),
+                            known_players=self.known_players,
+                            force=force_scan,
+                        )
+                        if res and res.get("status") == "ok":
+                            self._send_parsed_diplomacy_to_server(res, allow_same_civ=False)
+                            break
 
                 # Định kỳ đồng bộ trạng thái Bạn bè Live, Khung Chat & Sao mỗi 8 giây
                 if self.is_logged_in and (time.time() - last_social_sync > 8.0):

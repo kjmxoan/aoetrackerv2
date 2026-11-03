@@ -12,3 +12,4 @@ Mỗi khi thêm tính năng mới, sửa lỗi hoặc chỉnh sửa hệ thống
 
 3. **Đồng bộ 2 kho mã nguồn (`aoe-tracker` & `aoetrackerv2`)**:
    - Mọi thay đổi ở `C:\Users\APC\.gemini\antigravity\scratch\aoe-tracker` (bao gồm `server/`, `public/`, `client/`, `README.md`, `GEMINI.md`) phải được đồng bộ sang `C:\Users\APC\.gemini\antigravity\scratch\aoetrackerv2` và commit vào Git ở cả 2 thư mục.
+
