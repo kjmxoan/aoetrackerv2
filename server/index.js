@@ -185,11 +185,30 @@ async function checkAndAutoFinishDeadMatches() {
   const matches = await db.getMatches();
   const now = Date.now();
   const FOUR_HOURS = 4 * 60 * 60 * 1000;
+  const bogusIds = [];
   for (const m of matches) {
+    const rTeam = Array.isArray(m.redTeam) ? m.redTeam : [];
+    const bTeam = Array.isArray(m.blueTeam) ? m.blueTeam : [];
+    const games = Array.isArray(m.games) ? m.games : [];
+    const lastGame = games.length > 0 ? games[games.length - 1] : {};
+    const allCivs = [...(lastGame.redCivs || []), ...(lastGame.blueCivs || [])];
+    const isBogus =
+      rTeam.includes('Red 1') ||
+      bTeam.includes('Blue 1') ||
+      allCivs.some(c => String(c || '').toLowerCase() === 'random');
+
+    if (isBogus) {
+      bogusIds.push(m.id);
+      continue;
+    }
+
     if (m.status === 'LIVE' && m.lastHeartbeat && (now - m.lastHeartbeat > FOUR_HOURS)) {
       m.status = 'FINISHED';
       await db.saveMatch(m);
     }
+  }
+  if (bogusIds.length > 0) {
+    await db.deleteMatches(bogusIds);
   }
 }
 
@@ -368,8 +387,8 @@ async function handleAutoAddGame(data, authResult) {
   const redCivs = rawRedCivs.map(parseCiv).filter(civ => civ !== 'Random');
   const blueCivs = rawBlueCivs.map(parseCiv).filter(civ => civ !== 'Random');
 
-  if (!redCivs.length && !blueCivs.length) {
-    return { added: false, message: 'Bỏ qua: Không nhận diện được quân!' };
+  if (!redCivs.length || !blueCivs.length || !redPlayers.length || !bluePlayers.length) {
+    return { added: false, message: 'Bỏ qua: Chưa nhận diện đủ cả 2 đội Đỏ & Xanh!' };
   }
 
   const maxCount = Math.max(redCivs.length, blueCivs.length, redPlayers.length, bluePlayers.length, 1);

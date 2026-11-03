@@ -705,14 +705,13 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         active_rows = []
         multi_canvas = np.full((8 * 70, 2900, 3), 255, dtype=np.uint8)
 
-        h_full, w_full = img_bgr.shape[:2]
-        f4_crop = img_bgr[int(h_full * 0.58):int(h_full * 0.85), int(w_full * 0.82):w_full]
-        if f4_crop.size > 0:
-            f4_up = cv2.resize(f4_crop, (440, 520), interpolation=cv2.INTER_CUBIC)
-            max_f4 = np.max(f4_up, axis=2).astype(np.float32)
-            a_f4 = np.clip((max_f4 - 48.0) / 110.0, 0.0, 1.0)
-            ink_f4 = cv2.cvtColor((255.0 * (1.0 - a_f4)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
-            multi_canvas[10:530, 2430:2870] = ink_f4
+        # Đưa tiêu đề DIPLOMACY (norm[4:34, 220:405]) vào vùng phải của multi_canvas (x: 2420..2882, y: 10..85)
+        # để xác thực bằng OCR 100% có chữ "DIPLOMACY" thật trên màn hình, chống nhận diện nhầm tuyệt đối
+        t_crop = cv2.resize(norm[4:34, 220:405], (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_CUBIC)
+        min_t = np.min(t_crop, axis=2).astype(np.float32)
+        ink_t = cv2.cvtColor((255.0 * (1.0 - np.clip((min_t - 130.0) / 60.0, 0.0, 1.0))).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+        ht, wt = ink_t.shape[:2]
+        multi_canvas[10:10 + ht, 2420:2420 + wt] = ink_t
 
         for r in range(8):
             yc = int(round(95.0 + r * 29.8))
@@ -792,7 +791,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
                 multi_canvas[r * 70 + 8:r * 70 + 8 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
 
-        if not active_rows:
+        # Bảng Diplomacy hợp lệ trong game AOE 1 luôn có dòng đầu tiên (r == 0) và tối thiểu 2 người chơi
+        if len(active_rows) < 2 or active_rows[0]["row_idx"] != 0:
             return None
 
         assigned_colors = self.assign_player_colors([item["hsv_feat"] for item in active_rows])
@@ -800,6 +800,16 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             item["color_id"] = color_id
 
         ocr_words = self.run_windows_ocr_batch(multi_canvas)
+
+        # Kiểm tra OCR tiêu đề phải thực sự đọc được chữ "DIPLOMACY" để loại bỏ 100% trường hợp quét nhầm cửa sổ ngoài game
+        title_words = [
+            str(w.get("text", "")).strip()
+            for w in ocr_words
+            if w.get("x", 0) >= 2400 and w.get("y", 0) <= 110
+        ]
+        title_joined = "".join(ch for ch in "".join(title_words).lower() if ch.isalpha())
+        if not title_joined or difflib.SequenceMatcher(None, title_joined, "diplomacy").ratio() < 0.60:
+            return None
 
         for item in active_rows:
             r = item["row_idx"]
@@ -838,6 +848,9 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             half = len(active_rows) // 2
             red_rows = active_rows[:half]
             blue_rows = active_rows[half:]
+
+        if not red_rows or not blue_rows:
+            return None
 
         return {
             "status": "ok",
@@ -2298,6 +2311,9 @@ class AOETrackerApp:
     def logout_to_login_screen(self):
         self.is_logged_in = False
         self.is_admin = False
+        self.current_match = None
+        self.scanner.last_dialog_signature = None
+        self._reset_battle_arena_ui()
         self.main_app_frame.pack_forget()
         self.login_screen_frame.pack(fill="both", expand=True)
         self.login_status_lbl.configure(
@@ -2746,6 +2762,27 @@ class AOETrackerApp:
                     self._sync_overlay_config_to_ui(ov_cfg)
                     if data.get("appRelease"):
                         self._check_server_version_and_prompt(data["appRelease"])
+
+                    # Khi mới đăng nhập vào phiên làm việc mới trên Tool, tự động làm sạch bảng quân
+                    # và kết thúc các kèo LIVE cũ còn treo từ phiên trước để tránh hiện sẵn quân khi chưa vào game
+                    self.current_match = None
+                    self.scanner.last_dialog_signature = None
+                    self._reset_battle_arena_ui()
+                    try:
+                        requests.post(
+                            api_url,
+                            json={
+                                "action": "finishMatch",
+                                "streamerName": canonical,
+                                "updatedBy": canonical,
+                                "password": self._get_effective_player_password(),
+                                "isAdmin": self.is_admin,
+                                "adminPassword": self.admin_password,
+                            },
+                            timeout=5,
+                        )
+                    except Exception:
+                        pass
 
                     status_prefix = "🛡️ ADMIN XO ĐÃ KẾT NỐI" if self.is_admin else f"🟢 Đã kết nối: {canonical}"
                     self.root.after(
@@ -3948,19 +3985,28 @@ class AOETrackerApp:
                 if cm and str(cm.get("streamerName", "")).lower() == name.lower() and cm.get("status") == "LIVE":
                     my_live_match = cm
 
+            # Bỏ qua các kèo bị lỗi dữ liệu (có tên mặc định 'Red 1' / 'Blue 1' hoặc quân 'Random')
+            if my_live_match:
+                r_team = my_live_match.get("redTeam") or []
+                b_team = my_live_match.get("blueTeam") or []
+                last_g = (my_live_match.get("games") or [{}])[-1] if my_live_match.get("games") else {}
+                r_civs = last_g.get("redCivs") or []
+                b_civs = last_g.get("blueCivs") or []
+                has_bogus = (
+                    not r_team
+                    or not b_team
+                    or any(str(x).strip() in ("Red 1", "Blue 1") for x in (r_team + b_team))
+                    or any(str(c).strip().lower() == "random" for c in (r_civs + b_civs))
+                )
+                if has_bogus:
+                    my_live_match = None
+
             if my_live_match:
                 self.current_match = my_live_match
                 self._update_battle_arena_ui(my_live_match)
             else:
                 self.current_match = None
-                self.root.after(
-                    0,
-                    lambda: (
-                        self.match_mode_lbl.config(text=f"Chạm {self.target_score_var.get()} • Chờ kèo Live"),
-                        self.score_lbl.config(text="0  -  0"),
-                        self.c_mode_summary_lbl.config(text="Ấn F2 (Diplomacy) trong game để bắt đầu"),
-                    ),
-                )
+                self._reset_battle_arena_ui()
         except Exception:
             pass
 
@@ -4217,6 +4263,22 @@ class AOETrackerApp:
         if cur_r > 0 or cur_b > 0 or not sets:
             sets.append(f"Séc {idx}: {cur_r}-{cur_b}")
         return f"🏆 Tỉ số C: {c_r} - {c_b}  |  " + " • ".join(sets)
+
+    def _reset_battle_arena_ui(self, summary_text: str = "Ấn F2 (Diplomacy) trong game để bắt đầu"):
+        def _render():
+            try:
+                t_score = self.target_score_var.get() or 100
+                self.match_mode_lbl.config(text=f"Chạm {t_score} • Chờ kèo Live")
+                self.score_lbl.config(text="0  -  0")
+                self.c_mode_summary_lbl.config(text=summary_text)
+                self.red_roster_lbl.config(text="Chưa có đội hình Team Đỏ\n(Bấm F2 Diplomacy trong game để quét)")
+                self.blue_roster_lbl.config(text="Chưa có đội hình Team Xanh\n(Bấm F2 Diplomacy trong game để quét)")
+                self.red_count_lbl.config(text="0 người chơi")
+                self.blue_count_lbl.config(text="0 người chơi")
+            except Exception:
+                pass
+
+        self.root.after(0, _render)
 
     def _update_battle_arena_ui(self, match: dict):
         if not match:
@@ -4714,13 +4776,8 @@ class AOETrackerApp:
                 if data.get("status") == "success":
                     self.log("✅ 🏁 Đã kết thúc kèo đấu thành công!", "SUCCESS")
                     self.current_match = None
-                    self.root.after(
-                        0,
-                        lambda: (
-                            self.score_lbl.config(text="0  -  0"),
-                            self.c_mode_summary_lbl.config(text="Kèo đấu đã kết thúc"),
-                        ),
-                    )
+                    self.scanner.last_dialog_signature = None
+                    self._reset_battle_arena_ui("Kèo đấu đã kết thúc • Ấn F2 trong game để bắt đầu kèo mới")
                 else:
                     self.log(f"⚠️ {data.get('message', 'Không thể kết thúc kèo')}", "WARN")
             except Exception as e:
@@ -4735,7 +4792,7 @@ class AOETrackerApp:
         self._did_finish_on_exit = True
         try:
             streamer = self.settings.get("player_name", "").strip()
-            pw = self.settings.get("player_password", "").strip()
+            pw = self._get_effective_player_password() or self.settings.get("player_password", "").strip()
             if not streamer or not pw:
                 return
             api_url = self.get_api_endpoint()
@@ -4746,6 +4803,8 @@ class AOETrackerApp:
                     "streamerName": streamer,
                     "updatedBy": streamer,
                     "password": pw,
+                    "isAdmin": self.is_admin,
+                    "adminPassword": self.admin_password,
                 },
                 timeout=3.5,
             )
@@ -4765,12 +4824,28 @@ class AOETrackerApp:
         except Exception:
             sys.exit(0)
 
+    def _is_own_window_foreground(self) -> bool:
+        """Kiểm tra cửa sổ đang mở trước mặt có phải chính là giao diện Tool hay không để tránh tự quét chính mình."""
+        if os.name != "nt":
+            return False
+        try:
+            import ctypes
+            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            if not hwnd:
+                return False
+            buf = ctypes.create_unicode_buffer(256)
+            ctypes.windll.user32.GetWindowTextW(hwnd, buf, 255)
+            title = (buf.value or "").upper()
+            return ("AOE COMMAND CENTER" in title) or ("TOOL BẢNG QUÂN AOE" in title)
+        except Exception:
+            return False
+
     def _background_worker(self):
         last_heartbeat = time.time()
         last_social_sync = time.time()
         while self.running:
             try:
-                if self.is_logged_in and self.auto_scan_var.get():
+                if self.is_logged_in and self.auto_scan_var.get() and not self._is_own_window_foreground():
                     pil_img = ImageGrab.grab()
                     img_bgr = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
                     res = self.scanner.parse_diplomacy_from_image(
