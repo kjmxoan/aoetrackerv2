@@ -165,6 +165,13 @@
               <i class="fa-solid fa-chart-column mr-1.5"></i>Thống Kê Quân
             </button>
 
+            <button @click="downloadPcTool"
+                    class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl text-sm font-bold shadow transition flex items-center gap-1.5"
+                    :title="appRelease.releaseNotes || 'Tải bản cài đặt Tool Bảng Quân AOE tự động quét F2 cho máy tính'">
+              <i class="fa-solid fa-download"></i>
+              <span>Tải Tool PC (v{{ appRelease.latestVersion || '5.3' }})</span>
+            </button>
+
             <button @click="showObsGuideModal = true"
                     class="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 px-3.5 py-2 rounded-xl text-sm font-medium transition">
               <i class="fa-solid fa-tv text-sky-400 mr-1.5"></i>Hướng Dẫn OBS
@@ -1067,6 +1074,37 @@
             <button @click="showPlayerManagerModal = false" class="text-slate-400 hover:text-white text-xl">&times;</button>
           </div>
 
+          <!-- 0. Quản Lý Phiên Bản Tool PC & Link Tải Cài Đặt -->
+          <div class="bg-slate-950/90 border border-amber-500/40 p-3.5 rounded-xl space-y-2 shrink-0">
+            <div class="text-xs font-bold text-amber-300 flex items-center justify-between flex-wrap gap-2">
+              <span>🚀 Quản Lý Phiên Bản Tool PC & Link Tải Cài Đặt (Báo cập nhật tự động cho User dùng bản cũ):</span>
+              <label class="flex items-center gap-1.5 text-[11px] text-slate-300 cursor-pointer">
+                <input type="checkbox" v-model="releaseConfigForm.forceUpdate" class="accent-amber-400">
+                <span>Bắt buộc người chơi phải cập nhật (Force Update)</span>
+              </label>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-2 text-xs">
+              <div class="md:col-span-2">
+                <input type="text" v-model="releaseConfigForm.latestVersion" placeholder="VD: 5.3"
+                       class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-amber-300 font-bold"
+                       title="Số phiên bản mới nhất trên hệ thống (VD: 5.3, 5.4)">
+              </div>
+              <div class="md:col-span-4">
+                <input type="text" v-model="releaseConfigForm.downloadUrl" placeholder="Link tải Google Drive / GitHub Release / MediaFire..."
+                       class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-sky-300 font-mono"
+                       title="Link tải bản cài đặt (hoặc để /download-tool)">
+              </div>
+              <div class="md:col-span-4">
+                <input type="text" v-model="releaseConfigForm.releaseNotes" placeholder="Nội dung thông báo bản cập nhật mới..."
+                       class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg text-slate-200">
+              </div>
+              <button @click="saveReleaseConfigAdmin"
+                      class="md:col-span-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg font-bold py-2 transition">
+                💾 Lưu Phiên Bản
+              </button>
+            </div>
+          </div>
+
           <!-- 1. Form Cấp Tạo Tài Khoản Mới Nhanh -->
           <div class="bg-slate-950/80 border border-slate-800 p-3.5 rounded-xl space-y-2 shrink-0">
             <div class="text-xs font-bold text-slate-200 flex items-center justify-between">
@@ -1369,7 +1407,19 @@
       data() {
         const localCivStats = localStorage.getItem('aoe_showCivStats');
         return {
-          appVersion: 'v5.2 Premium Esports Edition (By XO)',
+          appVersion: 'v5.3 Wood-Gold Esports Edition (By XO)',
+          appRelease: {
+            latestVersion: '5.3',
+            downloadUrl: '/download-tool',
+            releaseNotes: 'Giao diện Wood-Gold mới, Màn hình Đăng nhập riêng, Tab Cài đặt VIP góc phải.',
+            forceUpdate: false
+          },
+          releaseConfigForm: {
+            latestVersion: '5.3',
+            downloadUrl: '/download-tool',
+            releaseNotes: 'Giao diện Wood-Gold mới, Màn hình Đăng nhập riêng, Tab Cài đặt VIP góc phải.',
+            forceUpdate: false
+          },
           databaseMode: 'neon_postgres',
           currentDateTimeText: '',
           currentTab: 'matches',
@@ -2119,6 +2169,13 @@
             if (data.settings && data.settings.showCivStats !== undefined) {
               this.showCivStats = Boolean(data.settings.showCivStats);
             }
+            const rel = data.appRelease || (data.settings && data.settings.appRelease);
+            if (rel && typeof rel === 'object') {
+              this.appRelease = { ...this.appRelease, ...rel };
+              if (!this.showPlayerManagerModal) {
+                this.releaseConfigForm = { ...this.appRelease };
+              }
+            }
 
             this.checkUrlForMatch();
 
@@ -2129,6 +2186,41 @@
           } catch (e) {
           } finally {
             this.isLoading = false;
+          }
+        },
+        downloadPcTool() {
+          const rawUrl = (this.appRelease && this.appRelease.downloadUrl) ? String(this.appRelease.downloadUrl).trim() : '/download-tool';
+          const targetUrl = rawUrl || '/download-tool';
+          window.open(targetUrl, '_blank');
+          this.showNotify(`⬇️ Đang mở link tải Tool Bảng Quân AOE (Phiên bản v${(this.appRelease && this.appRelease.latestVersion) || '5.3'})...`);
+        },
+        async saveReleaseConfigAdmin() {
+          try {
+            const res = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adminUpdateReleaseConfig',
+                isAdmin: this.isAdmin,
+                adminPassword: this.adminPasswordSession,
+                latestVersion: String(this.releaseConfigForm.latestVersion || '5.3').trim(),
+                downloadUrl: String(this.releaseConfigForm.downloadUrl || '/download-tool').trim(),
+                releaseNotes: String(this.releaseConfigForm.releaseNotes || '').trim(),
+                forceUpdate: Boolean(this.releaseConfigForm.forceUpdate)
+              })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+              if (data.appRelease) {
+                this.appRelease = { ...this.appRelease, ...data.appRelease };
+                this.releaseConfigForm = { ...this.appRelease };
+              }
+              this.showNotify(data.message || 'Đã cập nhật phiên bản & link tải Tool!');
+            } else {
+              this.showNotify(data.message || 'Không thể lưu phiên bản!', 'error');
+            }
+          } catch (e) {
+            this.showNotify('Lỗi kết nối khi lưu phiên bản!', 'error');
           }
         },
         async createNewPlayerAdmin() {

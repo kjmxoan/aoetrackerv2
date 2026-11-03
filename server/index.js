@@ -345,7 +345,8 @@ async function getInitialDataPayload(streamerFilter = '') {
     matches,
     currentMatch,
     recentChat: globalChatBuffer.slice(-50),
-    settings
+    settings,
+    appRelease: settings.appRelease || db.DEFAULT_APP_RELEASE
   };
 }
 
@@ -509,7 +510,10 @@ app.post('/api', async (req, res) => {
     const action = data.action;
 
     if (action === 'verifyPlayerLogin') {
-      const auth = await validatePlayerAccount(data.playerName, data.password);
+      const [auth, settings] = await Promise.all([
+        validatePlayerAccount(data.playerName, data.password),
+        db.getSettings()
+      ]);
       if (auth.valid && auth.player) {
         auth.player.lastSeenAt = Date.now();
         await db.upsertPlayer(auth.player);
@@ -523,6 +527,7 @@ app.post('/api', async (req, res) => {
         tier: auth.tier || 'BRONZE',
         tierNameVi: TIER_NAMES_VI[auth.tier || 'BRONZE'] || '🥉 Hạng Đồng',
         overlayConfig: auth.overlayConfig || db.DEFAULT_OVERLAY_CONFIG,
+        appRelease: settings.appRelease || db.DEFAULT_APP_RELEASE,
         friends: pObj.friends || [],
         starsReceived: pObj.starsReceived || 0,
         starsBalance: pObj.starsBalance || 0,
@@ -1418,6 +1423,28 @@ app.post('/api', async (req, res) => {
       return res.json({ status: 'success' });
     }
 
+    if (action === 'adminUpdateReleaseConfig') {
+      if (!isAdminAuthorized(data)) {
+        return res.json({ status: 'error', message: 'Chỉ Admin mới có quyền cập nhật phiên bản & link tải Tool!' });
+      }
+      const currentSettings = await db.getSettings();
+      const prevRel = currentSettings.appRelease || db.DEFAULT_APP_RELEASE;
+      const newRel = db.normalizeAppRelease({
+        latestVersion: data.latestVersion !== undefined ? data.latestVersion : prevRel.latestVersion,
+        downloadUrl: data.downloadUrl !== undefined ? data.downloadUrl : prevRel.downloadUrl,
+        releaseNotes: data.releaseNotes !== undefined ? data.releaseNotes : prevRel.releaseNotes,
+        forceUpdate: data.forceUpdate !== undefined ? Boolean(data.forceUpdate) : prevRel.forceUpdate,
+        updatedAt: Date.now()
+      });
+      await db.saveSetting('appRelease', newRel);
+      broadcastUpdate('release_updated', { appRelease: newRel });
+      return res.json({
+        status: 'success',
+        appRelease: newRel,
+        message: `🚀 Đã cập nhật phiên bản hệ thống lên v${newRel.latestVersion} và lưu Link Tải Tool!`
+      });
+    }
+
     return res.json({ status: 'error', message: 'Invalid action: ' + action });
   } catch (err) {
     console.error('[API POST Error]:', err);
@@ -1427,6 +1454,29 @@ app.post('/api', async (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', db: db.isPostgresActive() ? 'neon_postgres' : 'local_json' });
+});
+
+app.get('/download-tool', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const settings = await db.getSettings();
+    const rel = settings.appRelease || db.DEFAULT_APP_RELEASE;
+    const url = String(rel.downloadUrl || '').trim();
+    if (url && /^https?:\/\//i.test(url)) {
+      return res.redirect(url);
+    }
+    const rootExe = path.join(__dirname, '..', 'TOOL_BANG_QUAN_AOE_BY_XO.exe');
+    const distExe = path.join(__dirname, '..', 'client', 'dist', 'bangquanaoe.exe');
+    if (fs.existsSync(rootExe)) {
+      return res.download(rootExe, 'TOOL_BANG_QUAN_AOE_BY_XO.exe');
+    }
+    if (fs.existsSync(distExe)) {
+      return res.download(distExe, 'TOOL_BANG_QUAN_AOE_BY_XO.exe');
+    }
+    return res.redirect('https://github.com/buiviet2306-arch/aoetrackerv2/releases');
+  } catch (e) {
+    return res.status(500).send('Không thể tải file cài đặt lúc này.');
+  }
 });
 
 // Serve static files from public/

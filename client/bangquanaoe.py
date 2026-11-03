@@ -14,9 +14,20 @@ import numpy as np
 import requests
 from PIL import Image, ImageGrab, ImageDraw, ImageFont
 
-APP_VERSION = "v5.2 Premium Esports"
+import re
+
+APP_VERSION_NUMBER = "5.3"
+APP_VERSION = f"v{APP_VERSION_NUMBER} Wood-Gold Esports"
 APP_TITLE = "TOOL BẢNG QUÂN AOE BY XO"
 DEFAULT_SERVER_URL = "https://aoe-tracker.onrender.com/"
+
+
+def parse_version_tuple(v_str: str) -> tuple:
+    """Chuyển chuỗi phiên bản (VD: 'v5.1', '5.3.1') thành tuple số nguyên (5, 1) để so sánh chính xác."""
+    nums = re.findall(r"\d+", str(v_str or "0"))
+    if not nums:
+        return (0,)
+    return tuple(int(x) for x in nums[:4])
 
 # ==============================================================================
 # 1. DANH SÁCH 16 QUÂN AOE 1 & BẢNG MÀU CHUẨN TRONG BẢNG DIPLOMACY
@@ -940,6 +951,13 @@ class AOETrackerApp:
         self.running = True
         self._did_finish_on_exit = False
         self._last_chat_id = None
+        self.server_release_info = {
+            "latestVersion": APP_VERSION_NUMBER,
+            "downloadUrl": "/download-tool",
+            "releaseNotes": "",
+            "forceUpdate": False,
+        }
+        self._prompted_update_version = None
 
         self._configure_ttk_styles()
         self._build_ui()
@@ -949,6 +967,7 @@ class AOETrackerApp:
         atexit.register(self._auto_finish_match_sync)
 
         self._start_clock_loop()
+        threading.Thread(target=self._startup_version_check, daemon=True).start()
         self.threading_loop = threading.Thread(target=self._background_worker, daemon=True)
         self.threading_loop.start()
 
@@ -1090,7 +1109,23 @@ class AOETrackerApp:
             font=("Segoe UI", 9, "bold"),
             fg="#8e99a7",
             bg="#181e28",
-        ).pack(pady=(2, 18))
+        ).pack(pady=(2, 6))
+
+        self.login_ver_badge_btn = tk.Button(
+            login_card,
+            text=f"🏷️ Phiên bản hiện tại: v{APP_VERSION_NUMBER} (Bản mới nhất)",
+            command=self.open_download_tool_url,
+            font=("Segoe UI", 8, "bold"),
+            bg="#11151b",
+            fg="#34d399",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+            padx=12,
+            pady=3,
+            cursor="hand2",
+        )
+        self.login_ver_badge_btn.pack(pady=(0, 14))
 
         # Ô nhập Tên Player / Streamer
         tk.Label(
@@ -1293,6 +1328,22 @@ class AOETrackerApp:
 
         top_meta_row = tk.Frame(right_hdr, bg="#181e28")
         top_meta_row.pack(anchor="e", pady=(0, 6))
+
+        self.header_ver_badge_btn = tk.Button(
+            top_meta_row,
+            text=f"🏷️ Ver {APP_VERSION_NUMBER}",
+            command=self.open_download_tool_url,
+            font=("Segoe UI", 8, "bold"),
+            fg="#34d399",
+            bg="#11151b",
+            relief="flat",
+            padx=8,
+            pady=2,
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+            cursor="hand2",
+        )
+        self.header_ver_badge_btn.pack(side="left", padx=(0, 8))
 
         self.tier_badge_lbl = tk.Label(
             top_meta_row,
@@ -2477,6 +2528,105 @@ class AOETrackerApp:
             cursor="hand2",
         ).pack(pady=(12, 0))
 
+    def open_download_tool_url(self):
+        import webbrowser
+
+        rel = getattr(self, "server_release_info", {}) or {}
+        raw_url = str(rel.get("downloadUrl") or "/download-tool").strip()
+        if raw_url.startswith("http://") or raw_url.startswith("https://"):
+            target_url = raw_url
+        else:
+            path_part = raw_url if raw_url.startswith("/") else f"/{raw_url}"
+            target_url = f"{self.get_base_server_url()}{path_part}"
+        webbrowser.open(target_url)
+
+    def _startup_version_check(self):
+        """Kiểm tra phiên bản mới từ Server ngay khi mở Tool (ở màn hình Đăng nhập)."""
+        try:
+            res = requests.get(f"{self.get_api_endpoint()}?action=getInitialData", timeout=8)
+            data = res.json()
+            rel = data.get("appRelease") or (data.get("settings") or {}).get("appRelease")
+            if rel and isinstance(rel, dict):
+                self._check_server_version_and_prompt(rel)
+        except Exception:
+            pass
+
+    def _check_server_version_and_prompt(self, rel_info: dict):
+        if not rel_info or not isinstance(rel_info, dict):
+            return
+        self.server_release_info = {
+            "latestVersion": str(rel_info.get("latestVersion") or APP_VERSION_NUMBER).strip().lstrip("vV"),
+            "downloadUrl": str(rel_info.get("downloadUrl") or "/download-tool").strip(),
+            "releaseNotes": str(rel_info.get("releaseNotes") or "").strip(),
+            "forceUpdate": bool(rel_info.get("forceUpdate", False)),
+        }
+        srv_ver = self.server_release_info["latestVersion"]
+        cur_tuple = parse_version_tuple(APP_VERSION_NUMBER)
+        srv_tuple = parse_version_tuple(srv_ver)
+        is_outdated = srv_tuple > cur_tuple
+
+        def _update_ui_and_prompt():
+            try:
+                if is_outdated:
+                    if hasattr(self, "login_ver_badge_btn"):
+                        self.login_ver_badge_btn.configure(
+                            text=f"🔔 Có bản mới v{srv_ver} (Bạn đang dùng v{APP_VERSION_NUMBER}) — Bấm để tải!",
+                            bg="#eca133",
+                            fg="#11151b",
+                            highlightthickness=0,
+                        )
+                    if hasattr(self, "header_ver_badge_btn"):
+                        self.header_ver_badge_btn.configure(
+                            text=f"🚀 Cập nhật v{srv_ver} (Đang dùng v{APP_VERSION_NUMBER})",
+                            bg="#eca133",
+                            fg="#11151b",
+                            highlightthickness=0,
+                        )
+                    if self._prompted_update_version != srv_ver:
+                        self._prompted_update_version = srv_ver
+                        notes = self.server_release_info["releaseNotes"]
+                        notes_block = f"\n\n📝 Nội dung bản cập nhật:\n{notes}" if notes else ""
+                        if self.server_release_info["forceUpdate"] and not self.is_admin:
+                            self.messagebox.showwarning(
+                                f"Yêu cầu cập nhật phiên bản mới v{srv_ver}",
+                                f"Bạn đang sử dụng phiên bản cũ (v{APP_VERSION_NUMBER}).\n"
+                                f"Hệ thống hiện yêu cầu cập nhật lên phiên bản mới nhất v{srv_ver} để tiếp tục sử dụng!{notes_block}\n\n"
+                                f"Nhấn OK để mở trang tải bản cập nhật mới.",
+                            )
+                            self.open_download_tool_url()
+                            if self.is_logged_in:
+                                self.logout_to_login_screen()
+                        else:
+                            ans = self.messagebox.askyesno(
+                                f"🔔 Phát hiện phiên bản mới v{srv_ver}",
+                                f"Bạn đang sử dụng Tool phiên bản v{APP_VERSION_NUMBER}, hiện hệ thống đã có phiên bản mới v{srv_ver}!{notes_block}\n\n"
+                                f"Bạn có muốn tải bản cập nhật v{srv_ver} ngay bây giờ không?\n"
+                                f"(Chọn 'No' nếu bạn muốn tiếp tục sử dụng bản hiện tại)",
+                            )
+                            if ans:
+                                self.open_download_tool_url()
+                else:
+                    if hasattr(self, "login_ver_badge_btn"):
+                        self.login_ver_badge_btn.configure(
+                            text=f"🏷️ Phiên bản hiện tại: v{APP_VERSION_NUMBER} (Bản mới nhất)",
+                            bg="#11151b",
+                            fg="#34d399",
+                            highlightthickness=1,
+                            highlightbackground="#2b3541",
+                        )
+                    if hasattr(self, "header_ver_badge_btn"):
+                        self.header_ver_badge_btn.configure(
+                            text=f"🏷️ Ver {APP_VERSION_NUMBER}",
+                            bg="#11151b",
+                            fg="#34d399",
+                            highlightthickness=1,
+                            highlightbackground="#2b3541",
+                        )
+            except Exception:
+                pass
+
+        self.root.after(0, _update_ui_and_prompt)
+
     def _get_effective_player_password(self) -> str:
         raw_pw = self.player_pass_var.get().strip()
         name = self.player_name_var.get().strip()
@@ -2559,6 +2709,8 @@ class AOETrackerApp:
                     # Đồng bộ cấu hình VIP từ Server về Tool
                     ov_cfg = data.get("overlayConfig") or {}
                     self._sync_overlay_config_to_ui(ov_cfg)
+                    if data.get("appRelease"):
+                        self._check_server_version_and_prompt(data["appRelease"])
 
                     status_prefix = "🛡️ ADMIN XO ĐÃ KẾT NỐI" if self.is_admin else f"🟢 Đã kết nối: {canonical}"
                     self.root.after(
@@ -2868,17 +3020,137 @@ class AOETrackerApp:
             self.log("✅ 🛡️ Đã xác thực quyền Quản Trị Admin XO!", "SUCCESS")
 
         win = tk.Toplevel(self.root)
-        win.title("⚙ Bảng Quản Trị Admin XO — Chỉnh sửa User, Tìm kiếm, Nạp Sao & Lịch sử VIP")
-        win.geometry("1140x760")
+        win.title("⚙ Bảng Quản Trị Admin XO — Quản lý Phiên bản Tool, Chỉnh sửa User, Tìm kiếm & VIP")
+        win.geometry("1140x810")
         win.configure(bg="#080c16")
 
         selected_orig_name = {"val": ""}
 
         # ======================================================================
+        # 0. QUẢN LÝ PHIÊN BẢN TOOL PC & LINK TẢI CÀI ĐẶT (BÁO CẬP NHẬT CHO USER)
+        # ======================================================================
+        rel_card = tk.Frame(win, bg="#181e28", highlightthickness=1, highlightbackground="#2b3541", padx=14, pady=8)
+        rel_card.pack(fill="x", padx=14, pady=(10, 4))
+
+        tk.Label(
+            rel_card,
+            text="🚀 Phiên bản mới:",
+            font=("Segoe UI", 9, "bold"),
+            fg="#eca133",
+            bg="#181e28",
+        ).pack(side="left")
+        rel_ver_var = tk.StringVar(value=str(self.server_release_info.get("latestVersion") or APP_VERSION_NUMBER))
+        tk.Entry(
+            rel_card,
+            textvariable=rel_ver_var,
+            font=("Consolas", 9, "bold"),
+            bg="#11151b",
+            fg="#eca133",
+            width=7,
+            justify="center",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+        ).pack(side="left", padx=(4, 10), ipady=3)
+
+        tk.Label(
+            rel_card,
+            text="Link tải (.exe/.zip):",
+            font=("Segoe UI", 9, "bold"),
+            fg="#8e99a7",
+            bg="#181e28",
+        ).pack(side="left")
+        rel_url_var = tk.StringVar(value=str(self.server_release_info.get("downloadUrl") or "/download-tool"))
+        tk.Entry(
+            rel_card,
+            textvariable=rel_url_var,
+            font=("Consolas", 9),
+            bg="#11151b",
+            fg="#e7ebf0",
+            width=30,
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+        ).pack(side="left", padx=(4, 10), ipady=3)
+
+        tk.Label(
+            rel_card,
+            text="Thông báo Update:",
+            font=("Segoe UI", 9, "bold"),
+            fg="#8e99a7",
+            bg="#181e28",
+        ).pack(side="left")
+        rel_notes_var = tk.StringVar(value=str(self.server_release_info.get("releaseNotes") or ""))
+        tk.Entry(
+            rel_card,
+            textvariable=rel_notes_var,
+            font=("Segoe UI", 9),
+            bg="#11151b",
+            fg="#e7ebf0",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+        ).pack(side="left", padx=(4, 10), ipady=3, fill="x", expand=True)
+
+        rel_force_var = tk.BooleanVar(value=bool(self.server_release_info.get("forceUpdate", False)))
+        tk.Checkbutton(
+            rel_card,
+            text="Bắt buộc Update",
+            variable=rel_force_var,
+            font=("Segoe UI", 8, "bold"),
+            fg="#e7ebf0",
+            bg="#181e28",
+            selectcolor="#11151b",
+            activebackground="#181e28",
+            activeforeground="#eca133",
+        ).pack(side="left", padx=(0, 8))
+
+        def _save_release_cfg():
+            def _t():
+                try:
+                    res = requests.post(
+                        self.get_api_endpoint(),
+                        json={
+                            "action": "adminUpdateReleaseConfig",
+                            "isAdmin": True,
+                            "adminPassword": self.admin_password,
+                            "latestVersion": rel_ver_var.get().strip(),
+                            "downloadUrl": rel_url_var.get().strip(),
+                            "releaseNotes": rel_notes_var.get().strip(),
+                            "forceUpdate": bool(rel_force_var.get()),
+                        },
+                        timeout=10,
+                    )
+                    d = res.json()
+                    if d.get("status") == "success":
+                        if d.get("appRelease"):
+                            self._check_server_version_and_prompt(d["appRelease"])
+                        win.after(0, lambda: status_bar_lbl.config(text=f"✅ {d.get('message', 'Đã lưu cấu hình Phiên bản & Link tải!')}", fg="#34d399"))
+                    else:
+                        win.after(0, lambda: status_bar_lbl.config(text=f"⚠️ {d.get('message', 'Lỗi lưu phiên bản')}", fg="#eca133"))
+                except Exception as e:
+                    win.after(0, lambda: status_bar_lbl.config(text=f"❌ Lỗi: {e}", fg="#f0657b"))
+
+            threading.Thread(target=_t, daemon=True).start()
+
+        tk.Button(
+            rel_card,
+            text="💾 Lưu Phiên Bản",
+            command=_save_release_cfg,
+            font=("Segoe UI", 9, "bold"),
+            bg="#eca133",
+            fg="#11151b",
+            relief="flat",
+            padx=12,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right")
+
+        # ======================================================================
         # 1. FORM TẠO MỚI / CHỈNH SỬA ĐẦY ĐỦ THÔNG TIN USER (NGÀY TẠO, NGÀY HẾT HẠN, MẬT KHẨU, SAO)
         # ======================================================================
         top_card = tk.Frame(win, bg="#181e28", highlightthickness=1, highlightbackground="#2b3541", padx=14, pady=10)
-        top_card.pack(fill="x", padx=14, pady=(10, 4))
+        top_card.pack(fill="x", padx=14, pady=(2, 4))
 
         hdr_row = tk.Frame(top_card, bg="#181e28")
         hdr_row.pack(fill="x", pady=(0, 6))
@@ -3479,6 +3751,9 @@ class AOETrackerApp:
             res = requests.get(f"{api_url}?action=getInitialData&streamer={lobby_target}", timeout=10)
             data = res.json()
             self.known_players = data.get("players", [])
+            rel = data.get("appRelease") or (data.get("settings") or {}).get("appRelease")
+            if rel and isinstance(rel, dict):
+                self._check_server_version_and_prompt(rel)
             self._update_friends_and_social_ui(data)
 
             all_matches = data.get("matches") or []

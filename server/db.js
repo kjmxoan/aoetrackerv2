@@ -29,6 +29,25 @@ const DEFAULT_OVERLAY_CONFIG = {
   cTargetWins: 3
 };
 
+const DEFAULT_APP_RELEASE = {
+  latestVersion: '5.3',
+  downloadUrl: '/download-tool',
+  releaseNotes: 'Cập nhật giao diện Wood-Gold mới, Màn hình Đăng nhập riêng, Tab Cài đặt VIP góc phải và tối ưu Bảng Điều Khiển.',
+  forceUpdate: false,
+  updatedAt: Date.now()
+};
+
+function normalizeAppRelease(rawRel) {
+  const rel = rawRel && typeof rawRel === 'object' ? rawRel : {};
+  return {
+    latestVersion: String(rel.latestVersion || DEFAULT_APP_RELEASE.latestVersion).trim(),
+    downloadUrl: String(rel.downloadUrl || DEFAULT_APP_RELEASE.downloadUrl).trim() || '/download-tool',
+    releaseNotes: String(rel.releaseNotes !== undefined ? rel.releaseNotes : DEFAULT_APP_RELEASE.releaseNotes).trim(),
+    forceUpdate: Boolean(rel.forceUpdate),
+    updatedAt: Number(rel.updatedAt || Date.now())
+  };
+}
+
 const DEFAULT_STATE = {
   players: [
     {
@@ -51,7 +70,8 @@ const DEFAULT_STATE = {
   ],
   matches: [],
   settings: {
-    showCivStats: true
+    showCivStats: true,
+    appRelease: { ...DEFAULT_APP_RELEASE }
   }
 };
 
@@ -405,13 +425,16 @@ async function deleteMatches(matchIds) {
 
 async function getSettings() {
   if (!usePostgres) {
-    return readLocalState().settings || { showCivStats: true };
+    const rawSettings = readLocalState().settings || { showCivStats: true };
+    rawSettings.appRelease = normalizeAppRelease(rawSettings.appRelease);
+    return rawSettings;
   }
   const { rows } = await pool.query('SELECT key, value FROM settings');
-  const settings = { showCivStats: true };
+  const settings = { showCivStats: true, appRelease: { ...DEFAULT_APP_RELEASE } };
   for (const r of rows) {
     settings[r.key] = r.value;
   }
+  settings.appRelease = normalizeAppRelease(settings.appRelease);
   return settings;
 }
 
@@ -442,6 +465,8 @@ module.exports = {
   getSettings,
   saveSetting,
   normalizeOverlayConfig,
+  normalizeAppRelease,
   DEFAULT_OVERLAY_CONFIG,
+  DEFAULT_APP_RELEASE,
   isPostgresActive: () => usePostgres
 };
