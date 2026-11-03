@@ -61,6 +61,8 @@ function enforceTierOverlayConfig(tier, requestedCfg, previousCfg) {
   const req = db.normalizeOverlayConfig(requestedCfg || {});
 
   const result = { ...base };
+  // Tất cả các hạng (kể cả Hạng Đồng) đều được bật/tắt khung bảng quân ảo căn chỉnh OBS
+  result.showIdlePreview = req.showIdlePreview;
 
   // Hạng Bạc trở lên (rank >= 2): Đổi số chạm (targetScore) & Bật/tắt ngày góc phải (showDateCorner)
   if (rank >= 2) {

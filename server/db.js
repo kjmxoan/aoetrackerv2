@@ -26,7 +26,8 @@ const DEFAULT_OVERLAY_CONFIG = {
   customMarqueeText: '',
   showDateCorner: true,
   cModeEnabled: false,
-  cTargetWins: 3
+  cTargetWins: 3,
+  showIdlePreview: true
 };
 
 const DEFAULT_APP_RELEASE = {
@@ -83,7 +84,8 @@ function normalizeOverlayConfig(rawCfg) {
     customMarqueeText: String(cfg.customMarqueeText || '').trim(),
     showDateCorner: cfg.showDateCorner !== undefined ? Boolean(cfg.showDateCorner) : true,
     cModeEnabled: cfg.cModeEnabled !== undefined ? Boolean(cfg.cModeEnabled) : false,
-    cTargetWins: cfg.cTargetWins && Number(cfg.cTargetWins) > 0 ? Number(cfg.cTargetWins) : 3
+    cTargetWins: cfg.cTargetWins && Number(cfg.cTargetWins) > 0 ? Number(cfg.cTargetWins) : 3,
+    showIdlePreview: cfg.showIdlePreview !== undefined ? Boolean(cfg.showIdlePreview) : true
   };
 }
 

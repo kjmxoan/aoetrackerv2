@@ -124,13 +124,19 @@ Admin sau khi đăng nhập mật khẩu quản trị có toàn quyền:
 
 ## 📺 3. Hướng Dẫn Sử Dụng Chi Tiết Cho Streamer
 
-### 3.1. Gán 2 Link OBS Hiển Thị Lên Livestream
+### 3.1. Gán 2 Link OBS Hiển Thị Lên Livestream & Căn Chỉnh Bằng Khung Bảng Quân Ảo
 Trong phần mềm **OBS Studio**, tại mục **Sources (Nguồn)** bấm dấu **`+`** $\rightarrow$ chọn **`Browser` (Trình duyệt)**:
 
 | Loại Nguồn OBS | Cách lấy Link trên Tool / Web | Kích thước chuẩn (Width x Height) | Công dụng |
 | :--- | :--- | :--- | :--- |
-| **1. OBS Bảng Quân & Tỉ Số** | Bấm nút **`📋 Copy Link OBS Bảng Quân`** (`/overlay.html?streamer=TEN_MAY`) | **`980` x `600`** | Hiển thị Bảng Quân 2 Team, Màu Cờ, Tỉ Số, Chữ Chạy & Bảng phụ Đánh theo C. |
+| **1. OBS Bảng Quân & Tỉ Số** | Bấm nút **`📋 Copy Link OBS Bảng Quân`** (`/overlay.html?streamer=TEN_MAY`) | **`550` x `210`** *(hoặc **`750` x `210`** nếu bật Đánh theo C)* | Hiển thị Bảng Quân 2 Team, Màu Cờ, Tỉ Số, Chữ Chạy & Bảng phụ Đánh theo C. Khung vừa khít bảng quân, không bị thừa khoảng trống dưới đáy khi đặt sát mép dưới OBS. |
 | **2. OBS Khung Chat & Sao** | Bấm nút **`💬 Copy Link OBS Chat`** (`/chat-overlay.html?streamer=TEN_MAY`) | **`380` x `520`** | Nền **trong suốt 100%**, chỉ hiện chữ viền đen sắc nét + Hiệu ứng Sao bay + Comment từ Facebook Group Live (`🔵 [FB]`). |
+
+> [!TIP]
+> **Tính năng Khung Bảng Quân Ảo Căn Chỉnh OBS (`showIdlePreview`)**:
+> - Khi bạn chưa vào trận đấu (`match === null`), link `/overlay.html?streamer=TEN_MAY` sẽ tự động hiển thị một **Khung Bảng Quân Ảo (viền nét đứt vàng + nhãn `📐 KHUNG ẢO CĂN OBS`)** có kích thước, bố cục, màu cờ và cài đặt VIP y hệt bảng quân thật.
+> - Bạn có thể kéo và căn vị trí khung trên OBS cực kỳ trực quan ngay trước khi vào game.
+> - Ngay khi vào trận và bấm **`F2 (Diplomacy)`**, khung ảo sẽ tự động biến mất và chuyển sang **Bảng Quân & Tỉ Số thực tế** theo thời gian thực! (Có thể bật/tắt khung ảo bất kỳ lúc nào trong tab **⚙️ Tùy Chỉnh Cài Đặt VIP**).
 
 ---
 
@@ -239,3 +245,8 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
       - Áp dụng bộ lọc tương phản bóng đổ chữ trắng (`Drop-Shadow Contrast: min_rgb - shadow_rgb > 40`) giúp tách biệt tuyệt đối chữ trắng thật trên dòng người chơi với vân đá cẩm thạch xám sáng trên dòng trống.
       - Bổ sung ngưỡng khớp ký tự tối thiểu (`raw_sim >= 0.48`) trong `clean_and_match_player_name` trước khi cộng điểm thưởng AI theo quân, giữ nguyên chính xác tên người chơi thật hoặc tên AI ngắn (`Philo`, `Dido`) mà không bị ghi đè nhầm.
       - Nới rộng khung Nhật ký (`10 dòng` mặc định + thanh cuộn dọc + nút **`🔎 Phóng to Log (18 dòng)`** + nút **`📋 Copy Log`**) và hiển thị log chẩn đoán chi tiết tọa độ khung/độ phân giải/lý do từ chối khi bấm `F2` hoặc `Quét F2 ngay`.
+    - **Khung Bảng Quân Ảo Căn Chỉnh OBS (`Virtual Preview Frame`) & Chuẩn hóa kích thước OBS Browser Source (`550 x 210` / `750 x 210`)**:
+      - Khi chưa có trận đấu `LIVE`, [`public/overlay.html`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/overlay.html) tự động hiển thị **Khung Bảng Quân Ảo (`📐 KHUNG ẢO CĂN OBS`)** với đúng kích thước thật (`525px` hoặc `733px` khi bật Đánh theo C), viền nét đứt vàng dễ nhận biết và áp dụng đầy đủ cấu hình VIP của Streamer (`Chạm X`, `Dòng chữ chạy`, `Hiện ngày góc phải`, `Bảng phụ Séc 1-2-3`) để người chơi dễ dàng kéo đặt vị trí trong OBS trước khi vào trận.
+      - Ngay khi người chơi vào game ấn `F2 (Diplomacy)` tạo trận đấu mới, OBS Overlay tự động chuyển mượt mà từ Khung Ảo sang Bảng Quân thật qua luồng SSE thời gian thực.
+      - Cập nhật kích thước chuẩn khuyên dùng cho nguồn Browser Bảng Quân trên OBS thành **`Width = 550, Height = 210`** (hoặc **`750 x 210`** nếu bật Đánh theo C) thay vì `980 x 600`, giúp khung viền đỏ của OBS ôm vừa khít bảng quân, không còn khoảng trống thừa bên dưới bị tràn ra ngoài mép đáy màn hình OBS.
+      - Bổ sung tùy chọn bật/tắt **`📐 Hiện Khung Bảng Quân Ảo trên OBS khi chưa có trận`** (`showIdlePreview`, miễn phí cho mọi hạng từ Đồng trở lên) trên cả Tool PC và Web.

@@ -366,6 +366,12 @@
                      class="w-4 h-4 accent-sky-400 rounded">
               <span>Bật chế độ <b>Đánh theo 'C'</b> — Hiện Séc 1, Séc 2, Séc 3 (Chạm 3 = 1 C) <span class="text-xs text-sky-400 font-semibold">(💎 Kim Cương)</span></span>
             </label>
+
+            <label class="flex items-center gap-2 cursor-pointer text-emerald-300">
+              <input type="checkbox" v-model="overlayConfigForm.showIdlePreview"
+                     class="w-4 h-4 accent-emerald-400 rounded">
+              <span>📐 Hiện <b>Khung Bảng Quân Ảo</b> trên OBS khi chưa có trận <span class="text-xs text-slate-400">(Để căn vị trí OBS dễ dàng)</span></span>
+            </label>
           </div>
 
           <button @click="saveVipOverlayConfig"
@@ -381,7 +387,7 @@
           <span class="text-sky-400 font-bold flex items-center gap-1.5">
             <i class="fa-solid fa-video"></i> Link Gán OBS Livestream:
           </span>
-          <span class="text-slate-400">Chiều rộng khuyên dùng: <b class="text-slate-200">980 x 600</b> (Bảng quân) &bull; <b class="text-slate-200">380 x 450</b> (Khung chat)</span>
+          <span class="text-slate-400">Size chuẩn vừa khít: <b class="text-emerald-300">550 x 210</b> (Bảng quân thường) &bull; <b class="text-sky-300">750 x 210</b> (Đánh theo C) &bull; <b class="text-slate-200">380 x 450</b> (Khung chat)</span>
         </div>
         <div class="flex items-center gap-2">
           <button @click="copyOverlayLink(sessionPlayerName || 'XO')"
@@ -974,7 +980,7 @@
 
           <div class="space-y-3.5 text-sm text-slate-200">
             <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-xl space-y-2">
-              <div class="font-bold text-sky-400">1. Link OBS Bảng Quân + Hiệu ứng Tặng Sao (Rộng 980 x Cao 600):</div>
+              <div class="font-bold text-sky-400">1. Link OBS Bảng Quân + Hiệu ứng Tặng Sao (Size chuẩn: 550 x 210 hoặc 750 x 210 nếu Đánh theo C):</div>
               <div class="flex gap-2 items-center">
                 <input type="text" readonly :value="currentObsPreviewUrl" class="flex-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg font-mono text-xs text-emerald-300">
                 <button @click="copyOverlayLink(sessionPlayerName || 'XO')" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-2 rounded-lg text-xs shrink-0">
@@ -994,9 +1000,10 @@
             </div>
 
             <div class="bg-slate-950/90 border border-slate-800 p-4 rounded-xl space-y-1.5 text-xs text-slate-300">
-              <div class="font-bold text-slate-100 text-sm mb-1">Các bước thêm vào OBS Studio:</div>
+              <div class="font-bold text-slate-100 text-sm mb-1">Các bước thêm & căn chỉnh Khung Ảo trong OBS Studio:</div>
               <p>&bull; Mở <b>OBS Studio</b> &rarr; Tại khung <b>Sources (Nguồn)</b> bấm dấu <b>[+]</b> &rarr; Chọn <b>Browser (Trình duyệt)</b>.</p>
-              <p>&bull; Dán đường dẫn ở trên vào ô <b>URL</b>, nhập <b>Width / Height</b> tương ứng rồi bấm <b>OK</b>.</p>
+              <p>&bull; Dán đường dẫn Bảng Quân vào ô <b>URL</b>, đặt kích thước <b class="text-emerald-300">Width = 550, Height = 210</b> (hoặc <b class="text-sky-300">Width = 750, Height = 210</b> nếu bật Đánh theo C) để khung đỏ OBS ôm vừa khít bảng quân, không bị thừa khoảng trống dưới đáy.</p>
+              <p>&bull; <b>Khung Bảng Quân Ảo tự động:</b> Khi chưa có trận đấu, OBS tự hiện một <b>Khung Bảng Quân Ảo (viền nét đứt vàng)</b> đúng kích thước thật để bạn kéo đặt vào vị trí mong muốn. Ngay khi vào game ấn <b>F2 (Diplomacy)</b>, khung ảo sẽ tự chuyển sang Bảng Quân thật!</p>
             </div>
           </div>
 
@@ -1652,7 +1659,8 @@
             customMarqueeText: '',
             showDateCorner: true,
             cModeEnabled: false,
-            cTargetWins: 3
+            cTargetWins: 3,
+            showIdlePreview: true
           },
           selectedFriendToAdd: '',
           guestChatName: localStorage.getItem('aoe_guestChatName') || '',

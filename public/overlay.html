@@ -60,26 +60,33 @@
 </head>
 <body class="p-0 m-0">
   <div id="app" class="w-full p-1.5 relative">
-    <div v-if="match" class="flex items-start gap-3">
+    <div v-if="activeMatch" class="flex items-start gap-3">
       <!-- BẢNG QUÂN CHÍNH (LEFT / MAIN OVERLAY) -->
-      <div class="flex flex-col w-[525px] shrink-0 relative">
+      <div class="flex flex-col w-[525px] shrink-0 relative"
+           :class="isVirtualPreview ? 'rounded-xl ring-2 ring-amber-400/80 ring-offset-2 ring-offset-transparent' : ''">
         <!-- Thanh Header trên cùng -->
         <div class="flex justify-between items-center gap-1.5 mb-1">
           <div class="flex items-center gap-1.5 shrink-0">
             <div class="premium-tab border-amber-500/50 px-2.5 py-0.5 rounded-t-lg">
               <span class="text-xs font-black uppercase text-amber-400 tracking-wide">
-                MÁY {{ playerOverride || match.streamerName || 'XO' }}
+                MÁY {{ playerOverride || activeMatch.streamerName || 'XO' }}
               </span>
             </div>
             <div class="premium-tab px-2.5 py-0.5 rounded-t-lg flex items-center gap-1.5">
               <span class="text-xs font-bold text-slate-100 uppercase">Bảng Quân</span>
-              <span class="text-[11px] font-bold text-sky-400 bg-slate-900 px-1.5 rounded border border-sky-500/30">{{ match.mode }}</span>
+              <span class="text-[11px] font-bold text-sky-400 bg-slate-900 px-1.5 rounded border border-sky-500/30">{{ activeMatch.mode }}</span>
+            </div>
+            <!-- Huy hiệu Khung Ảo Căn Chỉnh OBS khi chưa vào trận -->
+            <div v-if="isVirtualPreview"
+                 class="premium-tab border-emerald-400/60 px-2 py-0.5 rounded-t-lg flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span class="text-[10px] font-black uppercase text-emerald-300 tracking-wide">KHUNG ẢO CĂN OBS</span>
             </div>
             <!-- Huy hiệu tổng số Sao được tặng -->
-            <div v-if="match.starsCount > 0"
+            <div v-if="activeMatch.starsCount > 0"
                  class="premium-tab border-amber-400/50 px-2 py-0.5 rounded-t-lg flex items-center gap-1">
               <span class="text-xs">⭐</span>
-              <span class="text-[11px] font-black text-amber-300">{{ match.starsCount }}</span>
+              <span class="text-[11px] font-black text-amber-300">{{ activeMatch.starsCount }}</span>
             </div>
           </div>
 
@@ -124,8 +131,11 @@
               {{ mainScoreDisplay.red }} <span class="text-slate-500 text-xl mx-0.5">-</span> {{ mainScoreDisplay.blue }}
             </div>
             <div class="w-full bg-slate-950/90 py-1 border-t border-slate-800">
-              <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-200">
-                {{ overlayCfg.cModeEnabled ? ('C' + cModeData.currentSetNumber + ' • TRẬN ' + (match.games ? match.games.length : 1)) : ('TRẬN ' + (match.games ? match.games.length : 1)) }}
+              <span v-if="isVirtualPreview" class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
+                CHỜ F2 VÀO TRẬN
+              </span>
+              <span v-else class="text-[11px] font-extrabold uppercase tracking-wider text-slate-200">
+                {{ overlayCfg.cModeEnabled ? ('C' + cModeData.currentSetNumber + ' • TRẬN ' + (activeMatch.games ? activeMatch.games.length : 1)) : ('TRẬN ' + (activeMatch.games ? activeMatch.games.length : 1)) }}
               </span>
             </div>
           </div>
@@ -142,6 +152,13 @@
               <span class="truncate text-right max-w-[112px]" :style="playerStyle(currentBlueColors, index)">{{ player }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- Thanh chỉ dẫn căn khung OBS (Chỉ hiện khi đang ở chế độ Khung Ảo trước trận đấu) -->
+        <div v-if="isVirtualPreview"
+             class="mt-1.5 px-3 py-1 rounded-lg bg-slate-950/90 border border-dashed border-amber-400/70 flex items-center justify-between text-[11px] font-bold text-amber-300 shadow-lg">
+          <span>📐 Khung mẫu căn vị trí OBS (Size chuẩn: {{ overlayCfg.cModeEnabled ? '750 x 190' : '540 x 190' }})</span>
+          <span class="text-emerald-400">Vào game ấn F2 sẽ tự lên bảng quân thật</span>
         </div>
 
         <!-- HIỆU ỨNG TẶNG SAO (STAR GIFT EFFECT) XUẤT HIỆN TRỰC TIẾP TRÊN LIVESTREAM -->
@@ -168,14 +185,15 @@
               </div>
             </div>
             <div class="text-right font-black text-xs bg-slate-950/90 text-amber-300 px-2.5 py-1 rounded-lg">
-              ⭐ {{ activeStarGift.totalMatchStars || match.starsCount || activeStarGift.starCount }}
+              ⭐ {{ activeStarGift.totalMatchStars || activeMatch.starsCount || activeStarGift.starCount }}
             </div>
           </div>
         </div>
       </div>
 
       <!-- OVERLAY PHỤ BÊN PHẢI: BẢNG KẾT QUẢ ĐÁNH THEO "C" (SÉC ĐẤU - VIP KIM CƯƠNG) -->
-      <div v-if="overlayCfg.cModeEnabled" class="flex flex-col w-[200px] shrink-0">
+      <div v-if="overlayCfg.cModeEnabled" class="flex flex-col w-[200px] shrink-0"
+           :class="isVirtualPreview ? 'rounded-xl ring-2 ring-amber-400/80 ring-offset-2 ring-offset-transparent' : ''">
         <div class="premium-tab border-amber-500/50 px-2.5 py-0.5 rounded-t-lg mb-1 flex justify-between items-center">
           <span class="text-[11px] font-black uppercase text-amber-400">🏆 KẾT QUẢ C (SÉC)</span>
           <span class="text-[11px] font-black text-sky-300 bg-slate-900 px-1.5 rounded border border-slate-700">
@@ -200,7 +218,7 @@
           </div>
 
           <div class="mt-2 pt-1.5 border-t border-slate-800 flex justify-between items-center text-[11px] text-slate-400 font-semibold">
-            <span>Tổng: {{ (match.games || []).length }} trận</span>
+            <span>Tổng: {{ isVirtualPreview ? 0 : (activeMatch.games || []).length }} trận</span>
             <span class="text-amber-400 font-bold">Hiệu số: {{ totalGameScore.red }}-{{ totalGameScore.blue }}</span>
           </div>
         </div>
@@ -225,7 +243,9 @@
       data() {
         return {
           match: null,
+          streamerOverlayConfig: null,
           playerOverride: '',
+          forcePreviewParam: false,
           showMarquee: true,
           showCivStats: true,
           currentDateStr: '',
@@ -243,38 +263,78 @@
             customMarqueeText: '',
             showDateCorner: true,
             cModeEnabled: false,
-            cTargetWins: 3
+            cTargetWins: 3,
+            showIdlePreview: true
           };
           if (this.match && this.match.overlayConfig) {
-            return { ...defaultCfg, ...this.match.overlayConfig };
+            return { ...defaultCfg, ...(this.streamerOverlayConfig || {}), ...this.match.overlayConfig };
+          }
+          if (this.streamerOverlayConfig) {
+            return { ...defaultCfg, ...this.streamerOverlayConfig };
           }
           return defaultCfg;
         },
+        isVirtualPreview() {
+          return !this.match && (this.overlayCfg.showIdlePreview !== false || this.forcePreviewParam);
+        },
+        activeMatch() {
+          if (this.match) {
+            return this.match;
+          }
+          if (!this.isVirtualPreview) {
+            return null;
+          }
+          const sName = this.playerOverride || 'XO';
+          return {
+            id: 'virtual_preview',
+            isVirtualPreview: true,
+            streamerName: sName,
+            mode: '2v2',
+            starsCount: 0,
+            redTeam: [sName, 'Đồng đội (Mẫu)'],
+            blueTeam: ['Đối thủ 1', 'Đối thủ 2'],
+            redColors: [0, 2],
+            blueColors: [3, 1],
+            games: [
+              {
+                id: 'virtual_game_1',
+                redPlayers: [sName, 'Đồng đội (Mẫu)'],
+                bluePlayers: ['Đối thủ 1', 'Đối thủ 2'],
+                redCivs: ['Shang', 'Yamato'],
+                blueCivs: ['Assy', 'Cartha'],
+                redColors: [0, 2],
+                blueColors: [3, 1],
+                winner: null
+              }
+            ],
+            overlayConfig: this.overlayCfg
+          };
+        },
         latestGame() {
-          return this.match && this.match.games && this.match.games.length
-            ? this.match.games[this.match.games.length - 1]
+          return this.activeMatch && this.activeMatch.games && this.activeMatch.games.length
+            ? this.activeMatch.games[this.activeMatch.games.length - 1]
             : null;
         },
         currentRedTeam() {
           if (this.latestGame && Array.isArray(this.latestGame.redPlayers) && this.latestGame.redPlayers.length) {
             return this.latestGame.redPlayers;
           }
-          return (this.match && this.match.redTeam) || [];
+          return (this.activeMatch && this.activeMatch.redTeam) || [];
         },
         currentBlueTeam() {
           if (this.latestGame && Array.isArray(this.latestGame.bluePlayers) && this.latestGame.bluePlayers.length) {
             return this.latestGame.bluePlayers;
           }
-          return (this.match && this.match.blueTeam) || [];
+          return (this.activeMatch && this.activeMatch.blueTeam) || [];
         },
         currentRedColors() {
-          return (this.latestGame && this.latestGame.redColors) || (this.match && this.match.redColors) || [];
+          return (this.latestGame && this.latestGame.redColors) || (this.activeMatch && this.activeMatch.redColors) || [];
         },
         currentBlueColors() {
-          return (this.latestGame && this.latestGame.blueColors) || (this.match && this.match.blueColors) || [];
+          return (this.latestGame && this.latestGame.blueColors) || (this.activeMatch && this.activeMatch.blueColors) || [];
         },
         totalGameScore() {
-          return ((this.match && this.match.games) || []).reduce(
+          return ((this.activeMatch && this.activeMatch.games) || []).reduce(
             (result, game) => {
               if (game.winner === 'RED') result.red++;
               if (game.winner === 'BLUE') result.blue++;
@@ -285,7 +345,7 @@
         },
         cModeData() {
           const targetWins = Number(this.overlayCfg.cTargetWins) || 3;
-          const games = (this.match && this.match.games) || [];
+          const games = (this.activeMatch && this.activeMatch.games) || [];
           const sets = [];
           let curRed = 0;
           let curBlue = 0;
@@ -293,34 +353,36 @@
           let redSetsWon = 0;
           let blueSetsWon = 0;
 
-          games.forEach((g, idx) => {
-            if (g.winner === 'RED') curRed++;
-            if (g.winner === 'BLUE') curBlue++;
+          if (!this.isVirtualPreview) {
+            games.forEach((g, idx) => {
+              if (g.winner === 'RED') curRed++;
+              if (g.winner === 'BLUE') curBlue++;
 
-            if (curRed >= targetWins || curBlue >= targetWins) {
-              const winner = curRed >= targetWins ? 'RED' : 'BLUE';
-              if (winner === 'RED') redSetsWon++;
-              if (winner === 'BLUE') blueSetsWon++;
-              sets.push({
-                setNumber: setNum,
-                red: curRed,
-                blue: curBlue,
-                finished: true,
-                winner
-              });
-              setNum++;
-              curRed = 0;
-              curBlue = 0;
-            } else if (idx === games.length - 1) {
-              sets.push({
-                setNumber: setNum,
-                red: curRed,
-                blue: curBlue,
-                finished: false,
-                winner: null
-              });
-            }
-          });
+              if (curRed >= targetWins || curBlue >= targetWins) {
+                const winner = curRed >= targetWins ? 'RED' : 'BLUE';
+                if (winner === 'RED') redSetsWon++;
+                if (winner === 'BLUE') blueSetsWon++;
+                sets.push({
+                  setNumber: setNum,
+                  red: curRed,
+                  blue: curBlue,
+                  finished: true,
+                  winner
+                });
+                setNum++;
+                curRed = 0;
+                curBlue = 0;
+              } else if (idx === games.length - 1) {
+                sets.push({
+                  setNumber: setNum,
+                  red: curRed,
+                  blue: curBlue,
+                  finished: false,
+                  winner: null
+                });
+              }
+            });
+          }
 
           if (sets.length === 0) {
             sets.push({ setNumber: 1, red: 0, blue: 0, finished: false, winner: null });
@@ -347,17 +409,21 @@
             return this.overlayCfg.customMarqueeText;
           }
 
-          if (!this.match || !this.match.games || !this.match.games.length) {
+          if (this.isVirtualPreview) {
+            return 'KHUNG BẢNG QUÂN ẢO ĐỂ CĂN VỊ TRÍ OBS • BẤM F2 (DIPLOMACY) TRONG GAME SẼ TỰ ĐỘNG HIỂN THỊ TRẬN ĐẤU THẬT';
+          }
+
+          if (!this.activeMatch || !this.activeMatch.games || !this.activeMatch.games.length) {
             return 'TỔNG CUNG - CHÉM: CHƯA CÓ DỮ LIỆU';
           }
           const cung = ['BABY','ASSY','HIT','EGYP','EGYPT','PHO','SUM','SHANG','PAL'];
           let totalCung = 0, totalChem = 0;
           const map = {};
-          [...(this.match.redTeam || []), ...(this.match.blueTeam || [])].forEach(name => {
+          [...(this.activeMatch.redTeam || []), ...(this.activeMatch.blueTeam || [])].forEach(name => {
             map[name] = { cung: 0, chem: 0 };
           });
-          this.match.games.forEach(game => {
-            [['redCivs', this.match.redTeam], ['blueCivs', this.match.blueTeam]].forEach(([field, team]) =>
+          this.activeMatch.games.forEach(game => {
+            [['redCivs', this.activeMatch.redTeam], ['blueCivs', this.activeMatch.blueTeam]].forEach(([field, team]) =>
               (game[field] || []).forEach((civ, index) => {
                 if (!civ || civ === 'Random' || civ === '---') return;
                 const isCung = cung.some(key => String(civ).toUpperCase().includes(key));
@@ -447,6 +513,7 @@
           this.updateDateStr();
           const query = new URLSearchParams(location.search);
           this.playerOverride = query.get('streamer') || query.get('player') || '';
+          this.forcePreviewParam = query.get('preview') === '1';
           const matchIdParam = query.get('matchId') || '';
           try {
             const url = `${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.playerOverride)}&_t=${Date.now()}`;
@@ -462,6 +529,19 @@
                 Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
             );
             const players = data.players || [];
+            if (this.playerOverride) {
+              const target = this.playerOverride.trim().toLowerCase();
+              const streamerPlayer = players.find(p => String(p.name || '').toLowerCase() === target);
+              if (streamerPlayer && streamerPlayer.overlayConfig) {
+                this.streamerOverlayConfig = streamerPlayer.overlayConfig;
+              }
+            } else {
+              const xoPlayer = players.find(p => String(p.name || '').toLowerCase() === 'xo');
+              if (xoPlayer && xoPlayer.overlayConfig) {
+                this.streamerOverlayConfig = xoPlayer.overlayConfig;
+              }
+            }
+
             let chosenMatch = null;
             if (matchIdParam) {
               chosenMatch = matches.find(m => m.id === matchIdParam) || null;
@@ -481,6 +561,7 @@
                 p => String(p.name || '').toLowerCase() === String(chosenMatch.streamerName || '').toLowerCase()
               );
               if (owner && owner.overlayConfig) {
+                this.streamerOverlayConfig = owner.overlayConfig;
                 chosenMatch.overlayConfig = { ...owner.overlayConfig, ...(chosenMatch.overlayConfig || {}) };
               }
             }
@@ -497,6 +578,16 @@
                 const payload = JSON.parse(ev.data);
                 if (payload.type === 'star_gifted' && payload.gift) {
                   this.triggerStarGiftAnimation(payload.gift);
+                }
+                if (payload.type === 'overlay_config_updated' && payload.overlayConfig) {
+                  const query = new URLSearchParams(location.search);
+                  const targetStreamer = (query.get('streamer') || query.get('player') || 'XO').trim().toLowerCase();
+                  if (!payload.streamerName || String(payload.streamerName).trim().toLowerCase() === targetStreamer) {
+                    this.streamerOverlayConfig = { ...(this.streamerOverlayConfig || {}), ...payload.overlayConfig };
+                    if (this.match) {
+                      this.match.overlayConfig = { ...(this.match.overlayConfig || {}), ...payload.overlayConfig };
+                    }
+                  }
                 }
                 if (
                   payload.match &&

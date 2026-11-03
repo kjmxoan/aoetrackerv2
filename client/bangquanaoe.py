@@ -1392,6 +1392,7 @@ class AOETrackerApp:
         self.target_score_var = tk.StringVar(value=str(self.settings.get("target_score", 100)))
         self.show_date_var = tk.BooleanVar(value=bool(self.settings.get("show_date_corner", True)))
         self.c_mode_var = tk.BooleanVar(value=bool(self.settings.get("c_mode_enabled", False)))
+        self.show_idle_preview_var = tk.BooleanVar(value=bool(self.settings.get("show_idle_preview", True)))
         saved_mode_code = self.settings.get("marquee_mode", "ALL")
         self.marquee_label_var = tk.StringVar(
             value=MARQUEE_MODE_TO_LABEL.get(saved_mode_code, MARQUEE_MODE_LABELS[0][1])
@@ -2453,6 +2454,23 @@ class AOETrackerApp:
             cursor="hand2",
         ).pack(side="left")
 
+        # Mục 1b: Khung bảng quân ảo căn chỉnh OBS khi chưa có trận
+        vip_row_preview = tk.Frame(vip_card, bg="#181e28")
+        vip_row_preview.pack(fill="x", pady=(4, 6))
+
+        tk.Checkbutton(
+            vip_row_preview,
+            text="📐 Hiện 'Khung Bảng Quân Ảo' trên OBS khi chưa có trận (Giúp căn vị trí khung OBS chuẩn xác trước khi vào game — Mặc định Bật)",
+            variable=self.show_idle_preview_var,
+            font=("Segoe UI", 10, "bold"),
+            fg="#34d399",
+            bg="#181e28",
+            selectcolor="#11151b",
+            activebackground="#181e28",
+            activeforeground="#34d399",
+            cursor="hand2",
+        ).pack(side="left")
+
         # Mục 2: Chế độ dòng chữ chạy
         vip_row2 = tk.Frame(vip_card, bg="#181e28")
         vip_row2.pack(fill="x", pady=10)
@@ -2829,6 +2847,7 @@ class AOETrackerApp:
             "target_score": t_score,
             "show_date_corner": bool(self.show_date_var.get()),
             "c_mode_enabled": bool(self.c_mode_var.get()),
+            "show_idle_preview": bool(self.show_idle_preview_var.get()),
             "marquee_mode": marquee_code,
             "custom_marquee_text": self.custom_marquee_var.get().strip(),
         }
@@ -2844,7 +2863,7 @@ class AOETrackerApp:
 
         win = tk.Toplevel(self.root)
         win.title("Hướng dẫn gán Bảng Quân & Khung Chat vào OBS Studio")
-        win.geometry("700x560")
+        win.geometry("740x610")
         win.configure(bg="#080c16")
         win.resizable(False, False)
 
@@ -2862,7 +2881,7 @@ class AOETrackerApp:
         # Link 1: Bảng quân
         step1 = tk.LabelFrame(
             card,
-            text=" 1. Link OBS Bảng Quân + Hiệu ứng Tặng Sao (Width: 980 x Height: 600) ",
+            text=" 1. Link OBS Bảng Quân + Hiệu ứng Sao (Width: 550 x Height: 210  |  Bật Đánh theo C: 750 x 210) ",
             font=("Segoe UI", 9, "bold"),
             fg="#e7ebf0",
             bg="#181e28",
@@ -2937,7 +2956,7 @@ class AOETrackerApp:
 
         step2 = tk.LabelFrame(
             card,
-            text=" 3. Các bước thêm nguồn Browser trong OBS Studio ",
+            text=" 3. Các bước thêm nguồn Browser & Căn khung ảo chuẩn xác trong OBS Studio ",
             font=("Segoe UI", 9, "bold"),
             fg="#e7ebf0",
             bg="#181e28",
@@ -2948,11 +2967,13 @@ class AOETrackerApp:
 
         guide_text = (
             "1. Mở phần mềm OBS Studio -> Tại cột 'Sources' (Nguồn) bấm dấu [+] -> Chọn 'Browser'.\n"
-            "2. Dán Link Bảng Quân vào ô URL, chỉnh Width = 980, Height = 600 rồi bấm OK.\n"
-            "3. Nếu muốn người xem Livestream đọc được bình luận & thấy hiệu ứng Tặng Sao ⭐:\n"
-            "   • Tạo thêm 1 nguồn 'Browser' thứ hai -> Dán Link Khung Chat vào ô URL.\n"
-            "   • Chỉnh Width = 380, Height = 520 rồi đặt ở góc màn hình Livestream.\n"
-            "4. Khi vào trận bấm F2 (Diplomacy), bảng quân & tỉ số sẽ tự động cập nhật!"
+            "2. Dán Link Bảng Quân vào ô URL, đặt kích thước chuẩn để khung đỏ OBS ôm sát bảng quân (không bị thừa khoảng trống dưới đáy):\n"
+            "   • Chế độ tiêu chuẩn: Width = 550, Height = 210  |  Nếu bật 'Đánh theo C' (Kim Cương): Width = 750, Height = 210.\n"
+            "3. Căn chỉnh vị trí bằng 'Khung Bảng Quân Ảo':\n"
+            "   • Khi chưa có trận đấu, OBS sẽ tự động hiển thị 'Khung Bảng Quân Ảo (Có viền nét đứt vàng)' đúng kích thước thật.\n"
+            "   • Bạn chỉ cần kéo khung ảo này đặt vào sát mép dưới hoặc góc màn hình OBS.\n"
+            "   • Ngay khi vào game bấm F2 (Diplomacy), khung ảo sẽ tự động biến mất và chuyển sang Bảng Quân thật!\n"
+            "4. Nếu muốn hiện thêm Khung Chat & Tặng Sao ⭐: Tạo nguồn 'Browser' thứ 2 -> Dán Link Khung Chat (Width = 380, Height = 520)."
         )
         tk.Label(
             step2,
@@ -4272,6 +4293,8 @@ class AOETrackerApp:
                 self.show_date_var.set(bool(ov_cfg["showDateCorner"]))
             if "cModeEnabled" in ov_cfg:
                 self.c_mode_var.set(bool(ov_cfg["cModeEnabled"]))
+            if "showIdlePreview" in ov_cfg:
+                self.show_idle_preview_var.set(bool(ov_cfg["showIdlePreview"]))
             if "marqueeMode" in ov_cfg:
                 lbl = MARQUEE_MODE_TO_LABEL.get(ov_cfg["marqueeMode"], MARQUEE_MODE_LABELS[0][1])
                 self.marquee_label_var.set(lbl)
@@ -4289,6 +4312,7 @@ class AOETrackerApp:
         rank = TIER_RANKS.get(self.player_tier, 0)
         requested_marquee = LABEL_TO_MARQUEE_MODE.get(self.marquee_label_var.get(), "ALL")
         requested_c_mode = bool(self.c_mode_var.get())
+        requested_idle_preview = bool(self.show_idle_preview_var.get())
         try:
             requested_target = max(1, int(self.target_score_var.get().strip() or "100"))
         except Exception:
@@ -4328,6 +4352,7 @@ class AOETrackerApp:
                             "customMarqueeText": self.custom_marquee_var.get().strip(),
                             "cModeEnabled": requested_c_mode,
                             "cTargetWins": 3,
+                            "showIdlePreview": requested_idle_preview,
                         },
                     },
                     timeout=10,
