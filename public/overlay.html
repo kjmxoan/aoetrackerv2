@@ -174,10 +174,17 @@
 
           <div class="star-banner-anim bg-gradient-to-r from-amber-500/95 via-yellow-400/95 to-amber-500/95 text-slate-950 px-4 py-2 rounded-xl shadow-2xl border-2 border-white/70 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <span class="text-2xl animate-bounce">🌟</span>
+              <span class="text-2xl animate-bounce">{{ activeStarGift.giftIcon || '🌟' }}</span>
               <div>
                 <div class="text-sm font-black leading-tight">
-                  {{ activeStarGift.senderName }} vừa tặng <span class="bg-slate-950 text-amber-300 px-2 py-0.5 rounded-full">+{{ activeStarGift.starCount }} ⭐</span>
+                  {{ activeStarGift.senderName }} vừa tặng
+                  <span v-if="activeStarGift.giftName && activeStarGift.giftCode && activeStarGift.giftCode !== 'STAR'"
+                        class="bg-slate-950 text-amber-300 px-2 py-0.5 rounded-full uppercase">
+                    {{ activeStarGift.giftIcon }} {{ activeStarGift.giftName }} ({{ activeStarGift.starCount }} ⭐)
+                  </span>
+                  <span v-else class="bg-slate-950 text-amber-300 px-2 py-0.5 rounded-full">
+                    +{{ activeStarGift.starCount }} ⭐
+                  </span>
                 </div>
                 <div class="text-xs font-bold text-slate-900 truncate max-w-[360px]">
                   "{{ activeStarGift.message || 'Đánh hay quá! Tặng sao cổ vũ!' }}"
@@ -461,7 +468,9 @@
               gift.streamerName.toLowerCase() !== this.playerOverride.trim().toLowerCase()) {
             return;
           }
-          const icons = ['⭐', '🌟', '✨', '💫', '🔥'];
+          const icons = (Array.isArray(gift.giftParticles) && gift.giftParticles.length > 0)
+            ? gift.giftParticles
+            : ['⭐', '🌟', '✨', '💫', '🔥'];
           this.starParticles = Array.from({ length: 14 }, (_, idx) => ({
             id: Date.now() + '_' + idx,
             left: 5 + Math.floor(Math.random() * 90),

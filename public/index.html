@@ -842,42 +842,74 @@
 
             <!-- Thanh chọn nhanh Sảnh Live của Bạn bè / Các kèo đang Live -->
             <div v-if="liveMatchesList.length > 0" class="mb-3 bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
-              <div class="text-[11px] font-bold text-slate-400 mb-1.5">🏟️ Chọn Sảnh Đang Live:</div>
-              <div class="flex flex-wrap gap-1.5">
-                <button v-for="lm in liveMatchesList" :key="lm.id"
-                        @click="enterMatchLobby(lm)"
-                        :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase()
-                          ? 'bg-sky-500 text-slate-950 border-sky-400 shadow font-bold'
-                          : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-400'"
-                        class="px-2.5 py-1 rounded-lg text-xs border transition flex items-center gap-1">
-                  <span>🔴 {{ lm.streamerName }}</span>
-                  <span class="text-[10px] opacity-80">({{ lm.mode }})</span>
-                </button>
+              <div class="text-[11px] font-bold text-slate-300 mb-2 flex items-center justify-between">
+                <span>🏟️ Sảnh Các Trận Đấu Đang Live ({{ liveMatchesList.length }}):</span>
+                <span class="text-[10px] text-sky-400">Bấm để vào theo dõi &amp; chat</span>
+              </div>
+              <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                <div v-for="lm in liveMatchesList" :key="lm.id"
+                     @click="enterMatchLobby(lm)"
+                     :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase()
+                       ? 'bg-sky-500/20 text-white border-sky-400 shadow'
+                       : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-sky-400'"
+                     class="px-2.5 py-1.5 rounded-lg text-xs border transition cursor-pointer flex items-center justify-between gap-2">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 font-bold">
+                      <span class="text-red-400">🔴 {{ lm.streamerName }}</span>
+                      <span class="text-[10px] bg-slate-900 text-sky-300 px-1.5 py-0.5 rounded border border-slate-700">{{ lm.mode }}</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 truncate mt-0.5">
+                      <span class="text-red-300">{{ (lm.redTeam || []).join(', ') }}</span>
+                      <b class="text-amber-300 mx-1">{{ getMatchScore(lm).red }} - {{ getMatchScore(lm).blue }}</b>
+                      <span class="text-sky-300">{{ (lm.blueTeam || []).join(', ') }}</span>
+                    </div>
+                  </div>
+                  <span class="text-[10px] font-bold px-2 py-1 rounded shrink-0"
+                        :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? 'bg-sky-500 text-slate-950' : 'bg-slate-900 text-sky-300 border border-slate-700'">
+                    {{ activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? 'Đang xem' : '👁️ Vào Sảnh' }}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <!-- Thanh nút Tặng Sao nhanh (Tối giản bảng màu Xanh Dương - Xám Đen) -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 mb-3">
-              <div class="flex justify-between items-center mb-1.5">
+            <!-- Thanh Vật Phẩm Đế Chế & Tặng Sao (Quy đổi trực tiếp từ Quỹ Sao của người chơi) -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 mb-3 space-y-2">
+              <div class="flex justify-between items-center flex-wrap gap-1">
                 <span class="text-xs font-semibold text-slate-300 flex items-center gap-1">
-                  <span class="text-sky-400">⭐</span> Tặng Sao cổ vũ sảnh <b class="text-white">{{ activeChatStreamer }}</b>:
+                  <span class="text-amber-400">⚔️</span> Vật phẩm Đế Chế tặng sảnh <b class="text-white">{{ activeChatStreamer }}</b>:
+                </span>
+                <span v-if="myPlayerObj" class="text-[11px] font-bold text-amber-300 bg-slate-950 px-2 py-0.5 rounded-lg border border-amber-500/30">
+                  💰 Quỹ Sao của bạn: {{ myPlayerObj.starsBalance || 0 }} ⭐
                 </span>
               </div>
-              <div class="grid grid-cols-4 gap-1.5">
+
+              <!-- Hàng 1: 6 Vật Phẩm Đặc Trưng AOE 1 -->
+              <div class="grid grid-cols-3 gap-1.5">
+                <button v-for="item in aoeGiftCatalog" :key="item.code"
+                        @click="sendStarGift(item.stars, item.code)"
+                        class="bg-slate-950 hover:bg-amber-500 hover:text-slate-950 text-slate-100 border border-slate-700/90 hover:border-amber-400 py-1.5 px-1.5 rounded-lg text-[11px] transition flex flex-col items-center justify-center leading-tight"
+                        :title="item.name + ' (' + item.stars + ' Sao) — ' + item.defaultMsg">
+                  <span class="font-bold">{{ item.icon }} {{ item.shortLabel }}</span>
+                  <span class="text-[10px] text-amber-300 font-extrabold mt-0.5">{{ item.stars }} ⭐</span>
+                </button>
+              </div>
+
+              <!-- Hàng 2: Nút Tặng Sao Nhanh -->
+              <div class="grid grid-cols-4 gap-1.5 pt-1 border-t border-slate-800/80">
                 <button @click="sendStarGift(1)"
-                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1.5 rounded-lg text-xs transition">
+                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1 rounded-lg text-xs transition">
                   ⭐ +1
                 </button>
                 <button @click="sendStarGift(10)"
-                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1.5 rounded-lg text-xs transition">
+                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1 rounded-lg text-xs transition">
                   ⭐ +10
                 </button>
                 <button @click="sendStarGift(50)"
-                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1.5 rounded-lg text-xs transition">
+                        class="bg-slate-950 hover:bg-sky-500 hover:text-slate-950 text-sky-300 border border-slate-700 font-bold py-1 rounded-lg text-xs transition">
                   ✨ +50
                 </button>
                 <button @click="sendStarGift(100)"
-                        class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-1.5 rounded-lg text-xs shadow transition">
+                        class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-1 rounded-lg text-xs shadow transition">
                   🔥 +100
                 </button>
               </div>
@@ -897,8 +929,8 @@
                          ? 'bg-blue-950/60 border border-blue-500/40 text-slate-100'
                          : 'bg-slate-900 border border-slate-800 text-slate-100')">
                 <div class="flex justify-between items-center mb-0.5">
-                  <span class="font-bold" :class="m.type === 'STAR' ? 'text-sky-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-white')">
-                    <span v-if="m.type === 'STAR'">⭐ </span>
+                  <span class="font-bold" :class="m.type === 'STAR' ? 'text-amber-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-white')">
+                    <span v-if="m.type === 'STAR'">{{ m.giftIcon || '⭐' }} </span>
                     <span v-else-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'">🔵 [FB] </span>
                     {{ m.senderName }}
                   </span>
@@ -1119,15 +1151,17 @@
             </div>
           </div>
 
-          <!-- Đổi mật khẩu cá nhân & Ghi chú -->
-          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <!-- Đổi mật khẩu cá nhân (tối thiểu 8 ký tự + nhập 2 lần xác nhận) & Ghi chú -->
+          <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
             <div class="text-xs space-y-1">
               <div class="text-slate-300"><b>Ghi chú tài khoản:</b> <span class="text-slate-400">{{ myPlayerObj.note || 'Tài khoản thành viên chính thức' }}</span></div>
               <div class="text-slate-400">Bạn bè đã kết nối: <b class="text-sky-300">{{ (myPlayerObj.friends || []).length }} người chơi</b></div>
             </div>
-            <div class="flex items-center gap-2 w-full md:w-auto">
-              <input type="password" v-model="myNewPasswordInput" placeholder="Nhập mật khẩu mới..."
-                     class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white outline-none flex-1 md:w-44">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+              <input type="password" v-model="myNewPasswordInput" placeholder="Mật khẩu mới (tối thiểu 8 ký tự)..."
+                     class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white outline-none flex-1 sm:w-48">
+              <input type="password" v-model="myConfirmPasswordInput" @keyup.enter="changeMyPassword" placeholder="Nhập lại mật khẩu mới..."
+                     class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs text-white outline-none flex-1 sm:w-44">
               <button @click="changeMyPassword"
                       class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs shrink-0 transition">
                 🔑 Đổi Mật Khẩu
@@ -1628,6 +1662,15 @@
           showPlayerManagerModal: false,
           showMyProfileModal: false,
           myNewPasswordInput: '',
+          myConfirmPasswordInput: '',
+          aoeGiftCatalog: [
+            { code: 'FOOD_200', shortLabel: 'Bơm 200 Thực', name: 'Bơm 200 Thực', icon: '🍖', stars: 5, defaultMsg: 'Bơm 200 Thực cứu chủ lực!' },
+            { code: 'WOOD_500', shortLabel: 'Bơm 500 Gỗ', name: 'Bơm 500 Gỗ', icon: '🪵', stars: 10, defaultMsg: 'Bơm 500 Gỗ đóng nhà BA!' },
+            { code: 'FOOD_1000', shortLabel: 'Bơm 1000 Thực', name: 'Bơm 1000 Thực', icon: '🥩', stars: 15, defaultMsg: 'Bơm 1000 Thực kích Đời 4!' },
+            { code: 'ELEPHANT', shortLabel: 'Con Voi Điên', name: 'Con Voi Điên', icon: '🐘', stars: 22, defaultMsg: 'Thả Voi Điên húc bay nhà địch!' },
+            { code: 'HORSE_ARCHER', shortLabel: 'Đạo Song Mã', name: 'Đạo Song Mã', icon: '🏹', stars: 50, defaultMsg: 'Viện trợ Đạo Song Mã thần cứu nhà!' },
+            { code: 'PRIEST_LIGHTNING', shortLabel: 'Phù Thủy Sét', name: 'Phù Thủy Sét (Wololo)', icon: '⚡🧙‍♂️', stars: 100, defaultMsg: 'Triệu hồi Phù Thủy Sét (Wololo) — Ái dà, hú hú!' }
+          ],
           adminSearchQuery: '',
           adminFilterTier: 'ALL',
           adminFilterStatus: 'ALL',
@@ -1903,14 +1946,15 @@
             this.showNotify('Không thể gửi bình luận!', 'error');
           }
         },
-        async sendStarGift(starCount = 1) {
+        async sendStarGift(starCount = 1, giftCode = '') {
           if (!this.sessionPlayerName || !this.sessionPlayerPass) {
-            this.showNotify('Bạn bắt buộc phải đăng nhập tài khoản Player để tặng Sao trong sảnh Live!', 'error');
+            this.showNotify('Bạn bắt buộc phải đăng nhập tài khoản Player để tặng Sao / Vật phẩm trong sảnh Live!', 'error');
             this.openLoginUpdaterModal();
             return;
           }
           const sender = this.sessionPlayerName;
-          const customMsg = (this.chatInputText || '').trim() || 'Đánh hay quá! Tặng sao cổ vũ!';
+          const giftItem = giftCode ? this.aoeGiftCatalog.find(g => g.code === giftCode) : null;
+          const customMsg = (this.chatInputText || '').trim() || (giftItem ? giftItem.defaultMsg : 'Đánh hay quá! Tặng sao cổ vũ!');
           if (this.chatInputText) this.chatInputText = '';
           try {
             const res = await fetch(API_URL, {
@@ -1925,11 +1969,18 @@
                 isAdmin: this.isAdmin,
                 adminPassword: this.adminPasswordSession,
                 starCount,
+                giftCode: giftCode || 'STAR',
+                giftName: giftItem ? giftItem.name : `${starCount} Sao`,
+                giftIcon: giftItem ? giftItem.icon : '⭐',
                 message: customMsg
               })
             });
             const data = await res.json();
             if (data.status === 'success') {
+              if (data.senderStarsBalance !== undefined && this.myPlayerObj) {
+                this.myPlayerObj.starsBalance = data.senderStarsBalance;
+              }
+              this.fetchInitialData();
               this.showNotify(data.message);
             } else {
               this.showNotify(data.message || 'Không thể gửi tặng sao!', 'error');
@@ -2589,13 +2640,19 @@
             return;
           }
           this.myNewPasswordInput = '';
+          this.myConfirmPasswordInput = '';
           this.fetchInitialData();
           this.showMyProfileModal = true;
         },
         async changeMyPassword() {
           const newPass = (this.myNewPasswordInput || '').trim();
-          if (!newPass || newPass.length < 2) {
-            this.showNotify('Vui lòng nhập mật khẩu mới (ít nhất 2 ký tự)!', 'error');
+          const confirmPass = (this.myConfirmPasswordInput || '').trim();
+          if (!newPass || newPass.length < 8) {
+            this.showNotify('Mật khẩu mới bắt buộc phải có tối thiểu 8 ký tự!', 'error');
+            return;
+          }
+          if (newPass !== confirmPass) {
+            this.showNotify('Mật khẩu nhập lại không trùng khớp! Vui lòng kiểm tra lại.', 'error');
             return;
           }
           try {
@@ -2606,14 +2663,17 @@
                 action: 'userChangePassword',
                 playerName: this.sessionPlayerName,
                 oldPassword: this.sessionPlayerPass,
-                newPassword: newPass
+                newPassword: newPass,
+                confirmPassword: confirmPass
               })
             });
             const data = await res.json();
             if (data.status === 'success') {
               this.sessionPlayerPass = newPass;
               sessionStorage.setItem('aoe_playerPass', newPass);
+              localStorage.setItem('aoe_playerPass', newPass);
               this.myNewPasswordInput = '';
+              this.myConfirmPasswordInput = '';
               this.fetchInitialData();
               this.showNotify(data.message || 'Đã đổi mật khẩu thành công!');
             } else {

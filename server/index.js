@@ -94,6 +94,58 @@ const CIV_MAP = {
   MIN: 'Minoan', PER: 'Persian', ROM: 'Roman', ASSY: 'Assy', HIT: 'Hittite'
 };
 
+// Danh mục Vật Phẩm Đế Chế (AOE Gifts) quy đổi tương ứng với Quỹ Sao của người chơi
+const AOE_GIFT_CATALOG = {
+  FOOD_200: {
+    code: 'FOOD_200',
+    name: 'Bơm 200 Thực',
+    icon: '🍖',
+    stars: 5,
+    particles: ['🍖', '🥩', '✨', '⭐'],
+    defaultMsg: 'Bơm 200 Thực cứu chủ lực!'
+  },
+  WOOD_500: {
+    code: 'WOOD_500',
+    name: 'Bơm 500 Gỗ',
+    icon: '🪵',
+    stars: 10,
+    particles: ['🪵', '🌲', '✨', '⭐'],
+    defaultMsg: 'Bơm 500 Gỗ đóng nhà BA!'
+  },
+  FOOD_1000: {
+    code: 'FOOD_1000',
+    name: 'Bơm 1000 Thực',
+    icon: '🥩',
+    stars: 15,
+    particles: ['🥩', '🍖', '🔥', '⭐'],
+    defaultMsg: 'Bơm 1000 Thực kích Đời 4!'
+  },
+  ELEPHANT: {
+    code: 'ELEPHANT',
+    name: 'Con Voi Điên',
+    icon: '🐘',
+    stars: 22,
+    particles: ['🐘', '💥', '🔥', '⭐'],
+    defaultMsg: 'Thả Voi Điên húc bay nhà địch!'
+  },
+  HORSE_ARCHER: {
+    code: 'HORSE_ARCHER',
+    name: 'Đạo Song Mã',
+    icon: '🏹',
+    stars: 50,
+    particles: ['🏹', '🐎', '🔥', '🌟'],
+    defaultMsg: 'Viện trợ Đạo Song Mã thần cứu nhà!'
+  },
+  PRIEST_LIGHTNING: {
+    code: 'PRIEST_LIGHTNING',
+    name: 'Phù Thủy Sét (Wololo)',
+    icon: '⚡🧙‍♂️',
+    stars: 100,
+    particles: ['⚡', '🧙‍♂️', '✨', '🔥'],
+    defaultMsg: 'Triệu hồi Phù Thủy Sét (Wololo) — Ái dà, hú hú!'
+  }
+};
+
 function parseCiv(value) {
   if (!value) return 'Random';
   const clean = String(value).toUpperCase().replace(/[^A-Z]/g, '');
@@ -761,8 +813,12 @@ app.post('/api', async (req, res) => {
         return res.json({ status: 'error', message: auth.reason || 'Mật khẩu hiện tại không đúng!' });
       }
       const newPass = String(data.newPassword || '').trim();
-      if (!newPass || newPass.length < 2) {
-        return res.json({ status: 'error', message: 'Mật khẩu mới phải có ít nhất 2 ký tự!' });
+      const confirmPass = data.confirmPassword !== undefined ? String(data.confirmPassword || '').trim() : newPass;
+      if (!newPass || newPass.length < 8) {
+        return res.json({ status: 'error', message: 'Mật khẩu mới bắt buộc phải có tối thiểu 8 ký tự!' });
+      }
+      if (newPass !== confirmPass) {
+        return res.json({ status: 'error', message: 'Mật khẩu xác nhận nhập lại không trùng khớp!' });
       }
       const now = Date.now();
       auth.player.password = newPass;
@@ -771,7 +827,7 @@ app.post('/api', async (req, res) => {
         id: 'PASS_' + now,
         action: 'USER_CHANGE_PASS',
         tier: auth.player.tier,
-        note: 'Người dùng tự đổi mật khẩu cá nhân',
+        note: 'Người dùng tự đổi mật khẩu cá nhân (đã xác thực 2 lớp)',
         by: auth.player.name,
         createdAt: now,
         formattedTime: formatVietnamTime(now)
@@ -1076,26 +1132,29 @@ app.post('/api', async (req, res) => {
       });
     }
 
-    // ==================== HIỆU ỨNG TẶNG SAO (BẮT BUỘC ĐĂNG NHẬP) ====================
+    // ==================== HIỆU ỨNG TẶNG SAO & VẬT PHẨM ĐẾ CHẾ (TRỪ TRỰC TIẾP TỪ QUỸ SAO CỦA NGƯỜI CHƠI) ====================
     if (action === 'sendStarGift') {
       const loginName = String(data.senderName || data.playerName || '').trim();
       const auth = await validatePlayerAccount(loginName, data.password);
       if (!auth.valid && !isAdminAuthorized(data)) {
         return res.json({
           status: 'error',
-          message: auth.reason || 'Bạn bắt buộc phải đăng nhập tài khoản Player để tặng sao trong sảnh Live!'
+          message: auth.reason || 'Bạn bắt buộc phải đăng nhập tài khoản Player để tặng Sao / Vật phẩm trong sảnh Live!'
         });
       }
 
-      const senderPlayer = auth.player || null;
       const senderName = auth.canonicalName || loginName || 'XO';
-      if (senderPlayer) {
-        senderPlayer.lastSeenAt = Date.now();
-        await db.upsertPlayer(senderPlayer);
-      }
+      const rawGiftCode = String(data.giftCode || '').toUpperCase().trim();
+      const giftDef = AOE_GIFT_CATALOG[rawGiftCode] || null;
 
-      const starCount = Math.max(1, Math.min(9999, Number(data.starCount || data.stars) || 1));
-      const cheerText = String(data.message || 'Đánh hay quá! Tặng sao cổ vũ!').trim().slice(0, 160);
+      const starCount = giftDef
+        ? giftDef.stars
+        : Math.max(1, Math.min(9999, Number(data.starCount || data.stars) || 1));
+      const giftCode = giftDef ? giftDef.code : (rawGiftCode || 'STAR');
+      const giftName = giftDef ? giftDef.name : String(data.giftName || `${starCount} Sao`).trim();
+      const giftIcon = giftDef ? giftDef.icon : String(data.giftIcon || '⭐').trim();
+      const giftParticles = giftDef ? giftDef.particles : ['⭐', '🌟', '✨', '💫', '🔥'];
+      const cheerText = String(data.message || (giftDef ? giftDef.defaultMsg : 'Đánh hay quá! Tặng sao cổ vũ!')).trim().slice(0, 160);
 
       const matches = await db.getMatches();
       let targetMatch = null;
@@ -1117,47 +1176,68 @@ app.post('/api', async (req, res) => {
       const streamerObj = rawPlayers.find(p => p.name.toLowerCase() === streamerName.toLowerCase());
       const senderObj = rawPlayers.find(p => p.name.toLowerCase() === senderName.toLowerCase());
 
+      if (!senderObj) {
+        return res.json({
+          status: 'error',
+          message: `Không tìm thấy tài khoản "${senderName}" để trừ Quỹ Sao!`
+        });
+      }
+
+      const currentSenderBalance = Number(senderObj.starsBalance) || 0;
+      if (currentSenderBalance < starCount) {
+        return res.json({
+          status: 'error',
+          starsBalance: currentSenderBalance,
+          message: `Quỹ Sao của bạn không đủ để tặng ${giftIcon} ${giftName} (Cần ${starCount} ⭐, quỹ hiện có ${currentSenderBalance} ⭐). Vui lòng liên hệ Admin XO để nạp thêm Sao!`
+        });
+      }
+
       const now = Date.now();
+      const isSelfGift = Boolean(streamerObj && streamerObj.name.toLowerCase() === senderObj.name.toLowerCase());
+
+      // 1. Trừ trực tiếp số Sao từ Quỹ Sao (starsBalance) của người tặng
+      senderObj.starsBalance = Math.max(0, currentSenderBalance - starCount);
+      senderObj.lastSeenAt = now;
+      senderObj.starHistory = Array.isArray(senderObj.starHistory) ? senderObj.starHistory : [];
+      senderObj.starHistory.push({
+        id: 'STAR_SENT_' + now + '_' + Math.floor(Math.random() * 1000),
+        type: 'GIFT_SENT',
+        amount: -starCount,
+        balanceAfter: senderObj.starsBalance,
+        note: `Tặng ${giftIcon} ${giftName} (-${starCount} ⭐) cho sảnh Live của ${streamerName}: "${cheerText}"`,
+        by: senderName,
+        createdAt: now,
+        formattedTime: formatVietnamTime(now)
+      });
+
+      // 2. Cộng vào tổng Sao nhận trên Live (starsReceived) của Streamer
       let totalStreamerStars = starCount;
-      if (streamerObj) {
-        streamerObj.starsReceived = (Number(streamerObj.starsReceived) || 0) + starCount;
-        totalStreamerStars = streamerObj.starsReceived;
-        streamerObj.starHistory = Array.isArray(streamerObj.starHistory) ? streamerObj.starHistory : [];
-        streamerObj.starHistory.push({
+      const receiverTarget = isSelfGift ? senderObj : streamerObj;
+      if (receiverTarget) {
+        receiverTarget.starsReceived = (Number(receiverTarget.starsReceived) || 0) + starCount;
+        totalStreamerStars = receiverTarget.starsReceived;
+        receiverTarget.starHistory = Array.isArray(receiverTarget.starHistory) ? receiverTarget.starHistory : [];
+        receiverTarget.starHistory.push({
           id: 'STAR_RCV_' + now + '_' + Math.floor(Math.random() * 1000),
           type: 'GIFT_RECEIVED',
           amount: starCount,
-          balanceAfter: streamerObj.starsBalance || 0,
+          balanceAfter: receiverTarget.starsBalance || 0,
           totalReceivedAfter: totalStreamerStars,
-          note: `Nhận +${starCount} ⭐ từ ${senderName}: "${cheerText}"`,
+          note: `Nhận ${giftIcon} ${giftName} (+${starCount} ⭐) từ ${senderName}: "${cheerText}"`,
           by: senderName,
           createdAt: now,
           formattedTime: formatVietnamTime(now)
         });
+      }
+
+      // Lưu vào DB (Nếu tự tặng tại sảnh của mình thì chỉ upsert 1 lần trên cùng object đã cập nhật cả 2 trường)
+      await db.upsertPlayer(senderObj);
+      if (streamerObj && !isSelfGift) {
         await db.upsertPlayer(streamerObj);
       }
 
-      if (senderObj) {
-        const curBal = Number(senderObj.starsBalance) || 0;
-        if (curBal > 0) {
-          senderObj.starsBalance = Math.max(0, curBal - starCount);
-        }
-        senderObj.starHistory = Array.isArray(senderObj.starHistory) ? senderObj.starHistory : [];
-        senderObj.starHistory.push({
-          id: 'STAR_SENT_' + now + '_' + Math.floor(Math.random() * 1000),
-          type: 'GIFT_SENT',
-          amount: -starCount,
-          balanceAfter: senderObj.starsBalance || 0,
-          note: `Tặng ${starCount} ⭐ cho sảnh Live của ${streamerName}: "${cheerText}"`,
-          by: senderName,
-          createdAt: now,
-          formattedTime: formatVietnamTime(now)
-        });
-        if (!streamerObj || streamerObj.name.toLowerCase() !== senderObj.name.toLowerCase()) {
-          await db.upsertPlayer(senderObj);
-        }
-      }
-      const displayLine = `đã tặng ${starCount} ⭐ cho ${streamerName} — "${cheerText}"`;
+      const itemTitle = giftDef ? `${giftIcon} ${giftName.toUpperCase()} (${starCount} ⭐)` : `${starCount} ⭐`;
+      const displayLine = `vừa tặng ${itemTitle} cho ${streamerName} — "${cheerText}"`;
       const starChatObj = {
         id: 'STAR_' + now + '_' + Math.floor(Math.random() * 1000),
         matchId: targetMatch ? targetMatch.id : null,
@@ -1165,6 +1245,9 @@ app.post('/api', async (req, res) => {
         senderName,
         senderTier: 'STAR',
         starCount,
+        giftCode,
+        giftName,
+        giftIcon,
         text: displayLine,
         message: displayLine,
         type: 'STAR',
@@ -1193,9 +1276,14 @@ app.post('/api', async (req, res) => {
         streamerName,
         senderName,
         starCount,
+        giftCode,
+        giftName,
+        giftIcon,
+        giftParticles,
         message: cheerText,
         totalMatchStars,
         totalStreamerStars,
+        senderStarsBalance: senderObj.starsBalance,
         createdAt: now
       };
 
@@ -1211,7 +1299,8 @@ app.post('/api', async (req, res) => {
         gift: giftPayload,
         chat: starChatObj,
         match: targetMatch || null,
-        message: `🌟 Đã gửi tặng ${starCount} Sao tới Livestream của ${streamerName}!`
+        senderStarsBalance: senderObj.starsBalance,
+        message: `${giftIcon} Đã tặng ${giftName} (-${starCount} ⭐) tới sảnh Live của ${streamerName}! (Quỹ Sao còn lại: ${senderObj.starsBalance} ⭐)`
       });
     }
 

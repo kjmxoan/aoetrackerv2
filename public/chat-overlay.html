@@ -77,14 +77,19 @@
         </div>
       </div>
 
-      <!-- Dòng vinh danh nổi khi có người vừa Tặng Sao (Chỉ hiển thị Text nổi, nền trong suốt 100%) -->
+      <!-- Dòng vinh danh nổi khi có người vừa Tặng Sao / Vật phẩm AOE (Chỉ hiển thị Text nổi, nền trong suốt 100%) -->
       <div v-if="activeStarGift"
            class="px-1 py-1.5 mb-1 flex items-center gap-2 msg-item stroke-gold"
            style="background: transparent !important;">
-        <span class="text-2xl animate-bounce">🌟</span>
+        <span class="text-2xl animate-bounce">{{ activeStarGift.giftIcon || '🌟' }}</span>
         <div class="flex-1 min-w-0">
           <div class="text-[14px] font-black text-amber-300 leading-tight">
-            {{ activeStarGift.senderName }} vừa tặng +{{ activeStarGift.starCount }} ⭐!
+            <template v-if="activeStarGift.giftName && activeStarGift.giftCode && activeStarGift.giftCode !== 'STAR'">
+              {{ activeStarGift.senderName }} vừa tặng {{ activeStarGift.giftIcon }} {{ activeStarGift.giftName.toUpperCase() }} ({{ activeStarGift.starCount }} ⭐)!
+            </template>
+            <template v-else>
+              {{ activeStarGift.senderName }} vừa tặng +{{ activeStarGift.starCount }} ⭐!
+            </template>
           </div>
           <div class="text-[12px] font-bold text-yellow-100 truncate">
             "{{ activeStarGift.message }}"
@@ -98,7 +103,7 @@
              class="msg-item text-[13px] leading-snug break-words stroke-text"
              style="background: transparent !important;">
           <span v-if="m.type === 'STAR' || m.type === 'STAR_GIFT'" class="font-black text-amber-300 stroke-gold">
-            🌟 {{ m.senderName }}: {{ m.text || m.message }}
+            {{ m.giftIcon || '🌟' }} {{ m.senderName }}: {{ m.text || m.message }}
           </span>
           <template v-else>
             <span class="font-extrabold" :class="(m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-sky-300'">
@@ -142,7 +147,9 @@
               gift.streamerName.toLowerCase() !== this.streamerFilter.toLowerCase()) {
             return;
           }
-          const icons = ['⭐', '🌟', '✨', '💫'];
+          const icons = (Array.isArray(gift.giftParticles) && gift.giftParticles.length > 0)
+            ? gift.giftParticles
+            : ['⭐', '🌟', '✨', '💫'];
           this.starParticles = Array.from({ length: 12 }, (_, idx) => ({
             id: Date.now() + '_' + idx,
             left: 10 + Math.floor(Math.random() * 80),

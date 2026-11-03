@@ -66,13 +66,24 @@ aoe-tracker/
 
 ---
 
-### 2.3. Hệ Thống Bạn Bè Đang Live, Sảnh Chat Giao Lưu & Tặng Sao Cổ Vũ (`🌟`)
-- **Kết bạn & Theo dõi trạng thái trực tuyến**:
-  - Người chơi có thể kết bạn với các Streamer/Player khác để biết ai đang **`🔴 LIVE`** hoặc **`🟢 Online`**.
-  - Bấm 1 chạm **`🏟️ Vào Sảnh Live`** của bạn bè ngay trên Tool hoặc trên Web để trò chuyện và tặng Sao.
-- **Bình luận & Tặng Sao Cổ Vũ (`+1 ⭐`, `+10 🌟`, `+50 ✨`, `+100 🔥`)**:
-  - Bắt buộc đăng nhập tài khoản Player để bình luận hoặc tặng Sao.
-  - Khi tặng Sao, số Sao sẽ trừ từ **Số dư Sao (`starsBalance`)** của người tặng, cộng vào tổng Sao nhận được của Streamer và kích hoạt **Hiệu ứng mưa Sao bay + Vinh danh nổi** ngay trên màn hình OBS của Streamer.
+### 2.3. Hệ Thống Sảnh Các Trận Đấu Đang Live (`🏟️`), Bạn Bè, Hộp Chat Đứng & Tặng Vật Phẩm Đế Chế (`🐘 ⚡ 🥩`)
+- **🏟️ Sảnh Các Trận Đấu Đang Live (`Live Matches Lobby`)**:
+  - Hiển thị danh sách trực quan toàn bộ các trận đấu đang `LIVE` trên hệ thống kèm tên Streamer, thể thức (`1v1`, `2v2`, `3v3`, `4v4`), đội hình 2 phe và tỉ số hiện tại.
+  - Người chơi bấm **`👁️ Vào Sảnh & Chat`** để theo dõi trực tiếp đội hình/tỉ số trận đấu đó ngay trên bảng điều khiển (khi máy mình chưa có trận) và tham gia bình luận, tặng vật phẩm tương tác.
+- **Bố cục Bảng Điều Khiển 2 Cột & Hộp Chat Đứng (`Vertical Chat Box`)**:
+  - **Cột Trái (`56%`)**: Góc trên là khung **Team Đỏ vs Team Xanh** thu gọn gọn gàng; ở giữa là **🏟️ Sảnh Các Trận Đấu Đang Live & Bạn Bè**; ở dưới là **📜 Bảng Nhật Ký Điều Tra**.
+  - **Cột Phải (`44%`)**: **Hộp Chat Đứng (`Vertical Chat Box`)** thiết kế giống hệt `chat-overlay.html` trên OBS, giúp đọc được nhiều bình luận, không bao giờ bị che khuất ô nhập chat hay các nút bấm ngay cả trên màn hình 4K DPI cao.
+- **Quy Đổi Sao Từ Quỹ Sao Cá Nhân (`starsBalance`) & Bộ Vật Phẩm Đặc Trưng Đế Chế (`AOE Gift Catalog`)**:
+  - Mỗi khi tặng Sao hoặc Vật Phẩm, hệ thống **trừ trực tiếp từ chính Quỹ Sao (`starsBalance`) của người tặng** và cộng vào Sao nhận được của Streamer (kèm lưu lịch sử giao dịch Sao 2 chiều).
+  - Bổ sung bộ **6 Vật Phẩm Đặc Trưng Game Đế Chế (AOE 1)** quy đổi theo Quỹ Sao, hiển thị biểu tượng và hiệu ứng mưa icon bay lên trên OBS (`overlay.html` & `chat-overlay.html`):
+    - **`🍖 Bơm 200 Thực`** (`5 ⭐`): Cứu chủ lực đầu đời!
+    - **`🪵 Bơm 500 Gỗ`** (`10 ⭐`): Đóng nhà BA / bánh xe!
+    - **`🥩 Bơm 1000 Thực`** (`15 ⭐`): Kích Đời 4 thần tốc!
+    - **`🐘 Thả Con Voi Điên`** (`22 ⭐`): Húc bay nhà địch!
+    - **`🏹 Viện Trợ Song Mã`** (`50 ⭐`): Đạo Song Mã thần cứu nhà!
+    - **`⚡ Triệu Hồi Phù Thủy Sét`** (`100 ⭐`): Hú hú Wololo biến đổi quân địch!
+- **Bảo mật Đổi Mật Khẩu 2 Lớp (`>= 8 ký tự`)**:
+  - Khi người chơi đổi mật khẩu cá nhân (trên cả Tool PC và Web), hệ thống yêu cầu **tối thiểu 8 ký tự** và bắt buộc **nhập 2 lần mật khẩu (`Mật khẩu mới` & `Nhập lại mật khẩu`)** để kiểm tra trùng khớp trước khi lưu.
 
 ---
 
@@ -250,3 +261,10 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
       - Ngay khi người chơi vào game ấn `F2 (Diplomacy)` tạo trận đấu mới, OBS Overlay tự động chuyển mượt mà từ Khung Ảo sang Bảng Quân thật qua luồng SSE thời gian thực.
       - Cập nhật kích thước chuẩn khuyên dùng cho nguồn Browser Bảng Quân trên OBS thành **`Width = 550, Height = 210`** (hoặc **`750 x 210`** nếu bật Đánh theo C) thay vì `980 x 600`, giúp khung viền đỏ của OBS ôm vừa khít bảng quân, không còn khoảng trống thừa bên dưới bị tràn ra ngoài mép đáy màn hình OBS.
       - Bổ sung tùy chọn bật/tắt **`📐 Hiện Khung Bảng Quân Ảo trên OBS khi chưa có trận`** (`showIdlePreview`, miễn phí cho mọi hạng từ Đồng trở lên) trên cả Tool PC và Web.
+    - **Thiết kế lại Khung Đăng Nhập & Bố cục Bảng Điều Khiển 2 Cột (Tương thích 4K DPI) + Sảnh Trận Đấu Live + Vật Phẩm Đế Chế (`🐘 ⚡ 🥩`)**:
+      - **Khung Đăng Nhập (`login_card`) co giãn tự động theo DPI**: Loại bỏ kích thước pixel cố định gây cắt chữ trên màn hình 4K (`3840x2160`), vẽ lại viền đôi (`#eca133` / `#2b3541`) ôm sát khung nhập liệu bên trong.
+      - **Đổi mật khẩu an toàn (≥ 8 ký tự & Xác nhận 2 lần)**: Yêu cầu mật khẩu mới tối thiểu 8 ký tự và nhập lại lần 2 trùng khớp trên cả Tool PC (`open_my_profile_window`), Web (`index.html`) và API (`userChangePassword`).
+      - **Bố cục Bảng Điều Khiển 2 Cột (`2-Column Workspace`)**: Thu gọn khung **Team Đỏ vs Team Xanh** sang góc trên bên trái, đặt **🏟️ Sảnh Các Trận Đấu Đang Live & Bạn Bè** ở giữa bên trái, **Bảng Nhật Ký Điều Tra** ở góc dưới bên trái; dành trọn **Cột Phải (`44%`)** làm **Hộp Chat Đứng (`Vertical Chat Box`)** giống `chat-overlay.html` giúp các nút và ô nhập bình luận luôn hiển thị đầy đủ, không bao giờ bị co cụm hay mất chữ.
+      - **Sảnh Các Trận Đấu Đang Live (`Live Matches Lobby`)**: Liệt kê trực tiếp các trận đang `LIVE` kèm đội hình 2 bên và tỉ số, cho phép bấm **`👁️ Vào Sảnh & Chat`** để theo dõi trận đấu và tương tác ngay.
+      - **Trừ Sao trực tiếp từ Quỹ Sao cá nhân (`starsBalance`) & 6 Biểu tượng Vật Phẩm Đế Chế (`AOE_GIFT_CATALOG`)**: Tặng **`🍖 200 Thực (5⭐)`**, **`🪵 500 Gỗ (10⭐)`**, **`🥩 1000 Thực (15⭐)`**, **`🐘 Con Voi (22⭐)`**, **`🏹 Song Mã (50⭐)`**, **`⚡ Phù Thủy Sét (100⭐)`** quy đổi trực tiếp từ Quỹ Sao của người chơi và bắn hiệu ứng icon bay lên trên OBS.
+      - **Chống bắt nhầm cửa sổ nền tối (`med_bg_v`) trên màn 4K**: Bổ sung kiểm tra độ sáng trung vị nền hộp thoại (`58.0 <= med_bg_v <= 220.0`) trong `verify_is_diplomacy_dialog` để loại bỏ ngay cửa sổ nền tối của chính Tool.
