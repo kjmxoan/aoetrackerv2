@@ -1879,10 +1879,12 @@ class AOETrackerApp:
 
         # Phím tắt thao tác nhanh (Hoạt động cả trên cửa sổ Tool lẫn Global Hotkey khi đang trong màn hình Game AOE)
         self._last_global_score_hotkey_ts = 0.0
+        self._last_global_hype_hotkey_ts = 0.0
         self.root.bind("<F3>", lambda _e: self.test_from_image_file() if self.is_logged_in else None)
         self.root.bind("<F5>", lambda _e: self._trigger_global_winner_hotkey("RED", "F5") if self.is_logged_in else None)
         self.root.bind("<F6>", lambda _e: self._trigger_global_winner_hotkey("BLUE", "F6") if self.is_logged_in else None)
         self.root.bind("<F7>", lambda _e: self.finish_current_match() if self.is_logged_in else None)
+        self.root.bind("<F8>", lambda _e: self._trigger_global_hype_hotkey("F8") if self.is_logged_in else None)
 
         self.main_app_frame = tk.Frame(self.root, bg="#0b0e14")
 
@@ -2188,7 +2190,7 @@ class AOETrackerApp:
 
         tk.Label(
             self.status_log_bar,
-            text="Phím tắt:  F2 Quét  |  F3 Test ảnh  |  F5 Thắng Đỏ  |  F6 Thắng Xanh  |  F7 Kết thúc kèo",
+            text="Phím tắt:  F2 Quét  |  F3 Test ảnh  |  F5 Thắng Đỏ  |  F6 Thắng Xanh  |  F7 Kết thúc  |  F8 Tay đâu!",
             font=("Segoe UI", 8, "bold"),
             fg="#cbd5e1",
             bg="#131720",
@@ -2318,8 +2320,25 @@ class AOETrackerApp:
             pady=4,
             cursor="hand2",
         )
-        self.btn_test_img.pack(side="left")
+        self.btn_test_img.pack(side="left", padx=(0, 8))
         self._bind_hover(self.btn_test_img, "#1a202c", "#242c3d", "#cbd5e1", "#ffffff")
+
+        self.btn_hype_f8 = tk.Button(
+            quick_bar,
+            text="🙌 Tay đâu! [F8]",
+            command=lambda: self._trigger_global_hype_hotkey("Nút F8"),
+            font=("Segoe UI", 9, "bold"),
+            bg="#2b1911",
+            fg="#fbbf24",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#d97706",
+            padx=11,
+            pady=4,
+            cursor="hand2",
+        )
+        self.btn_hype_f8.pack(side="left")
+        self._bind_hover(self.btn_hype_f8, "#2b1911", "#452310", "#fbbf24", "#ffffff")
 
         btn_copy_obs = tk.Button(
             quick_bar,
@@ -6506,6 +6525,96 @@ class AOETrackerApp:
 
         threading.Thread(target=_task, daemon=True).start()
 
+    def _trigger_global_hype_hotkey(self, key_name: str = "F8"):
+        """
+        Xử lý phím tắt F8 (Cả trong màn hình Game AOE lẫn trên App):
+        Làm mờ bảng quân trên OBS Overlay và bắn dòng chữ rung lắc hứng khởi 'Tay đâu, tayyyy đâuuuuu'
+        để ăn mừng chiến thắng nghẹt thở cùng người xem Live.
+        """
+        if not self.is_logged_in:
+            return
+        now = time.time()
+        if now - getattr(self, "_last_global_hype_hotkey_ts", 0.0) < 1.5:
+            return
+        self._last_global_hype_hotkey_ts = now
+        shout_text = "Tay đâu, tayyyy đâuuuuu"
+        self.log(f"🔥 [Phím tắt {key_name}] Đang bắn hiệu ứng hứng khởi \"{shout_text}\" lên OBS Overlay & Sảnh Live!", "SUCCESS")
+
+        # Phát âm báo 2 nốt hứng khởi khi ấn F8 trong Game
+        if os.name == "nt":
+            def _beep_hype():
+                try:
+                    import winsound
+                    winsound.Beep(987, 90)
+                    winsound.Beep(1318, 150)
+                except Exception:
+                    pass
+            threading.Thread(target=_beep_hype, daemon=True).start()
+
+        # Hiệu ứng rung lắc nhẹ & nổi bật ngay trên Bảng Tỉ Số Trung Tâm của App PC
+        def _animate_local_hype(step: int = 0):
+            try:
+                if step == 0:
+                    self._saved_mode_txt_before_hype = self.match_mode_lbl.cget("text")
+                    self.match_mode_lbl.configure(text="🔥 CHIẾN THẮNG NGHẸT THỞ [F8] 🔥", fg="#fef08a")
+                    self.c_mode_summary_lbl.configure(text=f"🙌 \"{shout_text}\" 🙌", fg="#fbbf24")
+                    if hasattr(self, "chat_honor_lbl") and hasattr(self, "chat_honor_banner_frame"):
+                        self.chat_honor_banner_frame.configure(highlightbackground="#f59e0b", bg="#2e1d0d")
+                        self.chat_honor_lbl.configure(
+                            text=f"🙌 [HỨNG KHỞI F8] {self.player_name_var.get().strip() or 'HOST'}: \"{shout_text}\" 🔥",
+                            fg="#fef08a",
+                            bg="#2e1d0d",
+                        )
+                if step < 18:
+                    pad_l = 6 if step % 2 == 0 else 2
+                    pad_r = 2 if step % 2 == 0 else 6
+                    if hasattr(self, "match_history_lbl"):
+                        self.match_history_lbl.configure(
+                            text=f"🙌 {shout_text} 🔥",
+                            fg="#fef08a" if step % 2 == 0 else "#fbbf24",
+                            bg="#2b1810",
+                        )
+                    self.root.after(120, lambda: _animate_local_hype(step + 1))
+                else:
+                    if hasattr(self, "current_match") and self.current_match:
+                        self._update_battle_arena_ui(self.current_match)
+                    else:
+                        self.match_mode_lbl.configure(
+                            text=getattr(self, "_saved_mode_txt_before_hype", "Kèo 1v1 - Chạm 7"),
+                            fg="#eca133",
+                        )
+            except Exception:
+                pass
+
+        self.root.after(0, lambda: _animate_local_hype(0))
+
+        def _task():
+            try:
+                res = requests.post(
+                    self.get_api_endpoint(),
+                    json={
+                        "action": "triggerHypeShout",
+                        "streamerName": self.player_name_var.get().strip(),
+                        "senderName": self.player_name_var.get().strip(),
+                        "password": self._get_effective_player_password(),
+                        "isAdmin": self.is_admin,
+                        "adminPassword": self.admin_password,
+                        "text": shout_text,
+                        "subText": "🔥 CHIẾN THẮNG NGHẸT THỞ • QUẨY LÊN ANH EM ƠI! 🙌",
+                        "durationMs": 6500,
+                    },
+                    timeout=10,
+                )
+                data = res.json()
+                if data.get("status") == "success":
+                    self.refresh_initial_state()
+                else:
+                    self.log(f"⚠️ {data.get('message', 'Không bắn được hiệu ứng F8')}", "WARN")
+            except Exception as e:
+                self.log(f"❌ Lỗi bắn hiệu ứng F8: {e}", "ERROR")
+
+        threading.Thread(target=_task, daemon=True).start()
+
     def _trigger_global_winner_hotkey(self, winner: str, key_name: str = "F5"):
         """Xử lý phím tắt F5 (Thắng Đỏ) / F6 (Thắng Xanh) cả khi đang ở trong màn hình Game AOE lẫn trên App."""
         if not self.is_logged_in:
@@ -6671,17 +6780,20 @@ class AOETrackerApp:
             VK_F2 = 0x71
             VK_F5 = 0x74
             VK_F6 = 0x75
+            VK_F8 = 0x77
             VK_MENU = 0x12
             VK_D = 0x44
             MOD_NOREPEAT = 0x4000
             WM_HOTKEY = 0x0312
             HOTKEY_ID_F5 = 505
             HOTKEY_ID_F6 = 506
+            HOTKEY_ID_F8 = 508
 
-            # Đăng ký thêm OS Hotkey F5/F6 để vượt qua UIPI ngay cả khi Game chạy quyền Administrator
+            # Đăng ký thêm OS Hotkey F5/F6/F8 để vượt qua UIPI ngay cả khi Game chạy quyền Administrator
             try:
                 user32.RegisterHotKey(None, HOTKEY_ID_F5, MOD_NOREPEAT, VK_F5)
                 user32.RegisterHotKey(None, HOTKEY_ID_F6, MOD_NOREPEAT, VK_F6)
+                user32.RegisterHotKey(None, HOTKEY_ID_F8, MOD_NOREPEAT, VK_F8)
             except Exception:
                 pass
 
@@ -6689,34 +6801,41 @@ class AOETrackerApp:
             prev_f2 = False
             prev_f5 = False
             prev_f6 = False
+            prev_f8 = False
             prev_alt_d = False
             msg = wintypes.MSG()
 
             while self.running:
                 try:
-                    # 1. Đọc hàng đợi WM_HOTKEY của Windows (bắt nhạy F5/F6 trong Game)
+                    # 1. Đọc hàng đợi WM_HOTKEY của Windows (bắt nhạy F5/F6/F8 trong Game)
                     while user32.PeekMessageW(ctypes.byref(msg), None, WM_HOTKEY, WM_HOTKEY, 1):
                         if self.is_logged_in and msg.message == WM_HOTKEY:
                             if msg.wParam == HOTKEY_ID_F5:
                                 self.root.after(0, lambda: self._trigger_global_winner_hotkey("RED", "F5 (In-Game)"))
                             elif msg.wParam == HOTKEY_ID_F6:
                                 self.root.after(0, lambda: self._trigger_global_winner_hotkey("BLUE", "F6 (In-Game)"))
+                            elif msg.wParam == HOTKEY_ID_F8:
+                                self.root.after(0, lambda: self._trigger_global_hype_hotkey("F8 (In-Game)"))
 
                     if not self.is_logged_in:
                         time.sleep(0.1)
                         continue
 
-                    # 2. Kiểm tra trực tiếp trạng thái phím F5 / F6 bằng GetAsyncKeyState (dự phòng kép)
+                    # 2. Kiểm tra trực tiếp trạng thái phím F5 / F6 / F8 bằng GetAsyncKeyState (dự phòng kép)
                     f5_down = (user32.GetAsyncKeyState(VK_F5) & 0x8000) != 0
                     f6_down = (user32.GetAsyncKeyState(VK_F6) & 0x8000) != 0
+                    f8_down = (user32.GetAsyncKeyState(VK_F8) & 0x8000) != 0
 
                     if f5_down and not prev_f5:
                         self.root.after(0, lambda: self._trigger_global_winner_hotkey("RED", "F5 (In-Game)"))
                     if f6_down and not prev_f6:
                         self.root.after(0, lambda: self._trigger_global_winner_hotkey("BLUE", "F6 (In-Game)"))
+                    if f8_down and not prev_f8:
+                        self.root.after(0, lambda: self._trigger_global_hype_hotkey("F8 (In-Game)"))
 
                     prev_f5 = f5_down
                     prev_f6 = f6_down
+                    prev_f8 = f8_down
 
                     if not self.auto_scan_var.get():
                         time.sleep(0.04)
@@ -6776,6 +6895,7 @@ class AOETrackerApp:
             try:
                 user32.UnregisterHotKey(None, HOTKEY_ID_F5)
                 user32.UnregisterHotKey(None, HOTKEY_ID_F6)
+                user32.UnregisterHotKey(None, HOTKEY_ID_F8)
             except Exception:
                 pass
         except Exception:

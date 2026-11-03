@@ -211,6 +211,25 @@
                       this.match.starsCount = payload.gift.totalMatchStars;
                     }
                   }
+                } else if (payload.type === 'hype_shout') {
+                  if (payload.chat && (!this.streamerFilter || String(payload.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase())) {
+                    if (!this.messages.some(m => m.id === payload.chat.id)) {
+                      this.messages.push(payload.chat);
+                    }
+                  }
+                  if (payload.hype) {
+                    this.triggerStarEffect({
+                      id: payload.hype.id,
+                      streamerName: payload.hype.streamerName,
+                      senderName: payload.hype.streamerName || 'HOST',
+                      giftCode: 'HYPE_F8',
+                      giftName: 'HỨNG KHỞI [F8]',
+                      giftIcon: '🙌🔥',
+                      starCount: 0,
+                      particles: payload.hype.particles || ['🙌', '🔥', '👏', '⚡', '🏆'],
+                      message: payload.hype.text || 'Tay đâu, tayyyy đâuuuuu'
+                    });
+                  }
                 } else {
                   this.fetchChatData();
                 }

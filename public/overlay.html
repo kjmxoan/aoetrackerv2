@@ -61,6 +61,53 @@
       pointer-events: none;
       animation: floatStarUp 2.8s ease-out forwards;
     }
+
+    /* Hiệu ứng Phím tắt F8: Làm mờ Bảng Quân & Hiển thị dòng chữ "Tay đâu, tayyyy đâuuuuu" rung lắc nhẹ kiểu hứng khởi */
+    .overlay-normal-transition {
+      transition: opacity 0.35s ease, filter 0.35s ease, transform 0.35s ease;
+    }
+    .overlay-dimmed-for-hype {
+      opacity: 0.14;
+      filter: blur(4px) brightness(0.45);
+      transform: scale(0.975);
+      transition: opacity 0.35s ease, filter 0.35s ease, transform 0.35s ease;
+    }
+    @keyframes hypeGentleShake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+      15% { transform: translate(-2.5px, -1.5px) rotate(-1.3deg) scale(1.03); }
+      30% { transform: translate(2.5px, 1px) rotate(1.3deg) scale(1.045); }
+      45% { transform: translate(-2px, 1.5px) rotate(-0.9deg) scale(1.02); }
+      60% { transform: translate(2px, -1px) rotate(1deg) scale(1.04); }
+      75% { transform: translate(-1.5px, -1px) rotate(-0.6deg) scale(1.015); }
+      90% { transform: translate(1.5px, 0.5px) rotate(0.5deg) scale(1.025); }
+    }
+    @keyframes hypeBannerFade {
+      0% { opacity: 0; transform: scale(0.78); }
+      10% { opacity: 1; transform: scale(1.03); }
+      16% { opacity: 1; transform: scale(1); }
+      88% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.92); }
+    }
+    .hype-takeover-wrap {
+      animation: hypeBannerFade 6.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .hype-excite-shake {
+      animation: hypeGentleShake 0.68s ease-in-out infinite;
+    }
+    .hype-glow-card {
+      background: linear-gradient(135deg, rgba(24, 15, 10, 0.96) 0%, rgba(45, 22, 10, 0.97) 50%, rgba(20, 14, 10, 0.96) 100%);
+      border: 2px solid #fbbf24;
+      box-shadow:
+        0 0 28px rgba(245, 158, 11, 0.55),
+        0 12px 32px rgba(0, 0, 0, 0.85),
+        inset 0 0 18px rgba(251, 191, 36, 0.22);
+    }
+    .hype-gradient-text {
+      background: linear-gradient(180deg, #ffffff 0%, #fef08a 42%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 3px 10px rgba(245, 158, 11, 0.65));
+    }
   </style>
 </head>
 <body class="p-0 m-0">
@@ -69,6 +116,34 @@
       <!-- BẢNG QUÂN CHÍNH (LEFT / MAIN OVERLAY) -->
       <div class="flex flex-col w-[525px] shrink-0 relative"
            :class="isVirtualPreview ? 'rounded-xl ring-2 ring-amber-400/80 ring-offset-2 ring-offset-transparent' : ''">
+        <!-- HIỆU ỨNG BÙNG NỔ F8: LÀM MỜ BẢNG QUÂN & THAY THẾ BẰNG DÒNG CHỮ "Tay đâu, tayyyy đâuuuuu" RUNG LẮC HỨNG KHỞI -->
+        <div v-if="activeHypeShout"
+             :key="activeHypeShout.id"
+             class="hype-takeover-wrap absolute inset-0 z-50 flex items-center justify-center pointer-events-none px-2">
+          <!-- Các biểu tượng vỗ tay & lửa bay lên xung quanh -->
+          <span v-for="hp in hypeParticles" :key="hp.id"
+                class="floating-star text-2xl z-50"
+                :style="{ left: hp.left + '%', bottom: '8px', animationDelay: hp.delay + 's' }">
+            {{ hp.icon }}
+          </span>
+
+          <div class="hype-glow-card hype-excite-shake w-full rounded-2xl px-5 py-3.5 text-center relative overflow-hidden">
+            <div class="flex items-center justify-center gap-2 mb-1">
+              <span class="text-xs font-black uppercase tracking-widest bg-gradient-to-r from-red-600 via-amber-500 to-red-600 text-white px-2.5 py-0.5 rounded-full shadow">
+                🔥 CHIẾN THẮNG NGHẸT THỞ • MÁY {{ activeHypeShout.streamerName || playerOverride || activeMatch.streamerName || 'XO' }} 🔥
+              </span>
+            </div>
+            <div class="font-score text-[28px] leading-tight font-black tracking-wide hype-gradient-text my-1">
+              🙌 "{{ activeHypeShout.text || 'Tay đâu, tayyyy đâuuuuu' }}" 🙌
+            </div>
+            <div class="text-xs font-extrabold uppercase tracking-wider text-amber-300/95 mt-0.5">
+              {{ activeHypeShout.subText || '👏 QUẨY LÊN ANH EM ƠI • THẢ TIM & TẶNG SAO CỔ VŨ! ⚡' }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Toàn bộ nội dung Bảng Quân sẽ tự động mờ đi khi đang hiển thị dòng chữ F8 -->
+        <div :class="activeHypeShout ? 'overlay-dimmed-for-hype' : 'overlay-normal-transition'">
         <!-- Thanh Header trên cùng -->
         <div class="flex justify-between items-center gap-1.5 mb-1">
           <div class="flex items-center gap-1.5 shrink-0">
@@ -166,6 +241,7 @@
           <span>📐 Khung mẫu căn vị trí OBS (Size chuẩn: {{ overlayCfg.cModeEnabled ? '750 x 190' : '540 x 190' }})</span>
           <span class="text-emerald-400">Vào game ấn F2 sẽ tự lên bảng quân thật</span>
         </div>
+        </div><!-- Đóng khối làm mờ Bảng Quân khi ấn F8 -->
 
         <!-- HIỆU ỨNG VINH DANH HOÀNG GIA (STAR & AOE GIFT HONOR PLATE) TRÊN SÓNG LIVESTREAM -->
         <div v-if="activeStarGift"
@@ -214,7 +290,7 @@
 
       <!-- OVERLAY PHỤ BÊN PHẢI: BẢNG KẾT QUẢ ĐÁNH THEO "C" (SÉC ĐẤU - VIP KIM CƯƠNG) -->
       <div v-if="overlayCfg.cModeEnabled" class="flex flex-col w-[200px] shrink-0"
-           :class="isVirtualPreview ? 'rounded-xl ring-2 ring-amber-400/80 ring-offset-2 ring-offset-transparent' : ''">
+           :class="[isVirtualPreview ? 'rounded-xl ring-2 ring-amber-400/80 ring-offset-2 ring-offset-transparent' : '', activeHypeShout ? 'overlay-dimmed-for-hype' : 'overlay-normal-transition']">
         <div class="premium-tab border-amber-500/50 px-2.5 py-0.5 rounded-t-lg mb-1 flex justify-between items-center">
           <span class="text-[11px] font-black uppercase text-amber-400">🏆 KẾT QUẢ C (SÉC)</span>
           <span class="text-[11px] font-black text-sky-300 bg-slate-900 px-1.5 rounded border border-slate-700">
@@ -273,6 +349,10 @@
           activeStarGift: null,
           starParticles: [],
           starTimer: null,
+          activeHypeShout: null,
+          hypeParticles: [],
+          hypeTimer: null,
+          lastSeenHypeId: '',
           topCivs: ['SHANG','ASSY','HIT','HITTITE','PER','PERSIAN','PAL','PALMYRAN','YAM','YAMATO','ROM','ROMAN']
         };
       },
@@ -501,6 +581,35 @@
             this.starParticles = [];
           }, 5300);
         },
+        triggerHypeShoutAnimation(hype) {
+          if (!hype) return;
+          if (this.playerOverride && hype.streamerName &&
+              hype.streamerName.toLowerCase() !== this.playerOverride.trim().toLowerCase()) {
+            return;
+          }
+          if (hype.id && hype.id === this.lastSeenHypeId) {
+            return;
+          }
+          if (hype.id) {
+            this.lastSeenHypeId = hype.id;
+          }
+          const icons = (Array.isArray(hype.particles) && hype.particles.length > 0)
+            ? hype.particles
+            : ['🙌', '🔥', '👏', '⚡', '🏆', '💥'];
+          this.hypeParticles = Array.from({ length: 16 }, (_, idx) => ({
+            id: Date.now() + '_h_' + idx,
+            left: 4 + Math.floor(Math.random() * 92),
+            delay: (Math.random() * 0.9).toFixed(2),
+            icon: icons[idx % icons.length]
+          }));
+          this.activeHypeShout = hype;
+          const dur = Math.min(12000, Math.max(3500, Number(hype.durationMs) || 6500));
+          if (this.hypeTimer) clearTimeout(this.hypeTimer);
+          this.hypeTimer = setTimeout(() => {
+            this.activeHypeShout = null;
+            this.hypeParticles = [];
+          }, dur);
+        },
         updateDateStr() {
           const now = new Date();
           const pad = v => String(v).padStart(2, '0');
@@ -587,6 +696,13 @@
                 this.streamerOverlayConfig = owner.overlayConfig;
                 chosenMatch.overlayConfig = { ...owner.overlayConfig, ...(chosenMatch.overlayConfig || {}) };
               }
+              if (chosenMatch.lastHypeShout && chosenMatch.lastHypeShout.createdAt) {
+                const ageMs = Date.now() - Number(chosenMatch.lastHypeShout.createdAt);
+                const maxDur = Number(chosenMatch.lastHypeShout.durationMs) || 6500;
+                if (ageMs >= 0 && ageMs < maxDur) {
+                  this.triggerHypeShoutAnimation(chosenMatch.lastHypeShout);
+                }
+              }
             }
             this.match = chosenMatch;
           } catch (error) {
@@ -601,6 +717,9 @@
                 const payload = JSON.parse(ev.data);
                 if (payload.type === 'star_gifted' && payload.gift) {
                   this.triggerStarGiftAnimation(payload.gift);
+                }
+                if (payload.type === 'hype_shout' && payload.hype) {
+                  this.triggerHypeShoutAnimation(payload.hype);
                 }
                 if (payload.type === 'overlay_config_updated' && payload.overlayConfig) {
                   const query = new URLSearchParams(location.search);

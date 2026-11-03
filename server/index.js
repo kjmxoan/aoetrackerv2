@@ -1379,6 +1379,92 @@ app.post('/api', async (req, res) => {
       });
     }
 
+    if (action === 'triggerHypeShout') {
+      const auth = await validatePlayerAccount(data.streamerName || data.senderName, data.password);
+      const adminOk = isAdminAuthorized(data);
+      if (!auth.valid && !adminOk) {
+        return res.json({ status: 'error', message: auth.reason || 'Vui lòng đăng nhập tài khoản Player để bắn hiệu ứng F8!' });
+      }
+      const streamerName = auth.valid ? auth.canonicalName : String(data.streamerName || 'XO').trim();
+      const shoutText = String(data.text || 'Tay đâu, tayyyy đâuuuuu').trim();
+      const subText = String(data.subText || '🔥 CHIẾN THẮNG NGHẸT THỞ • QUẨY LÊN ANH EM ƠI! 🙌').trim();
+      const durationMs = Math.min(12000, Math.max(3500, Number(data.durationMs) || 6500));
+      const now = Date.now();
+
+      const matches = await db.getMatches();
+      const sLower = streamerName.toLowerCase();
+      const sortedForStreamer = matches
+        .filter(m => String(m.streamerName || '').toLowerCase() === sLower)
+        .sort(
+          (a, b) =>
+            Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+            Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+        );
+      const targetMatch =
+        sortedForStreamer.find(m => m.status === 'LIVE') ||
+        sortedForStreamer[0] ||
+        null;
+
+      const hypePayload = {
+        id: 'HYPE_' + now + '_' + Math.floor(Math.random() * 1000),
+        matchId: targetMatch ? targetMatch.id : null,
+        streamerName,
+        text: shoutText,
+        subText,
+        durationMs,
+        particles: ['🙌', '🔥', '👏', '⚡', '🏆', '💥'],
+        createdAt: now
+      };
+
+      const hypeChatObj = {
+        id: hypePayload.id,
+        matchId: targetMatch ? targetMatch.id : null,
+        streamerName,
+        senderName: streamerName,
+        senderTier: (auth.player && auth.player.tier) || 'DIAMOND',
+        isAdmin: adminOk || sLower === 'xo',
+        isStreamer: true,
+        type: 'STAR',
+        starCount: 0,
+        giftCode: 'HYPE_F8',
+        giftName: 'HỨNG KHỞI [F8]',
+        giftIcon: '🙌🔥',
+        text: `🙌 "${shoutText}" 🔥 — ${subText}`,
+        message: `🙌 "${shoutText}" 🔥 — ${subText}`,
+        createdAt: now,
+        timeText: formatShortTimeVN(now)
+      };
+
+      globalChatBuffer.push(hypeChatObj);
+      if (globalChatBuffer.length > 100) globalChatBuffer.shift();
+
+      if (targetMatch) {
+        targetMatch.lastHypeShout = hypePayload;
+        targetMatch.lastHeartbeat = now;
+        if (!Array.isArray(targetMatch.chatMessages)) targetMatch.chatMessages = [];
+        targetMatch.chatMessages.push(hypeChatObj);
+        if (targetMatch.chatMessages.length > 60) {
+          targetMatch.chatMessages = targetMatch.chatMessages.slice(-60);
+        }
+        await db.saveMatch(targetMatch);
+      }
+
+      broadcastUpdate('hype_shout', {
+        matchId: targetMatch ? targetMatch.id : null,
+        streamerName,
+        hype: hypePayload,
+        chat: hypeChatObj
+      });
+
+      return res.json({
+        status: 'success',
+        hype: hypePayload,
+        chat: hypeChatObj,
+        match: targetMatch || null,
+        message: `🙌🔥 Đã bắn hiệu ứng "${shoutText}" lên OBS Overlay & Sảnh Live!`
+      });
+    }
+
     if (action === 'heartbeat') {
       const auth = await validatePlayerAccount(data.streamerName, data.password);
       if (!auth.valid) {
