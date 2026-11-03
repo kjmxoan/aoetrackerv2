@@ -482,7 +482,7 @@ function enrichPlayersWithLiveStatus(players, matches) {
   });
 }
 
-async function getInitialDataPayload(streamerFilter = '') {
+async function getInitialDataPayload(streamerFilter = '', matchIdFilter = '') {
   await checkAndAutoFinishDeadMatches();
   const [rawPlayers, rawMatches, settings] = await Promise.all([
     db.getPlayers(),
@@ -499,12 +499,22 @@ async function getInitialDataPayload(streamerFilter = '') {
   const players = enrichPlayersWithLiveStatus(rawPlayers, matches);
 
   let currentMatch = null;
-  if (streamerFilter) {
+  if (matchIdFilter) {
+    const mf = String(matchIdFilter).trim();
+    currentMatch = matches.find(m => String(m.id) === mf) || null;
+  }
+  if (!currentMatch && streamerFilter) {
     const sf = streamerFilter.trim().toLowerCase();
     currentMatch =
       matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sf) ||
+      matches.find(
+        m =>
+          m.status === 'LIVE' &&
+          ((m.redTeam || []).some(r => String(r || '').toLowerCase() === sf) ||
+            (m.blueTeam || []).some(b => String(b || '').toLowerCase() === sf))
+      ) ||
       null;
-  } else {
+  } else if (!currentMatch && !streamerFilter) {
     currentMatch = matches.find(m => m.status === 'LIVE') || null;
   }
 
@@ -534,6 +544,34 @@ async function getInitialDataPayload(streamerFilter = '') {
     settings,
     appRelease: settings.appRelease || db.DEFAULT_APP_RELEASE
   };
+}
+
+function resolveTargetMatchForChat(matches, data) {
+  const sorted = [...(matches || [])].sort(
+    (a, b) =>
+      Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+      Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+  );
+  if (data && data.matchId) {
+    const mid = String(data.matchId).trim();
+    const byId = sorted.find(m => String(m.id) === mid);
+    if (byId) return byId;
+  }
+  const sName = String((data && (data.streamerName || data.playerName)) || '').trim();
+  if (sName) {
+    const sLower = sName.toLowerCase();
+    return (
+      sorted.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sLower) ||
+      sorted.find(
+        m =>
+          m.status === 'LIVE' &&
+          ((m.redTeam || []).some(r => String(r || '').toLowerCase() === sLower) ||
+            (m.blueTeam || []).some(b => String(b || '').toLowerCase() === sLower))
+      ) ||
+      null
+    );
+  }
+  return sorted.find(m => m.status === 'LIVE') || null;
 }
 
 function areSameCivLineups(gameA, redCivsB, blueCivsB) {
@@ -772,8 +810,9 @@ app.get('/api', async (req, res) => {
     res.setHeader('Expires', '0');
     const action = req.query.action || 'getInitialData';
     const streamer = req.query.streamer || req.query.player || '';
+    const matchId = req.query.matchId || '';
     if (action === 'getInitialData') {
-      const payload = await getInitialDataPayload(streamer);
+      const payload = await getInitialDataPayload(streamer, matchId);
       return res.json(payload);
     }
     return res.json({ status: 'ok', databaseMode: db.isPostgresActive() ? 'neon_postgres' : 'local_json' });
@@ -1058,19 +1097,7 @@ app.post('/api', async (req, res) => {
       }
 
       const matches = await db.getMatches();
-      let targetMatch = null;
-      if (data.matchId) {
-        targetMatch = matches.find(m => m.id === data.matchId);
-      }
-      if (!targetMatch && data.streamerName) {
-        const sLower = String(data.streamerName).toLowerCase();
-        targetMatch =
-          matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sLower) ||
-          matches.find(m => String(m.streamerName || '').toLowerCase() === sLower);
-      }
-      if (!targetMatch) {
-        targetMatch = matches.find(m => m.status === 'LIVE') || matches[0] || null;
-      }
+      const targetMatch = resolveTargetMatchForChat(matches, data);
 
       const streamerName = (targetMatch && targetMatch.streamerName) || data.streamerName || senderName || 'XO';
       const isAdminSender = Boolean(auth.isAdmin || isAdminAuthorized(data) || senderName.toLowerCase() === 'xo');
@@ -1125,19 +1152,7 @@ app.post('/api', async (req, res) => {
         return res.json({ status: 'error', message: 'Vui lòng đăng nhập để ghim bình luận!' });
       }
       const matches = await db.getMatches();
-      let targetMatch = null;
-      if (data.matchId) {
-        targetMatch = matches.find(m => m.id === data.matchId);
-      }
-      if (!targetMatch && data.streamerName) {
-        const sLower = String(data.streamerName).toLowerCase();
-        targetMatch =
-          matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sLower) ||
-          matches.find(m => String(m.streamerName || '').toLowerCase() === sLower);
-      }
-      if (!targetMatch) {
-        targetMatch = matches.find(m => m.status === 'LIVE') || matches[0] || null;
-      }
+      const targetMatch = resolveTargetMatchForChat(matches, data);
 
       const streamerName = (targetMatch && targetMatch.streamerName) || data.streamerName || auth.canonicalName || 'XO';
       const isRoomOwner = auth.valid && auth.canonicalName.toLowerCase() === String(streamerName).toLowerCase();
@@ -1204,13 +1219,7 @@ app.post('/api', async (req, res) => {
         : [{ authorName: data.authorName || data.senderName, text: data.text || data.message, commentId: data.commentId }];
 
       const matches = await db.getMatches();
-      const sLower = canonicalStreamer.toLowerCase();
-      const targetMatch =
-        matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sLower) ||
-        matches.find(m => String(m.streamerName || '').toLowerCase() === sLower) ||
-        matches.find(m => m.status === 'LIVE') ||
-        matches[0] ||
-        null;
+      const targetMatch = resolveTargetMatchForChat(matches, { matchId: data.matchId, streamerName: canonicalStreamer });
 
       if (!global.__fbDedupMap) global.__fbDedupMap = new Map();
       const dedupMap = global.__fbDedupMap;
@@ -1299,19 +1308,7 @@ app.post('/api', async (req, res) => {
       const cheerText = String(data.message || (giftDef ? giftDef.defaultMsg : 'Đánh hay quá! Tặng sao cổ vũ!')).trim().slice(0, 160);
 
       const matches = await db.getMatches();
-      let targetMatch = null;
-      if (data.matchId) {
-        targetMatch = matches.find(m => m.id === data.matchId);
-      }
-      if (!targetMatch && data.streamerName) {
-        const sLower = String(data.streamerName).toLowerCase();
-        targetMatch =
-          matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sLower) ||
-          matches.find(m => String(m.streamerName || '').toLowerCase() === sLower);
-      }
-      if (!targetMatch) {
-        targetMatch = matches.find(m => m.status === 'LIVE') || matches[0] || null;
-      }
+      const targetMatch = resolveTargetMatchForChat(matches, data);
 
       const streamerName = String((targetMatch && targetMatch.streamerName) || data.streamerName || 'XO').trim();
       const rawPlayers = await db.getPlayers();

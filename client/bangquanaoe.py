@@ -3964,7 +3964,7 @@ class AOETrackerApp:
         for line in (
             "•  Khi chưa có trận, cả 2 link tự hiện Khung Ảo viền nét đứt vàng đúng kích thước thật.",
             "•  Kéo khung đỏ của OBS tới vị trí mong muốn: Bảng Quân sát mép dưới / góc màn hình, Khung Chat bên trái hoặc phải.",
-            "•  Vào game bắt buộc ấn nút Diplomacy (trên thanh menu góc trên màn hình game) → Tool mới đọc được bảng quân và tự chuyển từ khung ảo sang dữ liệu thật. Khung Chat tự hiện chat thật khi có trận LIVE / bình luận mới.",
+            "•  Vào game bắt buộc ấn nút Diplomacy (trên thanh menu góc trên màn hình game) → Tool mới đọc được bảng quân và tự chuyển từ khung ảo sang dữ liệu thật. Mỗi trận LIVE hiện khung chat riêng của trận đó; khung chat-overlay và chữ bên trong tự làm trong suốt (ẩn 100%) nếu sau 10 giây không có thêm bình luận hoặc người tặng sao.",
             "•  Bật / tắt tại tab ⚙️ Cài đặt VIP → 📐 Hiện Khung Ảo. Thêm &preview=1 vào link để luôn hiện khung ảo khi chưa có trận.",
         ):
             para(s3, line, fg=SUB, pady=(0, 2))
@@ -5613,29 +5613,44 @@ class AOETrackerApp:
             else:
                 friends_txt = f"👥 Bạn bè: {online_all} online  •  Nhập tên Player rồi bấm '+ Kết bạn'"
 
-        # 2. Tìm kèo đấu của Sảnh đang chọn
+        # 2. Tìm kèo đấu của Sảnh đang chọn (Mỗi kèo Live có khung chat riêng biệt của kèo đó)
         lobby_target = self.get_active_lobby_streamer()
+        t_lower = lobby_target.lower()
         sel_id = getattr(self, "selected_match_id", "")
-        lobby_match = (
-            next((m for m in matches if str(m.get("id", "")) == sel_id), None)
-            if sel_id
-            else None
-        ) or next(
-            (m for m in matches if m.get("status") == "LIVE" and str(m.get("streamerName", "")).lower() == lobby_target.lower()),
-            None,
-        ) or next(
-            (m for m in matches if str(m.get("streamerName", "")).lower() == lobby_target.lower()),
-            None,
-        ) or data.get("currentMatch")
 
-        if lobby_match and str(lobby_match.get("streamerName", "")).lower() == lobby_target.lower():
-            chats = lobby_match.get("chatMessages") or []
+        def _belongs_to_streamer(m_obj, s_l):
+            if str(m_obj.get("streamerName", "")).lower() == s_l:
+                return True
+            r_t = [str(x).lower() for x in (m_obj.get("redTeam") or [])]
+            b_t = [str(x).lower() for x in (m_obj.get("blueTeam") or [])]
+            return s_l in r_t or s_l in b_t
+
+        sel_match_obj = next((m for m in matches if str(m.get("id", "")) == sel_id), None) if sel_id else None
+        live_for_target = next(
+            (m for m in matches if m.get("status") == "LIVE" and _belongs_to_streamer(m, t_lower)),
+            None,
+        )
+
+        # Nếu kèo đang chọn vừa kết thúc và Streamer đó đã mở kèo LIVE mới -> tự động chuyển sang kèo LIVE mới
+        if sel_match_obj and sel_match_obj.get("status") != "LIVE" and live_for_target:
+            sel_match_obj = live_for_target
+            self.selected_match_id = str(live_for_target.get("id", ""))
+
+        lobby_match = sel_match_obj or live_for_target
+
+        if lobby_match:
+            self.active_lobby_match_id = str(lobby_match.get("id", ""))
+            raw_chats = lobby_match.get("chatMessages") or []
+            chats = [
+                c for c in raw_chats
+                if not c.get("matchId") or str(c.get("matchId")) == self.active_lobby_match_id
+            ]
             stars_total = lobby_match.get("starsCount") or 0
             pinned_chat = lobby_match.get("pinnedChat")
         else:
-            all_recent = data.get("recentChat") or []
-            chats = [c for c in all_recent if str(c.get("streamerName", "")).lower() == lobby_target.lower()]
-            target_p = next((p for p in players if str(p.get("name", "")).lower() == lobby_target.lower()), None)
+            self.active_lobby_match_id = ""
+            chats = []
+            target_p = next((p for p in players if str(p.get("name", "")).lower() == t_lower), None)
             stars_total = (target_p.get("starsReceived") if target_p else 0) or 0
             pinned_chat = None
 
@@ -5669,8 +5684,14 @@ class AOETrackerApp:
                     self.chat_lobby_stars_lbl.config(text=f"🎁 Phiên Live: {stars_total} ⭐")
 
                 self.friends_status_lbl.config(text=friends_txt)
+                if lobby_match:
+                    m_mode = lobby_match.get("mode") or "SOLO"
+                    m_g_cnt = len(lobby_match.get("games") or []) or 1
+                    badge_title = f"💬 SẢNH CHAT LIVE - MÁY {lobby_target.upper()} [{m_mode} • Trận #{m_g_cnt}]"
+                else:
+                    badge_title = f"💬 SẢNH CHAT LIVE - MÁY {lobby_target.upper()} [Chưa có trận LIVE]"
                 self.lobby_badge_lbl.config(
-                    text=f"💬 SẢNH CHAT LIVE - MÁY {lobby_target.upper()}",
+                    text=badge_title,
                     fg="#eca133" if lobby_target.lower() != my_name.lower() else "#f8fafc",
                 )
                 self.stars_counter_lbl.config(text=f"⭐ {stars_total} sao tại sảnh {lobby_target}")
@@ -5923,12 +5944,17 @@ class AOETrackerApp:
             return
         target_streamer = self.get_active_lobby_streamer()
         chat_id = ""
+        target_match_id = getattr(self, "active_lobby_match_id", "") or getattr(self, "selected_match_id", "")
         if not unpin and getattr(self, "_cached_social_data", None):
             matches = self._cached_social_data.get("matches") or []
-            lm = next(
+            lm = (
+                next((m for m in matches if str(m.get("id", "")) == target_match_id), None)
+                if target_match_id
+                else None
+            ) or next(
                 (m for m in matches if m.get("status") == "LIVE" and str(m.get("streamerName", "")).lower() == target_streamer.lower()),
                 None,
-            ) or self._cached_social_data.get("currentMatch")
+            )
             if lm and lm.get("chatMessages"):
                 non_sys = [c for c in lm.get("chatMessages") if c.get("type") != "SYSTEM"]
                 if non_sys:
@@ -5940,6 +5966,7 @@ class AOETrackerApp:
                     self.get_api_endpoint(),
                     json={
                         "action": "pinChatMessage",
+                        "matchId": target_match_id or None,
                         "streamerName": target_streamer,
                         "playerName": self.player_name_var.get().strip(),
                         "password": self._get_effective_player_password(),
@@ -6007,6 +6034,7 @@ class AOETrackerApp:
             return
         sender = self.player_name_var.get().strip()
         target_streamer = self.get_active_lobby_streamer()
+        target_match_id = getattr(self, "active_lobby_match_id", "") or getattr(self, "selected_match_id", "")
         self.chat_msg_var.set("")
 
         def _task():
@@ -6015,6 +6043,7 @@ class AOETrackerApp:
                     self.get_api_endpoint(),
                     json={
                         "action": "sendChatMessage",
+                        "matchId": target_match_id or None,
                         "streamerName": target_streamer,
                         "senderName": sender,
                         "password": self._get_effective_player_password(),
@@ -6070,6 +6099,7 @@ class AOETrackerApp:
         self.toggle_gift_drawer(force_close=True)
         sender = self.player_name_var.get().strip()
         target_streamer = self.get_active_lobby_streamer()
+        target_match_id = getattr(self, "active_lobby_match_id", "") or getattr(self, "selected_match_id", "")
         gift_msg = default_msg or f"Tặng {stars} sao cổ vũ {target_streamer}!"
 
         def _task():
@@ -6078,6 +6108,7 @@ class AOETrackerApp:
                     self.get_api_endpoint(),
                     json={
                         "action": "sendStarGift",
+                        "matchId": target_match_id or None,
                         "streamerName": target_streamer,
                         "senderName": sender,
                         "password": self._get_effective_player_password(),

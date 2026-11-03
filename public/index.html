@@ -461,7 +461,7 @@
               <div v-if="liveMatchesList.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <div v-for="lm in liveMatchesList" :key="'lobby-' + lm.id"
                      @click="enterMatchLobby(lm)"
-                     :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? 'is-active-room' : ''"
+                     :class="(activeChatMatch && activeChatMatch.id === lm.id) ? 'is-active-room' : ''"
                      class="aoe-live-arena-card p-3.5 sm:p-4 cursor-pointer flex flex-col justify-between gap-3">
                   <!-- Hàng trên: Streamer + Chế độ + Sao -->
                   <div class="flex items-center justify-between gap-2 flex-wrap">
@@ -980,9 +980,12 @@
                   <i class="fa-solid fa-comments text-sky-400"></i>
                   <span>Sảnh Chat &amp; Vinh Danh Live</span>
                 </h3>
-                <p class="text-xs text-slate-200 mt-1 flex items-center gap-1.5">
+                <p class="text-xs text-slate-200 mt-1 flex items-center gap-1.5 flex-wrap">
                   <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                   <span>Đang ở sảnh: <b class="text-amber-300 font-extrabold">Máy {{ activeChatStreamer }}</b></span>
+                  <span v-if="activeChatMatch" class="text-[11px] bg-slate-900 text-sky-300 border border-slate-700 px-2 py-0.5 rounded-md font-bold">
+                    {{ activeChatMatch.mode || 'SOLO' }} &bull; Trận #{{ (activeChatMatch.games || []).length || 1 }}
+                  </span>
                 </p>
               </div>
               <div class="hidden sm:flex items-center gap-2 flex-wrap">
@@ -1003,12 +1006,12 @@
             <div v-if="liveMatchesList.length > 0" class="mb-3 bg-slate-950/90 border border-slate-800 rounded-xl p-2.5">
               <div class="text-xs font-extrabold text-slate-200 mb-2 flex items-center justify-between">
                 <span>🏟️ Chuyển Nhanh Sảnh Live ({{ liveMatchesList.length }}):</span>
-                <span class="text-[11px] text-sky-300 font-semibold">Chạm để đổi phòng</span>
+                <span class="text-[11px] text-sky-300 font-semibold">Mỗi kèo Live có khung chat riêng</span>
               </div>
               <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
                 <div v-for="lm in liveMatchesList" :key="lm.id"
                      @click="enterMatchLobby(lm)"
-                     :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase()
+                     :class="(activeChatMatch && activeChatMatch.id === lm.id)
                        ? 'bg-sky-500/20 text-white border-sky-400 shadow-md'
                        : 'bg-slate-900/90 text-slate-200 border-slate-800 hover:border-amber-400/60'"
                      class="px-3 py-2 rounded-xl text-xs border transition cursor-pointer flex items-center justify-between gap-2">
@@ -1024,8 +1027,8 @@
                     </div>
                   </div>
                   <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-lg shrink-0"
-                        :class="activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? 'bg-amber-400 text-slate-950 shadow' : 'bg-slate-950 text-sky-300 border border-slate-700'">
-                    {{ activeChatStreamer.toLowerCase() === String(lm.streamerName || '').toLowerCase() ? '✓ Đang xem' : '👁️ Vào Sảnh' }}
+                        :class="(activeChatMatch && activeChatMatch.id === lm.id) ? 'bg-amber-400 text-slate-950 shadow' : 'bg-slate-950 text-sky-300 border border-slate-700'">
+                    {{ (activeChatMatch && activeChatMatch.id === lm.id) ? '✓ Đang xem' : '👁️ Vào Sảnh' }}
                   </span>
                 </div>
               </div>
@@ -1320,7 +1323,7 @@
               <ul class="list-disc pl-5 space-y-1 text-xs sm:text-sm text-slate-300">
                 <li>Khi chưa có trận, <b class="text-white">cả 2 link</b> tự hiện <b class="text-amber-300">Khung Ảo viền nét đứt vàng</b> đúng kích thước thật.</li>
                 <li>Kéo khung đỏ của OBS tới vị trí mong muốn: Bảng Quân sát mép dưới / góc màn hình, Khung Chat bên trái hoặc phải.</li>
-                <li>Vào game <b class="text-amber-300">bắt buộc ấn nút Diplomacy</b> (trên thanh menu góc trên màn hình game) để mở bảng quân → Tool mới đọc được bảng quân và tự chuyển từ khung ảo sang dữ liệu thật. Khung Chat tự hiện chat thật khi có trận LIVE / bình luận mới.</li>
+                <li>Vào game <b class="text-amber-300">bắt buộc ấn nút Diplomacy</b> (trên thanh menu góc trên màn hình game) để mở bảng quân → Tool mới đọc được bảng quân và tự chuyển từ khung ảo sang dữ liệu thật. Mỗi trận LIVE hiển thị khung chat riêng tương ứng của trận đó, và <b class="text-sky-300">khung chat-overlay cùng toàn bộ chữ bên trong sẽ tự động làm trong suốt (ẩn 100%) nếu sau 10 giây không có thêm bình luận hoặc người tặng sao</b>.</li>
                 <li>Bật / tắt tại <b class="text-white">Cấu hình VIP OBS → 📐 Hiện Khung Ảo căn OBS</b>. Thêm <code class="text-emerald-300">&amp;preview=1</code> vào link để luôn hiện khung ảo khi chưa có trận.</li>
               </ul>
               <a href="/guide/obs-layout.png" target="_blank" class="block">
@@ -2151,7 +2154,10 @@
           return this.matches.filter(m => m.status === 'LIVE');
         },
         activeChatMatch() {
-          if (this.selectedMatch) return this.selectedMatch;
+          if (this.selectedMatch) {
+            const refreshed = this.matches.find(m => m.id === this.selectedMatch.id);
+            return refreshed || this.selectedMatch;
+          }
           return this.matches.find(m => m.status === 'LIVE') || this.matches[0] || null;
         },
         activeChatStreamer() {
@@ -2159,10 +2165,10 @@
         },
         activeChatMessages() {
           let raw = [];
-          if (this.activeChatMatch && Array.isArray(this.activeChatMatch.chatMessages) && this.activeChatMatch.chatMessages.length > 0) {
-            raw = this.activeChatMatch.chatMessages;
-          } else {
-            raw = this.recentChat.filter(c => !this.activeChatStreamer || String(c.streamerName || '').toLowerCase() === this.activeChatStreamer.toLowerCase());
+          if (this.activeChatMatch) {
+            const matchIdStr = String(this.activeChatMatch.id || '');
+            raw = (Array.isArray(this.activeChatMatch.chatMessages) ? this.activeChatMatch.chatMessages : [])
+              .filter(c => !c.matchId || String(c.matchId) === matchIdStr);
           }
           const tab = this.chatFilterTab || 'ALL';
           const q = (this.chatSearchQuery || '').trim().toLowerCase();
@@ -2976,7 +2982,15 @@
 
             if (this.selectedMatch) {
               const updated = this.matches.find(m => m.id === this.selectedMatch.id);
-              if (updated) this.selectedMatch = updated;
+              if (updated) {
+                if (updated.status === 'FINISHED' && this.currentTab !== 'detail') {
+                  const sLower = String(updated.streamerName || '').toLowerCase();
+                  const newerLive = this.matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sLower);
+                  this.selectedMatch = newerLive || updated;
+                } else {
+                  this.selectedMatch = updated;
+                }
+              }
             }
           } catch (e) {
           } finally {
@@ -3478,10 +3492,14 @@
             es.onmessage = (ev) => {
               try {
                 const payload = JSON.parse(ev.data);
-                if (payload.type === 'star_gifted' && payload.gift) {
-                  this.triggerStarBurstUI(payload.gift);
+                const evType = String(payload.type || '').toUpperCase();
+                if ((evType === 'STAR_GIFT' || evType === 'STAR_GIFTED') && payload.gift) {
+                  const gMatchId = payload.matchId || payload.gift.matchId;
+                  if (!this.activeChatMatch || !gMatchId || String(gMatchId) === String(this.activeChatMatch.id)) {
+                    this.triggerStarBurstUI(payload.gift);
+                  }
                 }
-                if (payload.type === 'chat_message' || payload.type === 'star_gifted') {
+                if (evType === 'CHAT_MESSAGE' || evType === 'STAR_GIFT' || evType === 'STAR_GIFTED') {
                   this.fetchInitialData().then(() => this.scrollToBottomChat());
                   return;
                 }

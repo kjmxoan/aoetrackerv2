@@ -54,16 +54,30 @@
       pointer-events: none;
       animation: floatUp 2.6s ease-out forwards;
     }
-    /* Tự động làm mờ 80% (còn 20% opacity) sau 5 giây không có tin nhắn mới */
+    /* Tự động làm trong suốt hoàn toàn khung chat-overlay và phần text sau 10 giây không có thêm comment hoặc người tặng sao */
     .chat-active-bright {
       opacity: 1;
+      visibility: visible;
       filter: none;
-      transition: opacity 0.25s ease-out, filter 0.25s ease-out;
+      transition: opacity 0.22s ease-out, filter 0.22s ease-out;
     }
     .chat-idle-dimmed {
-      opacity: 0.20;
+      opacity: 0 !important;
+      visibility: hidden;
+      pointer-events: none;
       filter: none;
-      transition: opacity 0.85s ease-in-out, filter 0.35s ease;
+      transition: opacity 0.65s ease-in-out, visibility 0s linear 0.65s;
+    }
+    .chat-idle-dimmed *,
+    .chat-idle-dimmed .stroke-text,
+    .chat-idle-dimmed .stroke-gold,
+    .chat-idle-dimmed .aoe-honor-plate,
+    .chat-idle-dimmed .virtual-chat-frame {
+      opacity: 0 !important;
+      text-shadow: none !important;
+      border-color: transparent !important;
+      background: transparent !important;
+      box-shadow: none !important;
     }
     /* Làm mờ khung OBS Chat khi ấn F8 (Hiệu ứng "Tay đâu, tayyyy đâuuuuu" chỉ hiển thị bên khung Link OBS Bảng Quân) */
     .chat-hype-dimmed {
@@ -94,7 +108,7 @@
 <body class="p-2">
   <div id="app"
        class="w-[370px] relative select-none"
-       :class="isVirtualPreview ? 'chat-active-bright' : (isHypeDimmed ? 'chat-hype-dimmed' : (isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright'))"
+       :class="forcePreviewParam ? 'chat-active-bright' : (isHypeDimmed ? 'chat-hype-dimmed' : (isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright'))"
        style="background: transparent !important;">
     <!-- KHUNG CHAT ẢO CĂN VỊ TRÍ OBS (Size chuẩn 380 x 450) — chỉ hiện khi chưa có trận LIVE và chưa có bình luận mới -->
     <div v-if="isVirtualPreview" class="virtual-chat-frame relative flex flex-col justify-between px-2.5 py-2 stroke-text">
@@ -171,7 +185,7 @@
           <img src="/logo.svg" alt="AOE BY XO" class="w-4 h-4 object-contain drop-shadow" />
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="font-honor text-[12px] font-extrabold text-amber-300 uppercase tracking-wider">
-            LIVE CHAT {{ streamerFilter ? ('• MÁY ' + streamerFilter) : '• AOE BY XO' }}
+            LIVE CHAT {{ (match && match.streamerName) ? ('• MÁY ' + match.streamerName + (match.mode ? ' [' + match.mode + ']' : '')) : (streamerFilter ? ('• MÁY ' + streamerFilter) : '• AOE BY XO') }}
           </span>
         </div>
         <div v-if="totalStars > 0" class="font-honor text-[12px] font-black text-amber-300 stroke-gold">
@@ -236,7 +250,9 @@
       data() {
         return {
           streamerFilter: '',
+          matchIdFilter: '',
           match: null,
+          currentMatchId: '',
           messages: [],
           activeStarGift: null,
           starParticles: [],
@@ -247,6 +263,7 @@
           hypeDimTimer: null,
           lastSeenHypeId: '',
           lastLatestMsgId: '',
+          hasInitializedChat: false,
           streamerOverlayConfig: null,
           forcePreviewParam: false,
           nowTs: Date.now()
@@ -263,7 +280,7 @@
           return Boolean(this.match && String(this.match.status || 'LIVE').toUpperCase() === 'LIVE');
         },
         hasRecentRealMessages() {
-          // Bình luận / quà tặng trong vòng 3 phút gần nhất được xem là Chat thật đang hoạt động
+          // Bình luận / quà tặng trong vòng 3 phút gần nhất của trận hiện tại
           const RECENT_MS = 3 * 60 * 1000;
           return this.displayMessages.some(m => {
             const ts = Number(m.createdAt || m._receivedAt || 0);
@@ -279,12 +296,20 @@
         }
       },
       methods: {
+        isCommentOrStarMsg(m) {
+          if (!m || m.giftCode === 'HYPE_F8') return false;
+          const t = String(m.type || 'CHAT').toUpperCase();
+          return t === 'CHAT' || t === 'STAR' || t === 'STAR_GIFT';
+        },
         wakeUpOverlay() {
           this.isIdleDimmed = false;
           if (this.idleTimer) clearTimeout(this.idleTimer);
+          // Sau 10 giây (10000ms) không có thêm comment hoặc người tặng sao -> làm trong suốt hoàn toàn khung chat-overlay và phần text
           this.idleTimer = setTimeout(() => {
-            this.isIdleDimmed = true;
-          }, 5000);
+            if (!this.forcePreviewParam) {
+              this.isIdleDimmed = true;
+            }
+          }, 10000);
         },
         getShortGiftItem(m) {
           if (!m) return '+1 ⭐';
@@ -303,12 +328,22 @@
           }
           return `+${stars} ⭐`;
         },
+        matchesCurrentMatchOrStreamer(payload) {
+          if (!payload) return false;
+          if (this.match && this.match.id && payload.matchId) {
+            return String(payload.matchId) === String(this.match.id);
+          }
+          if (this.matchIdFilter && payload.matchId) {
+            return String(payload.matchId) === String(this.matchIdFilter);
+          }
+          if (this.streamerFilter && payload.streamerName) {
+            return String(payload.streamerName).toLowerCase() === this.streamerFilter.toLowerCase();
+          }
+          return true;
+        },
         triggerStarEffect(gift) {
           if (!gift) return;
-          if (this.streamerFilter && gift.streamerName &&
-              gift.streamerName.toLowerCase() !== this.streamerFilter.toLowerCase()) {
-            return;
-          }
+          if (!this.matchesCurrentMatchOrStreamer(gift)) return;
           this.wakeUpOverlay();
           const icons = (Array.isArray(gift.particles) && gift.particles.length > 0)
             ? gift.particles
@@ -330,10 +365,7 @@
         },
         triggerHypeDim(hype) {
           if (!hype) return;
-          if (this.streamerFilter && hype.streamerName &&
-              hype.streamerName.toLowerCase() !== this.streamerFilter.toLowerCase()) {
-            return;
-          }
+          if (!this.matchesCurrentMatchOrStreamer(hype)) return;
           if (hype.id && hype.id === this.lastSeenHypeId) return;
           if (hype.id) this.lastSeenHypeId = hype.id;
           const dur = Math.min(12000, Math.max(3500, Number(hype.durationMs) || 6500));
@@ -346,13 +378,52 @@
         async fetchChatData() {
           const query = new URLSearchParams(location.search);
           this.streamerFilter = (query.get('streamer') || query.get('player') || '').trim();
+          this.matchIdFilter = (query.get('matchId') || '').trim();
           this.forcePreviewParam = query.get('preview') === '1';
           this.nowTs = Date.now();
           try {
-            const res = await fetch(`${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.streamerFilter)}&_t=${Date.now()}`, { cache: 'no-store' });
+            const res = await fetch(
+              `${API_URL}?action=getInitialData&streamer=${encodeURIComponent(this.streamerFilter)}&matchId=${encodeURIComponent(this.matchIdFilter)}&_t=${Date.now()}`,
+              { cache: 'no-store' }
+            );
             const data = await res.json();
-            this.match = data.currentMatch || null;
-            const targetName = (this.streamerFilter || 'XO').toLowerCase();
+            const rawMatches = Array.isArray(data.matches) ? data.matches : [];
+            const matches = [...rawMatches].sort(
+              (a, b) =>
+                Math.max(Number(b.lastHeartbeat) || 0, Number(b.createdAt) || 0) -
+                Math.max(Number(a.lastHeartbeat) || 0, Number(a.createdAt) || 0)
+            );
+            let chosenMatch = null;
+            if (this.matchIdFilter) {
+              chosenMatch = matches.find(m => String(m.id) === this.matchIdFilter) || null;
+            } else if (this.streamerFilter) {
+              const sf = this.streamerFilter.toLowerCase();
+              chosenMatch =
+                matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sf) ||
+                matches.find(
+                  m =>
+                    m.status === 'LIVE' &&
+                    ((m.redTeam || []).some(r => String(r || '').toLowerCase() === sf) ||
+                      (m.blueTeam || []).some(b => String(b || '').toLowerCase() === sf))
+                ) ||
+                null;
+            } else {
+              chosenMatch =
+                (data.currentMatch && data.currentMatch.status === 'LIVE' ? data.currentMatch : null) ||
+                matches.find(m => m.status === 'LIVE') ||
+                null;
+            }
+
+            const newMatchId = chosenMatch ? String(chosenMatch.id || '') : '';
+            const matchChanged = newMatchId !== this.currentMatchId;
+            if (matchChanged) {
+              this.currentMatchId = newMatchId;
+              this.activeStarGift = null;
+              this.starParticles = [];
+            }
+            this.match = chosenMatch;
+
+            const targetName = ((chosenMatch && chosenMatch.streamerName) || this.streamerFilter || 'XO').toLowerCase();
             const streamerPlayer = (data.players || []).find(p => String(p.name || '').toLowerCase() === targetName);
             this.streamerOverlayConfig = (streamerPlayer && streamerPlayer.overlayConfig) || null;
             const candidateHype =
@@ -366,19 +437,32 @@
                 this.triggerHypeDim(candidateHype);
               }
             }
+
+            // Live của match nào sẽ chỉ hiển thị khung chat tương ứng của đúng match đó (không lấy recentChat của các match cũ)
             let nextMsgs = [];
-            if (this.match && Array.isArray(this.match.chatMessages) && this.match.chatMessages.length > 0) {
-              nextMsgs = this.match.chatMessages;
-            } else if (Array.isArray(data.recentChat)) {
-              nextMsgs = this.streamerFilter
-                ? data.recentChat.filter(c => String(c.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase())
-                : data.recentChat;
+            if (this.match && Array.isArray(this.match.chatMessages)) {
+              const mid = String(this.match.id || '');
+              nextMsgs = this.match.chatMessages.filter(
+                c => c && c.giftCode !== 'HYPE_F8' && (!c.matchId || String(c.matchId) === mid)
+              );
             }
-            nextMsgs = nextMsgs.filter(c => c.giftCode !== 'HYPE_F8');
-            const latestId = nextMsgs.length > 0 ? String(nextMsgs[nextMsgs.length - 1].id || '') : '';
-            if (latestId && latestId !== this.lastLatestMsgId) {
+
+            const commentOrStarMsgs = nextMsgs.filter(c => this.isCommentOrStarMsg(c));
+            const latestAct = commentOrStarMsgs.length > 0 ? commentOrStarMsgs[commentOrStarMsgs.length - 1] : null;
+            const latestId = latestAct ? String(latestAct.id || '') : '';
+            const latestTs = latestAct ? Number(latestAct.createdAt || latestAct._receivedAt || 0) : 0;
+
+            if (!this.hasInitializedChat || matchChanged) {
+              this.hasInitializedChat = true;
               this.lastLatestMsgId = latestId;
-              this.wakeUpOverlay();
+              if (latestTs && (Date.now() - latestTs) < 10000) {
+                this.wakeUpOverlay();
+              }
+            } else if (latestId && latestId !== this.lastLatestMsgId) {
+              this.lastLatestMsgId = latestId;
+              if (!latestTs || (Date.now() - latestTs) < 15000) {
+                this.wakeUpOverlay();
+              }
             }
             this.messages = nextMsgs;
           } catch (e) {}
@@ -390,26 +474,36 @@
               try {
                 const payload = JSON.parse(ev.data);
                 if (payload.type === 'chat_message' && payload.chat) {
-                  if (!this.streamerFilter || String(payload.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase()) {
-                    if (!this.messages.some(m => m.id === payload.chat.id)) {
-                      this.messages.push({ ...payload.chat, _receivedAt: Date.now() });
-                      this.nowTs = Date.now();
+                  if (this.matchesCurrentMatchOrStreamer(payload)) {
+                    if (this.match && (!payload.matchId || String(payload.matchId) === String(this.match.id))) {
+                      if (!this.messages.some(m => m.id === payload.chat.id)) {
+                        this.messages.push({ ...payload.chat, _receivedAt: Date.now() });
+                        this.nowTs = Date.now();
+                      }
+                    } else {
+                      this.fetchChatData();
                     }
-                    this.lastLatestMsgId = String(payload.chat.id || '');
-                    this.wakeUpOverlay();
+                    if (this.isCommentOrStarMsg(payload.chat)) {
+                      this.lastLatestMsgId = String(payload.chat.id || '');
+                      this.wakeUpOverlay();
+                    }
                   }
                 } else if (payload.type === 'star_gifted') {
-                  if (payload.chat && (!this.streamerFilter || String(payload.streamerName || '').toLowerCase() === this.streamerFilter.toLowerCase())) {
-                    if (!this.messages.some(m => m.id === payload.chat.id)) {
-                      this.messages.push({ ...payload.chat, _receivedAt: Date.now() });
-                      this.nowTs = Date.now();
+                  if (payload.chat && this.matchesCurrentMatchOrStreamer(payload)) {
+                    if (this.match && (!payload.matchId || String(payload.matchId) === String(this.match.id))) {
+                      if (!this.messages.some(m => m.id === payload.chat.id)) {
+                        this.messages.push({ ...payload.chat, _receivedAt: Date.now() });
+                        this.nowTs = Date.now();
+                      }
+                    } else {
+                      this.fetchChatData();
                     }
                     this.lastLatestMsgId = String(payload.chat.id || '');
                     this.wakeUpOverlay();
                   }
                   if (payload.gift) {
                     this.triggerStarEffect(payload.gift);
-                    if (this.match && payload.gift.totalMatchStars) {
+                    if (this.match && payload.gift.totalMatchStars && (!payload.matchId || String(payload.matchId) === String(this.match.id))) {
                       this.match.starsCount = payload.gift.totalMatchStars;
                     }
                   }
@@ -428,7 +522,7 @@
         this.wakeUpOverlay();
         this.fetchChatData();
         this.connectStream();
-        setInterval(this.fetchChatData, 4500);
+        setInterval(this.fetchChatData, 3000);
       }
     }).mount('#app');
   </script>
