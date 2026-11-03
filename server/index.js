@@ -828,6 +828,93 @@ app.post('/api', async (req, res) => {
       });
     }
 
+    // ==================== ĐẨY COMMENT TỪ LUỒNG LIVE FACEBOOK GROUP / FANPAGE VỀ OBS & TOOL ====================
+    if (action === 'pushFacebookComment') {
+      const streamerLogin = String(data.streamerName || data.playerName || 'XO').trim();
+      const auth = await validatePlayerAccount(streamerLogin, data.password);
+      if (!auth.valid && !isAdminAuthorized(data)) {
+        return res.json({
+          status: 'error',
+          message: auth.reason || 'Xác thực tài khoản Streamer không hợp lệ khi đẩy comment Facebook!'
+        });
+      }
+
+      const canonicalStreamer = auth.valid ? auth.canonicalName : streamerLogin;
+      const rawItems = Array.isArray(data.comments)
+        ? data.comments
+        : [{ authorName: data.authorName || data.senderName, text: data.text || data.message, commentId: data.commentId }];
+
+      const matches = await db.getMatches();
+      const sLower = canonicalStreamer.toLowerCase();
+      const targetMatch =
+        matches.find(m => m.status === 'LIVE' && String(m.streamerName || '').toLowerCase() === sLower) ||
+        matches.find(m => String(m.streamerName || '').toLowerCase() === sLower) ||
+        matches.find(m => m.status === 'LIVE') ||
+        matches[0] ||
+        null;
+
+      if (!global.__fbDedupMap) global.__fbDedupMap = new Map();
+      const dedupMap = global.__fbDedupMap;
+      const now = Date.now();
+      for (const [k, ts] of dedupMap.entries()) {
+        if (now - ts > 90000) dedupMap.delete(k);
+      }
+
+      const addedChats = [];
+      for (const item of rawItems.slice(0, 15)) {
+        const author = String(item.authorName || item.senderName || 'Khán giả FB').trim().slice(0, 60);
+        const text = String(item.text || item.message || '').trim().slice(0, 260);
+        if (!text) continue;
+
+        const sig = `${canonicalStreamer.toLowerCase()}::${author.toLowerCase()}::${text.toLowerCase()}`;
+        if (dedupMap.has(sig)) continue;
+        dedupMap.set(sig, now);
+
+        const msgObj = {
+          id: 'FB_' + now + '_' + Math.floor(Math.random() * 10000),
+          matchId: targetMatch ? targetMatch.id : null,
+          streamerName: canonicalStreamer,
+          senderName: author,
+          senderTier: 'FACEBOOK',
+          source: 'FACEBOOK',
+          text,
+          message: text,
+          type: 'CHAT',
+          createdAt: now,
+          timeText: formatShortTimeVN(now)
+        };
+
+        globalChatBuffer.push(msgObj);
+        if (globalChatBuffer.length > 100) globalChatBuffer.shift();
+
+        if (targetMatch) {
+          if (!Array.isArray(targetMatch.chatMessages)) targetMatch.chatMessages = [];
+          targetMatch.chatMessages.push(msgObj);
+          if (targetMatch.chatMessages.length > 60) {
+            targetMatch.chatMessages = targetMatch.chatMessages.slice(-60);
+          }
+        }
+
+        addedChats.push(msgObj);
+        broadcastUpdate('chat_message', {
+          matchId: targetMatch ? targetMatch.id : null,
+          streamerName: canonicalStreamer,
+          chat: msgObj
+        });
+      }
+
+      if (targetMatch && addedChats.length > 0) {
+        await db.saveMatch(targetMatch);
+      }
+
+      return res.json({
+        status: 'success',
+        addedCount: addedChats.length,
+        chats: addedChats,
+        message: addedChats.length > 0 ? `Đã đẩy ${addedChats.length} bình luận Facebook Live lên OBS!` : 'Bỏ qua bình luận trùng lặp'
+      });
+    }
+
     // ==================== HIỆU ỨNG TẶNG SAO (BẮT BUỘC ĐĂNG NHẬP) ====================
     if (action === 'sendStarGift') {
       const loginName = String(data.senderName || data.playerName || '').trim();

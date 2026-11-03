@@ -1561,6 +1561,23 @@ class AOETrackerApp:
         btn_obs_guide.pack(side="right", padx=(0, 6))
         self._bind_hover(btn_obs_guide, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
 
+        btn_fb_live = tk.Button(
+            quick_bar,
+            text="🔵 Kết nối FB Group Live",
+            command=self.show_fb_group_live_bridge_window,
+            font=("Segoe UI", 9, "bold"),
+            bg="#152238",
+            fg="#60a5fa",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2563eb",
+            padx=10,
+            pady=4,
+            cursor="hand2",
+        )
+        btn_fb_live.pack(side="right", padx=(0, 6))
+        self._bind_hover(btn_fb_live, "#152238", "#1d4ed8", "#60a5fa", "#ffffff")
+
         btn_copy_chat_obs = tk.Button(
             quick_bar,
             text="💬 Copy Link OBS Chat",
@@ -1904,6 +1921,23 @@ class AOETrackerApp:
         btn_my_lobby.pack(side="left", padx=(0, 6))
         self._bind_hover(btn_my_lobby, "#11151b", "#222b38", "#e7ebf0", "#ffffff")
 
+        btn_fb_chat_hdr = tk.Button(
+            star_btns,
+            text="🔵 Kết nối FB Live",
+            command=self.show_fb_group_live_bridge_window,
+            font=("Segoe UI", 8, "bold"),
+            bg="#152238",
+            fg="#60a5fa",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2563eb",
+            padx=8,
+            pady=2,
+            cursor="hand2",
+        )
+        btn_fb_chat_hdr.pack(side="left", padx=(0, 6))
+        self._bind_hover(btn_fb_chat_hdr, "#152238", "#1d4ed8", "#60a5fa", "#ffffff")
+
         for amt, lbl_txt in [(1, "🌟 Tặng +1 Sao"), (10, "🌟 +10 Sao"), (50, "💎 +50 Sao")]:
             b = tk.Button(
                 star_btns,
@@ -1937,6 +1971,7 @@ class AOETrackerApp:
         )
         self.chat_box.pack(fill="both", expand=True, pady=(2, 6))
         self.chat_box.tag_config("SENDER", foreground="#eca133", font=("Segoe UI", 9, "bold"))
+        self.chat_box.tag_config("FB_SENDER", foreground="#60a5fa", font=("Segoe UI", 9, "bold"))
         self.chat_box.tag_config("STAR", foreground="#eca133", font=("Segoe UI", 9, "bold"))
         self.chat_box.tag_config("MSG", foreground="#e7ebf0")
 
@@ -4037,6 +4072,9 @@ class AOETrackerApp:
                         msg = c.get("text") or c.get("message") or ""
                         if c.get("type") in ("STAR", "STAR_GIFT"):
                             self.chat_box.insert("end", f"🌟 {sender}: {msg}\n", "STAR")
+                        elif c.get("source") == "FACEBOOK" or c.get("senderTier") == "FACEBOOK":
+                            self.chat_box.insert("end", f"🔵 [FB] {sender}: ", "FB_SENDER")
+                            self.chat_box.insert("end", f"{msg}\n", "MSG")
                         else:
                             self.chat_box.insert("end", f"{sender}: ", "SENDER")
                             self.chat_box.insert("end", f"{msg}\n", "MSG")
@@ -4249,6 +4287,272 @@ class AOETrackerApp:
         self.root.clipboard_clear()
         self.root.clipboard_append(chat_url)
         self.log(f"✅ 💬 Đã copy Link OBS Khung Chat (380x520): {chat_url}", "SUCCESS")
+
+    def _generate_fb_group_bridge_js(self) -> str:
+        base_url = self.get_base_server_url()
+        streamer = self.player_name_var.get().strip() or "XO"
+        pw = self._get_effective_player_password()
+        return f"""/* =========================================================================
+ * 🔵 AOE BY XO — CẦU NỐI TỰ ĐỘNG BẮT COMMENT FACEBOOK GROUP LIVE -> OBS
+ * Streamer đích : {streamer}
+ * Máy chủ       : {base_url}
+ * Cách dùng     : Mở bài phát Live trong Group Facebook -> Ấn F12 (tab Console)
+ *                 -> Dán (Ctrl+V) toàn bộ đoạn mã này -> Ấn Enter!
+ * ========================================================================= */
+(() => {{
+  if (window.__aoeFbBridgeTimer) clearInterval(window.__aoeFbBridgeTimer);
+  const SERVER = {json.dumps(base_url)};
+  const STREAMER = {json.dumps(streamer)};
+  const PASSWORD = {json.dumps(pw)};
+  const seen = new Set();
+  let initialized = false;
+  let pushedCount = 0;
+
+  let badge = document.getElementById('__aoe_fb_live_badge');
+  if (!badge) {{
+    badge = document.createElement('div');
+    badge.id = '__aoe_fb_live_badge';
+    badge.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:999999;background:#0f172a;color:#38bdf8;border:2px solid #2563eb;padding:8px 14px;border-radius:12px;font-family:Segoe UI,sans-serif;font-size:12px;font-weight:bold;box-shadow:0 8px 25px rgba(0,0,0,0.65);pointer-events:none;';
+    document.body.appendChild(badge);
+  }}
+  const updateBadge = (lastTxt) => {{
+    badge.innerHTML = '🔵 AOE BY XO • Đang bắt Comment FB Group Live &rarr; OBS <b>' + STREAMER + '</b> (' + pushedCount + ' bình luận)' + (lastTxt ? '<br><span style="color:#e2e8f0;font-weight:normal;font-size:11px;">Mới nhất: ' + lastTxt + '</span>' : '');
+  }};
+  updateBadge('');
+
+  const ignoreWords = new Set(['Thích', 'Phản hồi', 'Chia sẻ', 'Theo dõi', 'Viết bình luận...', 'Bình luận', 'Tất cả bình luận', 'Phù hợp nhất', 'Mới nhất']);
+
+  const scanComments = () => {{
+    const articles = document.querySelectorAll('div[role="article"]');
+    articles.forEach(art => {{
+      const aria = art.getAttribute('aria-label') || '';
+      if (!aria && !art.innerText) return;
+      const authorEl = art.querySelector('a[role="link"] span[dir="auto"], span.xt0psk2 span[dir="auto"], h3 span, h4 span');
+      const author = (authorEl ? authorEl.innerText : '').trim();
+      if (!author || ignoreWords.has(author)) return;
+
+      const textDivs = art.querySelectorAll('div[dir="auto"]');
+      let bodyText = '';
+      textDivs.forEach(td => {{
+        const val = (td.innerText || '').trim();
+        if (val && val !== author && !ignoreWords.has(val) && !val.startsWith('Phản hồi ')) {{
+          bodyText = val;
+        }}
+      }});
+      if (!bodyText || bodyText.length > 350) return;
+
+      const key = author + '::' + bodyText;
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      // Bỏ qua các comment cũ đã có sẵn trước khi bật script để tránh đẩy lại hàng loạt comment cũ
+      if (!initialized) return;
+
+      pushedCount++;
+      updateBadge(author + ': ' + bodyText.slice(0, 38));
+
+      fetch(SERVER + '/api', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{
+          action: 'pushFacebookComment',
+          streamerName: STREAMER,
+          password: PASSWORD,
+          fbAuthor: author,
+          text: bodyText,
+          fbCommentId: key
+        }})
+      }}).catch(() => {{}});
+    }});
+    initialized = true;
+  }};
+
+  scanComments();
+  window.__aoeFbBridgeTimer = setInterval(scanComments, 1400);
+  console.log('%c🔵 [AOE BY XO] Đã kết nối tự động đẩy Comment Facebook Group Live -> OBS máy ' + STREAMER, 'color:#38bdf8;font-weight:bold;font-size:14px;');
+}})();"""
+
+    def send_test_fb_comment(self, custom_author: str = "Khán Giả FB Group", custom_text: str = "Chúc streamer đánh thắng kèo này nhé! Đẩy comment từ Group FB lên OBS thành công!"):
+        streamer = self.player_name_var.get().strip() or "XO"
+        pw = self._get_effective_player_password()
+
+        def _t():
+            try:
+                res = requests.post(
+                    self.get_api_endpoint(),
+                    json={
+                        "action": "pushFacebookComment",
+                        "streamerName": streamer,
+                        "password": pw,
+                        "isAdmin": self.is_admin,
+                        "adminPassword": self.admin_password,
+                        "fbAuthor": custom_author,
+                        "text": custom_text,
+                        "fbCommentId": f"test_{int(time.time() * 1000)}",
+                    },
+                    timeout=10,
+                )
+                d = res.json()
+                if d.get("status") == "success":
+                    self.log(f"✅ 🔵 [FB Live] Đã đẩy thử comment của '{custom_author}' lên OBS máy {streamer}!", "SUCCESS")
+                    self.refresh_initial_state()
+                else:
+                    self.log(f"⚠️ Không thể gửi thử Comment FB: {d.get('message', '')}", "WARN")
+            except Exception as e:
+                self.log(f"❌ Lỗi gửi thử Comment FB: {e}", "ERROR")
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def show_fb_group_live_bridge_window(self):
+        tk = self.tk
+        streamer = self.player_name_var.get().strip() or "XO"
+        win = tk.Toplevel(self.root)
+        win.title(f"🔵 KẾT NỐI COMMENT FACEBOOK GROUP LIVE LÊN OBS — MÁY {streamer}")
+        win.geometry("760x620")
+        win.configure(bg="#080c16")
+
+        hdr = tk.Frame(win, bg="#181e28", highlightthickness=1, highlightbackground="#2b3541", padx=18, pady=12)
+        hdr.pack(fill="x", padx=14, pady=(12, 6))
+
+        tk.Label(
+            hdr,
+            text=f"🔵 Cầu Nối Đẩy Comment Luồng Live Trong Group Facebook Lên OBS (Máy {streamer})",
+            font=("Segoe UI", 12, "bold"),
+            fg="#60a5fa",
+            bg="#181e28",
+        ).pack(anchor="w")
+
+        tk.Label(
+            hdr,
+            text="Giải pháp chuyên dụng cho Streamer phát Live trong Group Facebook (kể cả Nhóm Kín & Nhóm Công Khai) — Không cần duyệt App Meta, không sợ khóa nick!",
+            font=("Segoe UI", 9, "bold"),
+            fg="#e7ebf0",
+            bg="#181e28",
+            wraplength=700,
+            justify="left",
+        ).pack(anchor="w", pady=(4, 0))
+
+        steps_card = tk.Frame(win, bg="#181e28", highlightthickness=1, highlightbackground="#2b3541", padx=18, pady=12)
+        steps_card.pack(fill="x", padx=14, pady=6)
+
+        guide_text = (
+            "📌 CÁCH SỬ DỤNG CỰC NHANH TRONG 10 GIÂY KHI BẠN BẮT ĐẦU LIVE TRONG GROUP FACEBOOK:\n\n"
+            "  • Bước 1: Bấm nút màu vàng 【📋 Copy Mã Tự Động Bắt Comment FB Group】 ở bên dưới.\n"
+            "  • Bước 2: Mở bài phát sóng Live của bạn trong Group Facebook trên trình duyệt (Chrome / Cốc Cốc / Edge).\n"
+            "  • Bước 3: Ấn phím 【F12】 (hoặc Chuột phải -> Kiểm tra / Inspect) -> Chuyển sang tab 【Console】.\n"
+            "            (Nếu trình duyệt hỏi 'Allow pasting / Cho phép dán' ở lần đầu tiên, hãy gõ allow pasting rồi ấn Enter).\n"
+            "  • Bước 4: Ấn 【Ctrl + V】 để dán mã vừa copy vào Console rồi ấn 【Enter】.\n"
+            "  ✨ XONG! Ở góc trái dưới màn hình Facebook sẽ hiện hộp tín hiệu '🔵 AOE BY XO • Đang bắt Comment FB Group Live'.\n"
+            "     Mọi bình luận mới của khán giả trong Group Facebook sẽ tự động bay thẳng lên OBS Khung Chat & Sảnh Live của bạn với nhãn 🔵 [FB]!"
+        )
+        tk.Label(
+            steps_card,
+            text=guide_text,
+            font=("Segoe UI", 9, "bold"),
+            fg="#e7ebf0",
+            bg="#181e28",
+            justify="left",
+            anchor="w",
+        ).pack(fill="x")
+
+        btn_row = tk.Frame(win, bg="#080c16")
+        btn_row.pack(fill="x", padx=14, pady=6)
+
+        status_feedback_lbl = tk.Label(
+            win,
+            text="💡 Mẹo: Bạn có thể bấm '🧪 Gửi thử 1 Comment FB lên OBS' ngay bây giờ để kiểm tra chữ hiện trên OBS!",
+            font=("Segoe UI", 9, "bold"),
+            fg="#eca133",
+            bg="#080c16",
+        )
+
+        def _copy_script_now():
+            code = self._generate_fb_group_bridge_js()
+            self.root.clipboard_clear()
+            self.root.clipboard_append(code)
+            status_feedback_lbl.config(
+                text=f"✅ Đã Copy mã bắt Comment FB Group cho máy '{streamer}'! Hãy mở tab Facebook Group Live -> Ấn F12 (Console) -> Ctrl+V -> Enter!",
+                fg="#34d399",
+            )
+            self.log(f"✅ 🔵 Đã copy mã tự động bắt Comment Facebook Group Live cho máy {streamer}!", "SUCCESS")
+
+        def _test_fb_now():
+            self.send_test_fb_comment()
+            status_feedback_lbl.config(
+                text=f"✅ Đã bắn thử 1 Comment gắn nhãn 🔵 [FB] lên OBS Khung Chat và Sảnh Live của máy '{streamer}'!",
+                fg="#60a5fa",
+            )
+
+        btn_copy_js = tk.Button(
+            btn_row,
+            text="📋 Copy Mã Tự Động Bắt Comment FB Group (1-Click)",
+            command=_copy_script_now,
+            font=("Segoe UI", 10, "bold"),
+            bg="#eca133",
+            fg="#11151b",
+            relief="flat",
+            padx=14,
+            pady=7,
+            cursor="hand2",
+        )
+        btn_copy_js.pack(side="left", padx=(0, 8))
+
+        btn_test_fb = tk.Button(
+            btn_row,
+            text="🧪 Gửi thử 1 Comment FB lên OBS",
+            command=_test_fb_now,
+            font=("Segoe UI", 10, "bold"),
+            bg="#2563eb",
+            fg="#ffffff",
+            relief="flat",
+            padx=14,
+            pady=7,
+            cursor="hand2",
+        )
+        btn_test_fb.pack(side="left", padx=(0, 8))
+
+        btn_copy_obs_c = tk.Button(
+            btn_row,
+            text="💬 Copy Link OBS Chat",
+            command=self.copy_obs_chat_link,
+            font=("Segoe UI", 9, "bold"),
+            bg="#181e28",
+            fg="#e7ebf0",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+            padx=12,
+            pady=7,
+            cursor="hand2",
+        )
+        btn_copy_obs_c.pack(side="right")
+
+        status_feedback_lbl.pack(fill="x", padx=14, pady=(2, 4))
+
+        code_card = tk.Frame(win, bg="#181e28", highlightthickness=1, highlightbackground="#2b3541", padx=12, pady=8)
+        code_card.pack(fill="both", expand=True, padx=14, pady=(2, 12))
+        tk.Label(
+            code_card,
+            text="Mã cầu nối tự động (Đã cấu hình sẵn Tên máy & Mật khẩu của bạn):",
+            font=("Segoe UI", 8, "bold"),
+            fg="#8e99a7",
+            bg="#181e28",
+        ).pack(anchor="w", pady=(0, 4))
+
+        code_txt = tk.Text(
+            code_card,
+            bg="#11151b",
+            fg="#60a5fa",
+            font=("Consolas", 8),
+            relief="flat",
+            padx=8,
+            pady=6,
+            highlightthickness=1,
+            highlightbackground="#2b3541",
+        )
+        code_txt.pack(fill="both", expand=True)
+        code_txt.insert("1.0", self._generate_fb_group_bridge_js())
+        code_txt.configure(state="disabled")
 
     def open_web_dashboard(self):
         import webbrowser

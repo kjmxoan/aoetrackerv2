@@ -101,8 +101,9 @@
             🌟 {{ m.senderName }}: {{ m.text || m.message }}
           </span>
           <template v-else>
-            <span class="font-extrabold text-sky-300">
-              <span v-if="m.senderTier === 'DIAMOND'">💎 </span>
+            <span class="font-extrabold" :class="(m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-sky-300'">
+              <span v-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'" class="text-[#38bdf8]">🔵 [FB] </span>
+              <span v-else-if="m.senderTier === 'DIAMOND'">💎 </span>
               <span v-else-if="m.senderTier === 'GOLD'">🥇 </span>
               {{ m.senderName }}:
             </span>

@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "AOE BY XO - Cầu Nối Comment Facebook Group Live -> OBS",
+  "version": "5.3.0",
+  "description": "Tự động bắt bình luận từ luồng Live trong Group Facebook và đẩy thẳng lên OBS Khung Chat & Sảnh Live AOE BY XO.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.facebook.com/*",
+    "https://*.up.railway.app/*",
+    "http://localhost:*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.facebook.com/*", "https://web.facebook.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

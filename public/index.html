@@ -735,11 +735,18 @@
                   <span>Đang ở sảnh của: <b class="text-amber-300">Máy {{ activeChatStreamer }}</b></span>
                 </p>
               </div>
-              <button @click="copyChatOverlayLink(activeChatStreamer)"
-                      class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-2.5 py-1.5 rounded-lg font-semibold transition"
-                      title="Copy Link OBS Khung Chat trong suốt (chỉ hiện chữ) để dán vào OBS">
-                <i class="fa-solid fa-tv mr-1"></i>Link OBS Chat
-              </button>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button @click="copyFbGroupBridgeScript"
+                        class="text-xs bg-blue-600/25 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 px-2.5 py-1.5 rounded-lg font-semibold transition"
+                        title="Copy mã tự động bắt Comment từ luồng Live trong Group Facebook đẩy lên OBS">
+                  🔵 Kết nối FB Live
+                </button>
+                <button @click="copyChatOverlayLink(activeChatStreamer)"
+                        class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-2.5 py-1.5 rounded-lg font-semibold transition"
+                        title="Copy Link OBS Khung Chat trong suốt (chỉ hiện chữ) để dán vào OBS">
+                  <i class="fa-solid fa-tv mr-1"></i>Link OBS Chat
+                </button>
+              </div>
             </div>
 
             <!-- Thanh chọn nhanh Sảnh Live của Bạn bè / Các kèo đang Live -->
@@ -795,10 +802,14 @@
                    class="rounded-xl px-3 py-2 text-xs leading-relaxed"
                    :class="m.type === 'STAR'
                      ? 'bg-amber-500/15 border border-amber-400/40 text-amber-100'
-                     : 'bg-slate-900 border border-slate-800 text-slate-100'">
+                     : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK')
+                         ? 'bg-blue-950/60 border border-blue-500/40 text-slate-100'
+                         : 'bg-slate-900 border border-slate-800 text-slate-100')">
                 <div class="flex justify-between items-center mb-0.5">
-                  <span class="font-bold" :class="m.type === 'STAR' ? 'text-amber-300' : 'text-sky-300'">
-                    <span v-if="m.type === 'STAR'">🌟 </span>{{ m.senderName }}
+                  <span class="font-bold" :class="m.type === 'STAR' ? 'text-amber-300' : ((m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK') ? 'text-blue-400' : 'text-sky-300')">
+                    <span v-if="m.type === 'STAR'">🌟 </span>
+                    <span v-else-if="m.source === 'FACEBOOK' || m.senderTier === 'FACEBOOK'">🔵 [FB] </span>
+                    {{ m.senderName }}
                   </span>
                   <span class="text-[10px] text-slate-500 font-mono">{{ m.timeText }}</span>
                 </div>
@@ -2668,6 +2679,60 @@
               labels: ['Cung', 'Chém'],
               datasets: [{ data: [cungCount, chemCount], backgroundColor: ['#38bdf8', '#fbbf24'] }]
             }
+          });
+        },
+        copyFbGroupBridgeScript() {
+          const streamer = this.activeChatStreamer || this.sessionPlayerName || 'XO';
+          const pass = this.sessionPlayerPass || '';
+          const serverOrigin = window.location.origin;
+          const scriptCode = `/* AOE BY XO - Cầu Nối Tự Động Bắt Comment Facebook Group Live -> OBS (${streamer}) */
+(() => {
+  if (window.__aoeFbBridgeTimer) clearInterval(window.__aoeFbBridgeTimer);
+  const SERVER = ${JSON.stringify(serverOrigin)};
+  const STREAMER = ${JSON.stringify(streamer)};
+  const PASSWORD = ${JSON.stringify(pass)};
+  const seen = new Set();
+  let initialized = false;
+  const scanComments = () => {
+    const articles = document.querySelectorAll('div[role="article"]');
+    articles.forEach(art => {
+      const label = art.getAttribute('aria-label') || '';
+      if (!label && !art.innerText) return;
+      const authorEl = art.querySelector('a[role="link"] span[dir="auto"], span.xt0psk2 span[dir="auto"], h3 span, h4 span');
+      const author = (authorEl ? authorEl.innerText : '').trim();
+      const textEls = art.querySelectorAll('div[dir="auto"]');
+      let bodyText = '';
+      textEls.forEach(t => {
+        const val = (t.innerText || '').trim();
+        if (val && val !== author && !val.includes('Phản hồi') && !val.includes('Thích')) bodyText = val;
+      });
+      if (!author || !bodyText || bodyText.length > 350) return;
+      const key = author + '::' + bodyText;
+      if (seen.has(key)) return;
+      seen.add(key);
+      if (!initialized) return;
+      fetch(SERVER + '/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'pushFacebookComment',
+          streamerName: STREAMER,
+          password: PASSWORD,
+          fbAuthor: author,
+          text: bodyText,
+          fbCommentId: key
+        })
+      }).catch(() => {});
+    });
+    initialized = true;
+  };
+  scanComments();
+  window.__aoeFbBridgeTimer = setInterval(scanComments, 1500);
+  console.log('%c🔵 [AOE BY XO] Đã kết nối tự động đẩy Comment Facebook Group Live lên OBS của ' + STREAMER + '!', 'color:#38bdf8;font-weight:bold;font-size:14px;');
+  alert('🔵 Đã BẬT tự động đẩy Comment Facebook Group Live lên OBS của máy ' + STREAMER + '!');
+})();`;
+          navigator.clipboard.writeText(scriptCode).then(() => {
+            this.showNotify(`🔵 Đã Copy mã bắt Comment FB Group Live cho máy ${streamer}! Hãy mở bài Live trong Group Facebook -> Ấn F12 (Console) -> Ctrl+V -> Enter!`);
           });
         },
         connectRealtimeStream() {
