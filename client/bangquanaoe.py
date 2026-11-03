@@ -972,7 +972,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             return None
 
         sig = self.compute_dialog_signature(norm)
-        if not force and self.last_dialog_signature == sig and (time.time() - self.last_scan_time < 4.5):
+        if not force and self.last_dialog_signature == sig and (time.time() - self.last_scan_time < 15.0):
             return {"status": "unchanged"}
 
         gray = cv2.cvtColor(norm, cv2.COLOR_BGR2GRAY)
@@ -6384,6 +6384,38 @@ class AOETrackerApp:
             bx = parsed["box"]
             iw, ih = parsed["img_size"]
             box_info = f" [Màn {iw}x{ih} • Khung ({bx[0]},{bx[1]})-({bx[2]},{bx[3]}) • Điểm={parsed.get('box_score', 0)}]"
+
+        # Kiểm tra ngay tại Client: Nếu bộ quân 2 đội vẫn giống hệt như trận hiện tại thì suy ra trận đấu vẫn chưa kết thúc / chưa sang ván mới
+        if not allow_same_civ and isinstance(getattr(self, "current_match", None), dict):
+            cur_games = self.current_match.get("games") or []
+            if cur_games:
+                last_g = cur_games[-1]
+                prev_r = [str(c).strip().upper() for c in (last_g.get("redCivs") or [])]
+                prev_b = [str(c).strip().upper() for c in (last_g.get("blueCivs") or [])]
+                new_r = [str(c).strip().upper() for c in (parsed.get("redCivs") or [])]
+                new_b = [str(c).strip().upper() for c in (parsed.get("blueCivs") or [])]
+                same_civ_lineup = (
+                    len(prev_r) == len(new_r)
+                    and len(prev_b) == len(new_b)
+                    and len(prev_r) > 0
+                    and ((prev_r == new_r and prev_b == new_b) or (sorted(prev_r) == sorted(new_r) and sorted(prev_b) == sorted(new_b)))
+                )
+                same_meta = (
+                    last_g.get("redPlayers") == parsed.get("redPlayers")
+                    and last_g.get("bluePlayers") == parsed.get("bluePlayers")
+                    and last_g.get("redColors") == parsed.get("redColors")
+                    and last_g.get("blueColors") == parsed.get("blueColors")
+                )
+                if same_civ_lineup and same_meta:
+                    now_ts = time.time()
+                    if now_ts - getattr(self, "_last_same_civ_skip_log_ts", 0.0) > 5.0:
+                        self._last_same_civ_skip_log_ts = now_ts
+                        self.log(
+                            f"ℹ️ [Soi quân Diplomacy] Bộ quân vẫn giống hệt Trận #{len(cur_games)} — Trận đấu vẫn chưa sang ván mới (giữ nguyên Trận #{len(cur_games)}).",
+                            "DEFAULT",
+                        )
+                    return
+
         self.log(f"🎯 Đã quét bảng quân Diplomacy{box_info}:", "TEAM")
         self.log(f"   🔴 Team Đỏ  : {red_str}", "TEAM")
         self.log(f"   🔵 Team Xanh: {blue_str}", "TEAM")
@@ -6644,18 +6676,16 @@ class AOETrackerApp:
                 False,
                 "Chưa có bảng quân của trận đấu! Hãy ấn F2 (Diplomacy) trong game để hiện bảng quân trước khi bấm F5/F6.",
             )
-        pending_game = next(
-            (g for g in games if not g.get("winner") or str(g.get("winner")).upper() == "PENDING"),
-            None,
-        )
-        if pending_game is None:
-            last_w = "Team Đỏ" if str(games[-1].get("winner")).upper() == "RED" else "Team Xanh"
+        latest_game = games[-1]
+        latest_winner = str(latest_game.get("winner") or "PENDING").upper()
+        if latest_winner in ("RED", "BLUE"):
+            last_w = "Team Đỏ" if latest_winner == "RED" else "Team Xanh"
             return (
                 False,
                 f"Trận #{len(games)} đã ghi nhận {last_w} chiến thắng! Mỗi trận chỉ có 1 đội thắng duy nhất — hãy ấn F2 trong game để quét quân trận mới.",
             )
-        red_civs = pending_game.get("redCivs") or []
-        blue_civs = pending_game.get("blueCivs") or []
+        red_civs = latest_game.get("redCivs") or []
+        blue_civs = latest_game.get("blueCivs") or []
         has_valid_red = len(red_civs) > 0 and all(c and str(c).strip() not in ("---", "Random") for c in red_civs)
         has_valid_blue = len(blue_civs) > 0 and all(c and str(c).strip() not in ("---", "Random") for c in blue_civs)
         if not (has_valid_red and has_valid_blue):
@@ -6947,14 +6977,14 @@ class AOETrackerApp:
                                 h = max(1, rect.bottom - rect.top)
                                 rel_x = (pt.x - rect.left) / float(w)
                                 rel_y = (pt.y - rect.top) / float(h)
-                                # Thanh nút Diplomacy trong AOE nằm ở góc trên bên phải (rel_y <= 0.18, rel_x >= 0.42)
-                                if 0.0 <= rel_y <= 0.18 and 0.42 <= rel_x <= 0.99:
+                                # Thanh nút Diplomacy trong AOE nằm ở góc trên bên phải của thanh HUD trên cùng (rel_y <= 0.055, 0.68 <= rel_x <= 0.94)
+                                if 0.0 <= rel_y <= 0.055 and 0.68 <= rel_x <= 0.94:
                                     triggered = True
                                     reason = "Click Diplomacy"
                             else:
                                 scr_w = max(1, user32.GetSystemMetrics(0))
                                 scr_h = max(1, user32.GetSystemMetrics(1))
-                                if 0.0 <= (pt.y / float(scr_h)) <= 0.18 and (pt.x / float(scr_w)) >= 0.42:
+                                if 0.0 <= (pt.y / float(scr_h)) <= 0.055 and 0.68 <= (pt.x / float(scr_w)) <= 0.94:
                                     triggered = True
                                     reason = "Click Diplomacy"
 
@@ -7009,8 +7039,9 @@ class AOETrackerApp:
                             break
                         else:
                             rej = self.scanner.last_reject_reason
-                            # Ghi log điều tra nếu có hộp thoại ứng viên bị từ chối ở bước OCR/Dòng hoặc vừa bấm F2/Click Diplomacy
-                            if rej and (in_hotkey_window or "Dòng " in rej or "Số dòng" in rej or "Số người chơi" in rej):
+                            # Chỉ ghi log điều tra nếu có hộp thoại ứng viên bị từ chối ở bước OCR/Dòng hoặc vừa bấm phím F2/Alt+D
+                            is_key_trig = in_hotkey_window and getattr(self, "_diplomacy_trigger_reason", "") in ("F2", "Alt+D")
+                            if rej and (is_key_trig or "Dòng " in rej or "Số dòng" in rej or "Số người chơi" in rej):
                                 now_ts = time.time()
                                 if (now_ts - self._last_auto_diag_log_ts > 4.0) or (rej != self._last_auto_diag_reason):
                                     self._last_auto_diag_log_ts = now_ts

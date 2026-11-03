@@ -489,6 +489,9 @@ async function getInitialDataPayload(streamerFilter = '') {
   }
 
   if (currentMatch) {
+    if (deduplicateConsecutiveSameCivGames(currentMatch)) {
+      await db.saveMatch(currentMatch);
+    }
     const owner = players.find(p => p.name.toLowerCase() === String(currentMatch.streamerName || '').toLowerCase());
     currentMatch.overlayConfig = db.normalizeOverlayConfig(
       currentMatch.overlayConfig || (owner && owner.overlayConfig) || db.DEFAULT_OVERLAY_CONFIG
@@ -511,6 +514,47 @@ async function getInitialDataPayload(streamerFilter = '') {
     settings,
     appRelease: settings.appRelease || db.DEFAULT_APP_RELEASE
   };
+}
+
+function areSameCivLineups(gameA, redCivsB, blueCivsB) {
+  if (!gameA) return false;
+  const rA = (gameA.redCivs || []).map(c => parseCiv(c).toUpperCase());
+  const bA = (gameA.blueCivs || []).map(c => parseCiv(c).toUpperCase());
+  const rB = (redCivsB || []).map(c => parseCiv(c).toUpperCase());
+  const bB = (blueCivsB || []).map(c => parseCiv(c).toUpperCase());
+  if (rA.length !== rB.length || bA.length !== bB.length || rA.length === 0) return false;
+  if (JSON.stringify(rA) === JSON.stringify(rB) && JSON.stringify(bA) === JSON.stringify(bB)) {
+    return true;
+  }
+  return (
+    JSON.stringify([...rA].sort()) === JSON.stringify([...rB].sort()) &&
+    JSON.stringify([...bA].sort()) === JSON.stringify([...bB].sort())
+  );
+}
+
+function deduplicateConsecutiveSameCivGames(match) {
+  if (!match || !Array.isArray(match.games) || match.games.length < 2) return false;
+  const cleaned = [];
+  let changed = false;
+  for (const g of match.games) {
+    if (cleaned.length > 0) {
+      const prev = cleaned[cleaned.length - 1];
+      if (areSameCivLineups(prev, g.redCivs, g.blueCivs)) {
+        const prevW = String(prev.winner || 'PENDING').toUpperCase();
+        const curW = String(g.winner || 'PENDING').toUpperCase();
+        if (prevW === 'PENDING' && (curW === 'RED' || curW === 'BLUE')) {
+          prev.winner = curW;
+        }
+        changed = true;
+        continue;
+      }
+    }
+    cleaned.push(g);
+  }
+  if (changed) {
+    match.games = cleaned;
+  }
+  return changed;
 }
 
 async function handleAutoAddGame(data, authResult) {
@@ -585,13 +629,13 @@ async function handleAutoAddGame(data, authResult) {
   }
 
   if (liveMatch && liveMatch.games && liveMatch.games.length) {
+    deduplicateConsecutiveSameCivGames(liveMatch);
     const previous = liveMatch.games[liveMatch.games.length - 1];
-    const prevWinner = String(previous.winner || 'PENDING').toUpperCase();
-    const isSameCivLineup =
-      JSON.stringify(previous.redCivs) === JSON.stringify(redCivs) &&
-      JSON.stringify(previous.blueCivs) === JSON.stringify(blueCivs);
+    const isSameCivLineup = areSameCivLineups(previous, redCivs, blueCivs);
 
-    if (!data.allowSameCiv && prevWinner === 'PENDING' && isSameCivLineup) {
+    // Quy tắc cốt lõi: Khi mở Diplomacy (F2) nếu bộ quân vẫn giống như cũ thì trận đấu đó vẫn chưa kết thúc / chưa sang ván mới
+    // (Rất khó có xác suất lặp lại nguyên bộ quân 2 đội trong 2 trận liên tiếp — giữ nguyên Trận hiện tại kể cả khi đã bấm F5/F6)
+    if (!data.allowSameCiv && isSameCivLineup) {
       liveMatch.redTeam = redPlayers;
       liveMatch.blueTeam = bluePlayers;
       liveMatch.redColors = redColors;
@@ -611,7 +655,7 @@ async function handleAutoAddGame(data, authResult) {
       return {
         added: false,
         match: liveMatch,
-        message: `Đang ở Trận ${liveMatch.games.length} (Đã đồng bộ tên/màu)`
+        message: `Đang ở Trận ${liveMatch.games.length} (Bộ quân không đổi — giữ nguyên trận hiện tại)`
       };
     }
   }
@@ -1498,6 +1542,7 @@ app.post('/api', async (req, res) => {
       if (!Array.isArray(match.games) || match.games.length === 0) {
         return res.json({ status: 'error', message: 'Chưa có bảng quân của trận đấu! Hãy ấn F2 (Diplomacy) trong game để hiển thị quân trước khi bấm F5/F6.' });
       }
+      deduplicateConsecutiveSameCivGames(match);
 
       const rawWinner = String(data.winner || 'PENDING').toUpperCase().trim();
       const winnerVal = ['RED', 'BLUE', 'PENDING'].includes(rawWinner) ? rawWinner : 'PENDING';
@@ -1506,19 +1551,19 @@ app.post('/api', async (req, res) => {
       if (data.gameIndex !== undefined && data.gameIndex !== null && data.gameIndex !== '') {
         gameIdx = Number(data.gameIndex);
       } else {
-        // Quy tắc nghiêm ngặt: Phím F5 / F6 (hoặc nút +1) chỉ được chấp thuận khi quân của trận đấu đó đã hiển thị
-        // và mỗi trận đấu chỉ có duy nhất 1 đội chiến thắng (chỉ chấm cho ván đang PENDING, không tự sinh thêm ván).
-        const pendingIdx = match.games.findIndex(
-          g => !g.winner || String(g.winner).toUpperCase() === 'PENDING'
-        );
-        if (pendingIdx === -1) {
-          const lastW = match.games[match.games.length - 1].winner === 'RED' ? 'Team Đỏ' : 'Team Xanh';
+        // Quy tắc nghiêm ngặt: Phím F5 / F6 (hoặc nút +1) luôn chấm cho trận đấu hiện tại (ván mới nhất vừa soi quân)
+        // và mỗi trận đấu chỉ có duy nhất 1 đội chiến thắng (chỉ chấm khi ván hiện tại đang PENDING).
+        const latestIdx = match.games.length - 1;
+        const latestGame = match.games[latestIdx];
+        const latestWinner = String((latestGame && latestGame.winner) || 'PENDING').toUpperCase();
+        if (latestWinner === 'RED' || latestWinner === 'BLUE') {
+          const lastW = latestWinner === 'RED' ? 'Team Đỏ' : 'Team Xanh';
           return res.json({
             status: 'error',
             message: `Trận #${match.games.length} đã ghi nhận ${lastW} chiến thắng! Mỗi trận đấu chỉ có 1 đội thắng duy nhất — hãy ấn F2 (Diplomacy) trong game để hiển thị quân trận mới trước khi bấm F5/F6.`
           });
         }
-        gameIdx = pendingIdx;
+        gameIdx = latestIdx;
       }
 
       const targetGame = match.games[gameIdx];
