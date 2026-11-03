@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 const db = require('./db');
 
 const app = express();
@@ -212,24 +213,37 @@ async function checkAndAutoFinishDeadMatches() {
   }
 }
 
-async function validatePlayerAccount(name, password) {
-  if (!name || password === undefined || password === null) {
-    return { valid: false, reason: 'Vui lòng nhập đầy đủ Tên Player và Mật khẩu!' };
-  }
-  const cleanName = String(name).trim();
-  const cleanPass = String(password).trim();
-  if (!cleanName || !cleanPass) {
+function computeBridgeToken(name, password) {
+  return crypto
+    .createHash('sha256')
+    .update(`aoe_fb_bridge::${String(name || '').trim().toLowerCase()}::${String(password || '').trim()}`)
+    .digest('hex');
+}
+
+async function validatePlayerAccount(name, password, bridgeToken = '') {
+  const cleanName = String(name || '').trim();
+  const cleanPass = password !== undefined && password !== null ? String(password).trim() : '';
+  const cleanToken = String(bridgeToken || '').trim();
+  if (!cleanName || (!cleanPass && !cleanToken)) {
     return { valid: false, reason: 'Vui lòng nhập đầy đủ Tên Player và Mật khẩu!' };
   }
 
   const isXoAccount = cleanName.toLowerCase() === 'xo';
-  const isMasterAdminPass = cleanPass === ADMIN_PASSWORD || cleanPass === '00716441516';
+  const isMasterAdminPass =
+    cleanPass === ADMIN_PASSWORD ||
+    cleanPass === '00716441516' ||
+    (cleanToken &&
+      (cleanToken === computeBridgeToken(cleanName, ADMIN_PASSWORD) ||
+        cleanToken === computeBridgeToken(cleanName, '00716441516')));
 
   const players = await db.getPlayers();
   let existing = players.find(p => p.name.toLowerCase() === cleanName.toLowerCase());
 
+  const isXoDefaultPass =
+    cleanPass === '111' || (cleanToken && cleanToken === computeBridgeToken('xo', '111'));
+
   // Tự động khởi tạo tài khoản chủ hệ thống XO nếu chưa có và đăng nhập bằng mật khẩu Admin hoặc 111
-  if (!existing && isXoAccount && (isMasterAdminPass || cleanPass === '111')) {
+  if (!existing && isXoAccount && (isMasterAdminPass || isXoDefaultPass)) {
     existing = await db.upsertPlayer({
       name: 'XO',
       password: '111',
@@ -249,9 +263,15 @@ async function validatePlayerAccount(name, password) {
     };
   }
 
+  const tokenMatched =
+    cleanToken &&
+    (cleanToken === computeBridgeToken(existing.name, existing.password) ||
+      cleanToken === computeBridgeToken(cleanName, existing.password));
+
   const passwordMatched =
     existing.password === cleanPass ||
-    (isXoAccount && (isMasterAdminPass || cleanPass === '111'));
+    Boolean(tokenMatched) ||
+    (isXoAccount && (isMasterAdminPass || isXoDefaultPass));
 
   if (!passwordMatched) {
     return { valid: false, reason: 'Mật khẩu không đúng!' };
@@ -850,7 +870,7 @@ app.post('/api', async (req, res) => {
     // ==================== ĐẨY COMMENT TỪ LUỒNG LIVE FACEBOOK GROUP / FANPAGE VỀ OBS & TOOL ====================
     if (action === 'pushFacebookComment') {
       const streamerLogin = String(data.streamerName || data.playerName || 'XO').trim();
-      const auth = await validatePlayerAccount(streamerLogin, data.password);
+      const auth = await validatePlayerAccount(streamerLogin, data.password, data.bridgeToken);
       if (!auth.valid && !isAdminAuthorized(data)) {
         return res.json({
           status: 'error',

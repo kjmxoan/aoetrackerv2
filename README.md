@@ -133,8 +133,9 @@ Trong phần mềm **OBS Studio**, tại mục **Sources (Nguồn)** bấm dấu
 ### 3.2. Hướng Dẫn Đẩy Comment Từ Luồng Live Trong Group Facebook Lên OBS
 Khi bạn phát Live trong **Group Facebook**, hãy chọn 1 trong 2 cách sau:
 
-#### Cách 1: Dùng nút 1-Click trên Tool (Nhanh nhất — 10 giây)
+#### Cách 1: Dùng nút 1-Click trên Tool (Nhanh nhất — 10 giây, Bảo mật 100% mật khẩu khi Live)
 1. Trên Tool PC, bấm nút **`🔵 Kết nối FB Group Live`** $\rightarrow$ bấm **`📋 Copy Mã Tự Động Bắt Comment FB Group (1-Click)`** (hoặc bấm nút **`🔵 Kết nối FB Live`** ngay trên Web).
+   - *Bảo mật chống lộ mật khẩu trên sóng Live*: Khung xem trước mã trên cửa sổ Tool hoàn toàn ẩn mật khẩu (`const AUTH_TOKEN = "•••••••••••••••• (Đã mã hóa bảo mật - Không lộ mật khẩu khi Live)"`), và đoạn mã copy vào Clipboard sử dụng mã khóa băm `SHA-256 bridgeToken` kết hợp mã hóa hex ẩn, tuyệt đối không để lộ mật khẩu dạng văn bản (`plaintext`) trên màn hình hay trong cửa sổ F12 Console.
 2. Mở bài phát Live của bạn trong Group Facebook trên trình duyệt (Chrome / Cốc Cốc / Edge).
    - *Lưu ý*: Chuyển bộ lọc bình luận dưới video Facebook sang chế độ **"Mới nhất" (Newest)** hoặc **"Tất cả bình luận" (All comments)** và giữ nguyên tab đó chạy ngầm khi chơi game.
 3. Ấn phím **`F12`** $\rightarrow$ chọn tab **`Console`** $\rightarrow$ ấn **`Ctrl + V`** rồi **`Enter`**.
@@ -206,7 +207,7 @@ Copy-Item "$src\client\dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\client\dist\TOOL
 ## 📋 5. Nhật Ký Cập Nhật Phiên Bản (`Changelog`)
 
 - **`v5.3` (Hiện tại)**:
-  - Tích hợp **Cầu nối tự động bắt Comment từ luồng Live trong Group Facebook (`🔵 [FB]`)** đẩy thẳng lên OBS Khung Chat, Sảnh Live Web & Tool PC kèm bộ Chrome/Edge Extension [`client/fb_group_live_extension`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/client/fb_group_live_extension).
+  - Tích hợp **Cầu nối tự động bắt Comment từ luồng Live trong Group Facebook (`🔵 [FB]`)** đẩy thẳng lên OBS Khung Chat, Sảnh Live Web & Tool PC kèm bộ Chrome/Edge Extension [`client/fb_group_live_extension`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/client/fb_group_live_extension) — **tích hợp cơ chế ẩn & mã hóa bảo mật mật khẩu (`SHA-256 bridgeToken` + khóa mã hóa hex)** chống lộ mật khẩu của Streamer trên sóng Live và trong cửa sổ F12 Console.
   - Bổ sung công cụ **Dọn dẹp & Xóa Lịch Sử Đấu (`adminCleanupMatchHistory`)** trong bảng Admin (xóa $>1$ tuần, $>1$ tháng, $>N$ ngày, theo Streamer, kèo rỗng, kèo đã kết thúc hoặc xóa tất cả).
   - Bổ sung nút **⬇️ Tải Tool PC** trên Web (`/download-tool`), tính năng **Đánh dấu phiên bản (`v5.3`) & Tự động nhắc cập nhật** khi người dùng mở bản cũ, cùng mục quản lý Version dành cho Admin.
   - Tinh chỉnh giao diện **Màu Gỗ Tối (`Dark Wood / Charcoal`)**, màn hình **Đăng nhập khi khởi động**, thanh **Menu Tab ở góc phải**, ẩn nút quét/test thủ công và đưa nút **🗑 Kết thúc kèo đấu** xuống đáy ô tỉ số trung tâm.

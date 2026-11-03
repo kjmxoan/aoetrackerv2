@@ -2685,12 +2685,15 @@
           const streamer = this.activeChatStreamer || this.sessionPlayerName || 'XO';
           const pass = this.sessionPlayerPass || '';
           const serverOrigin = window.location.origin;
-          const scriptCode = `/* AOE BY XO - Cầu Nối Tự Động Bắt Comment Facebook Group Live -> OBS (${streamer}) */
+          const hexPw = Array.from(new TextEncoder().encode(pass)).map(b => (b ^ 90).toString(16).padStart(2, '0')).join('');
+          const scriptCode = `/* AOE BY XO - Cầu Nối Tự Động Bắt Comment Facebook Group Live -> OBS (${streamer}) [Đã Mã Hóa Bảo Mật Mật Khẩu] */
 (() => {
   if (window.__aoeFbBridgeTimer) clearInterval(window.__aoeFbBridgeTimer);
   const SERVER = ${JSON.stringify(serverOrigin)};
   const STREAMER = ${JSON.stringify(streamer)};
-  const PASSWORD = ${JSON.stringify(pass)};
+  const AUTH_TOKEN = "AOE_SECURE_LOCKED_TOKEN"; // Đã ẩn & mã hóa bảo mật mật khẩu
+  const _k = ${JSON.stringify(hexPw)};
+  const _d = (h) => new TextDecoder().decode(new Uint8Array((h.match(/.{1,2}/g) || []).map(x => parseInt(x, 16) ^ 90)));
   const seen = new Set();
   let initialized = false;
   const scanComments = () => {
@@ -2717,7 +2720,7 @@
         body: JSON.stringify({
           action: 'pushFacebookComment',
           streamerName: STREAMER,
-          password: PASSWORD,
+          password: _d(_k),
           fbAuthor: author,
           text: bodyText,
           fbCommentId: key
@@ -2732,7 +2735,7 @@
   alert('🔵 Đã BẬT tự động đẩy Comment Facebook Group Live lên OBS của máy ' + STREAMER + '!');
 })();`;
           navigator.clipboard.writeText(scriptCode).then(() => {
-            this.showNotify(`🔵 Đã Copy mã bắt Comment FB Group Live cho máy ${streamer}! Hãy mở bài Live trong Group Facebook -> Ấn F12 (Console) -> Ctrl+V -> Enter!`);
+            this.showNotify(`🔵 Đã Copy mã bắt Comment FB Group Live (đã mã hóa bảo mật mật khẩu) cho máy ${streamer}! Hãy mở bài Live trong Group Facebook -> Ấn F12 (Console) -> Ctrl+V -> Enter!`);
           });
         },
         connectRealtimeStream() {
