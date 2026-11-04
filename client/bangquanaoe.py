@@ -797,7 +797,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         full_civ: str,
         streamer_name: str,
         known_players=None,
-        is_self_row: bool = False,
     ):
         yc = int(round(95.0 + row_idx * 29.8))
         name_crop = norm_624x400[yc - 8:yc + 5, 8:134]
@@ -810,7 +809,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         if int(np.sum(mask_n)) < 10:
             return None
 
-        if is_self_row and streamer_name and streamer_name.strip():
+        if row_idx == 0 and streamer_name and streamer_name.strip():
             return streamer_name.strip()
 
         def normalize_name_token(s: str) -> str:
@@ -1090,9 +1089,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             s_enem = float(np.mean(edges[yc - 6:yc + 6, 387:401]))
             max_radio = max(s_ally, s_neut, s_enem)
 
-            # Dòng của chính người chơi mở Diplomacy sẽ KHÔNG có 3 ô radio Ally/Neutral/Enemy (max_radio < 120)
-            # bất kể người chơi đang nằm ở Slot 1, 2 hay Slot 3, 4...
-            if max_radio < 120.0:
+            # Dòng của chính người chơi mở F2 sẽ không có 3 ô radio Ally/Neutral/Enemy (max_radio < 120)
+            if r == 0 or max_radio < 120.0:
                 stance = "ALLY"
             elif s_ally > s_neut and s_ally > s_enem and s_ally > 90.0:
                 stance = "ALLY"
@@ -1103,9 +1101,6 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             active_rows.append({
                 "row_idx": r,
                 "stance": stance,
-                "s_ally": s_ally,
-                "s_neut": s_neut,
-                "s_enem": s_enem,
                 "max_radio": max_radio,
                 "hsv_feat": hsv_feat,
                 "w_obs": w_obs,
@@ -1147,31 +1142,13 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 multi_canvas[r * 70 + 18:r * 70 + 18 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
                 multi_canvas[r * 70 + 18:r * 70 + 18 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
 
-        # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 bắt buộc phải có mặt
+        # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 (người mở F2) bắt buộc phải có mặt
         if len(active_rows) < 2 or len(active_rows) % 2 != 0 or active_rows[0]["row_idx"] != 0:
             self.last_reject_reason = f"Số dòng người chơi không hợp lệ ({len(active_rows)} dòng: {[r['row_idx'] for r in active_rows]})"
             return None
 
-        # Xác định dòng của chính người chơi mở Diplomacy (dòng không có 3 nút radio Ally/Neutral/Enemy -> max_radio nhỏ nhất)
-        # Hỗ trợ chính xác cả khi người chơi ở Slot 1-2 (tạo phòng) lẫn khi chuyển xuống Slot 3-4... (đối thủ tạo phòng)
-        no_radio_rows = [it for it in active_rows if it["max_radio"] < 120.0]
-        if no_radio_rows:
-            self_row = min(no_radio_rows, key=lambda it: it["max_radio"])
-        else:
-            min_r_item = min(active_rows, key=lambda it: it["max_radio"])
-            med_radio = float(np.median([it["max_radio"] for it in active_rows]))
-            self_row = min_r_item if min_r_item["max_radio"] < med_radio * 0.75 else active_rows[0]
-
-        for it in active_rows:
-            if it is self_row:
-                it["is_self"] = True
-                it["stance"] = "ALLY"
-            else:
-                it["is_self"] = False
-                if it["s_ally"] > it["s_neut"] and it["s_ally"] > it["s_enem"] and it["s_ally"] > 90.0:
-                    it["stance"] = "ALLY"
-                else:
-                    it["stance"] = "ENEMY"
+        # Đảm bảo dòng người chơi đầu tiên luôn thuộc phe ALLY (Team Đỏ)
+        active_rows[0]["stance"] = "ALLY"
 
         assigned_colors = self.assign_player_colors([item["hsv_feat"] for item in active_rows])
         for item, color_id in zip(active_rows, assigned_colors):
@@ -1213,13 +1190,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 return None
 
             player_name = self.clean_and_match_player_name(
-                norm,
-                name_strs,
-                r,
-                full_civ,
-                streamer_name,
-                known_players,
-                is_self_row=bool(item.get("is_self", False)),
+                norm, name_strs, r, full_civ, streamer_name, known_players
             )
             if not player_name:
                 self.last_reject_reason = f"Dòng {r+1} ({full_civ}) không nhận diện được tên Player (OCR={name_strs})"
@@ -1240,22 +1211,13 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         if (len(red_rows) == 1 and len(blue_rows) >= 3 and len(active_rows) % 2 == 0) or not red_rows or not blue_rows:
             half = max(1, len(active_rows) // 2)
-            self_pos = next((idx for idx, it in enumerate(active_rows) if it.get("is_self")), 0)
-            if self_pos >= half:
-                # Người chơi đang nằm ở nửa dưới (VD: Slot 3 & Slot 4 khi đối thủ tạo phòng)
-                red_rows = active_rows[half:]
-                blue_rows = active_rows[:half]
-            else:
-                red_rows = active_rows[:half]
-                blue_rows = active_rows[half:]
+            red_rows = active_rows[:half]
+            blue_rows = active_rows[half:]
 
         # Bắt buộc 2 đội phải cân bằng số lượng người chơi (1v1, 2v2, 3v3, 4v4) và có đủ tên + quân
         if not red_rows or not blue_rows or len(red_rows) != len(blue_rows):
             self.last_reject_reason = f"Số người chơi 2 phe không cân bằng (Đỏ={len(red_rows)}, Xanh={len(blue_rows)})"
             return None
-
-        # Đảm bảo người mở Diplomacy (is_self) đứng đầu danh sách Team Đỏ mặc định (khi đồng đội nằm ở slot trên mình)
-        red_rows.sort(key=lambda r_it: 0 if r_it.get("is_self") else 1)
 
         # Chỉ lưu chữ ký sau khi đã nhận diện thành công đầy đủ cả 2 đội
         self.last_dialog_signature = sig
