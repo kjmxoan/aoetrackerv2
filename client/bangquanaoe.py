@@ -797,6 +797,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         full_civ: str,
         streamer_name: str,
         known_players=None,
+        is_self_row: bool = False,
     ):
         yc = int(round(95.0 + row_idx * 29.8))
         name_crop = norm_624x400[yc - 8:yc + 5, 8:134]
@@ -809,7 +810,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         if int(np.sum(mask_n)) < 10:
             return None
 
-        if row_idx == 0 and streamer_name and streamer_name.strip():
+        if is_self_row and streamer_name and streamer_name.strip():
             return streamer_name.strip()
 
         def normalize_name_token(s: str) -> str:
@@ -1089,8 +1090,9 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             s_enem = float(np.mean(edges[yc - 6:yc + 6, 387:401]))
             max_radio = max(s_ally, s_neut, s_enem)
 
-            # Dòng của chính người chơi mở F2 sẽ không có 3 ô radio Ally/Neutral/Enemy (max_radio < 120)
-            if r == 0 or max_radio < 120.0:
+            # Dòng của chính người chơi mở Diplomacy sẽ KHÔNG có 3 ô radio Ally/Neutral/Enemy (max_radio < 120)
+            # bất kể người chơi đang nằm ở Slot 1, 2 hay Slot 3, 4...
+            if max_radio < 120.0:
                 stance = "ALLY"
             elif s_ally > s_neut and s_ally > s_enem and s_ally > 90.0:
                 stance = "ALLY"
@@ -1101,6 +1103,9 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             active_rows.append({
                 "row_idx": r,
                 "stance": stance,
+                "s_ally": s_ally,
+                "s_neut": s_neut,
+                "s_enem": s_enem,
                 "max_radio": max_radio,
                 "hsv_feat": hsv_feat,
                 "w_obs": w_obs,
@@ -1142,13 +1147,31 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 multi_canvas[r * 70 + 18:r * 70 + 18 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
                 multi_canvas[r * 70 + 18:r * 70 + 18 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
 
-        # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 (người mở F2) bắt buộc phải có mặt
+        # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 bắt buộc phải có mặt
         if len(active_rows) < 2 or len(active_rows) % 2 != 0 or active_rows[0]["row_idx"] != 0:
             self.last_reject_reason = f"Số dòng người chơi không hợp lệ ({len(active_rows)} dòng: {[r['row_idx'] for r in active_rows]})"
             return None
 
-        # Đảm bảo dòng người chơi đầu tiên luôn thuộc phe ALLY (Team Đỏ)
-        active_rows[0]["stance"] = "ALLY"
+        # Xác định dòng của chính người chơi mở Diplomacy (dòng không có 3 nút radio Ally/Neutral/Enemy -> max_radio nhỏ nhất)
+        # Hỗ trợ chính xác cả khi người chơi ở Slot 1-2 (tạo phòng) lẫn khi chuyển xuống Slot 3-4... (đối thủ tạo phòng)
+        no_radio_rows = [it for it in active_rows if it["max_radio"] < 120.0]
+        if no_radio_rows:
+            self_row = min(no_radio_rows, key=lambda it: it["max_radio"])
+        else:
+            min_r_item = min(active_rows, key=lambda it: it["max_radio"])
+            med_radio = float(np.median([it["max_radio"] for it in active_rows]))
+            self_row = min_r_item if min_r_item["max_radio"] < med_radio * 0.75 else active_rows[0]
+
+        for it in active_rows:
+            if it is self_row:
+                it["is_self"] = True
+                it["stance"] = "ALLY"
+            else:
+                it["is_self"] = False
+                if it["s_ally"] > it["s_neut"] and it["s_ally"] > it["s_enem"] and it["s_ally"] > 90.0:
+                    it["stance"] = "ALLY"
+                else:
+                    it["stance"] = "ENEMY"
 
         assigned_colors = self.assign_player_colors([item["hsv_feat"] for item in active_rows])
         for item, color_id in zip(active_rows, assigned_colors):
@@ -1190,7 +1213,13 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 return None
 
             player_name = self.clean_and_match_player_name(
-                norm, name_strs, r, full_civ, streamer_name, known_players
+                norm,
+                name_strs,
+                r,
+                full_civ,
+                streamer_name,
+                known_players,
+                is_self_row=bool(item.get("is_self", False)),
             )
             if not player_name:
                 self.last_reject_reason = f"Dòng {r+1} ({full_civ}) không nhận diện được tên Player (OCR={name_strs})"
@@ -1211,13 +1240,22 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         if (len(red_rows) == 1 and len(blue_rows) >= 3 and len(active_rows) % 2 == 0) or not red_rows or not blue_rows:
             half = max(1, len(active_rows) // 2)
-            red_rows = active_rows[:half]
-            blue_rows = active_rows[half:]
+            self_pos = next((idx for idx, it in enumerate(active_rows) if it.get("is_self")), 0)
+            if self_pos >= half:
+                # Người chơi đang nằm ở nửa dưới (VD: Slot 3 & Slot 4 khi đối thủ tạo phòng)
+                red_rows = active_rows[half:]
+                blue_rows = active_rows[:half]
+            else:
+                red_rows = active_rows[:half]
+                blue_rows = active_rows[half:]
 
         # Bắt buộc 2 đội phải cân bằng số lượng người chơi (1v1, 2v2, 3v3, 4v4) và có đủ tên + quân
         if not red_rows or not blue_rows or len(red_rows) != len(blue_rows):
             self.last_reject_reason = f"Số người chơi 2 phe không cân bằng (Đỏ={len(red_rows)}, Xanh={len(blue_rows)})"
             return None
+
+        # Đảm bảo người mở Diplomacy (is_self) đứng đầu danh sách Team Đỏ mặc định (khi đồng đội nằm ở slot trên mình)
+        red_rows.sort(key=lambda r_it: 0 if r_it.get("is_self") else 1)
 
         # Chỉ lưu chữ ký sau khi đã nhận diện thành công đầy đủ cả 2 đội
         self.last_dialog_signature = sig
@@ -6601,7 +6639,71 @@ class AOETrackerApp:
         import webbrowser
         webbrowser.open(self.get_base_server_url())
 
+    def _align_parsed_with_current_match(self, parsed: dict):
+        """
+        Căn chỉnh đội hình & thứ tự người chơi theo kèo đang LIVE (self.current_match):
+        Giúp khi sang Game 2, 3... dù đổi chủ phòng (từ Slot 1-2 chuyển xuống Slot 3-4)
+        thì Team Đỏ và Team Xanh vẫn giữ nguyên đúng đội và thứ tự người chơi của Game 1,
+        kèm đúng loại Quân mới và Màu cờ mới của từng người.
+        """
+        cur_m = getattr(self, "current_match", None)
+        if not isinstance(cur_m, dict):
+            return
+        ref_red = cur_m.get("redTeam") or []
+        ref_blue = cur_m.get("blueTeam") or []
+        r_p = list(parsed.get("redPlayers") or [])
+        b_p = list(parsed.get("bluePlayers") or [])
+        r_c = list(parsed.get("redCivs") or [])
+        b_c = list(parsed.get("blueCivs") or [])
+        r_col = list(parsed.get("redColors") or [])
+        b_col = list(parsed.get("blueColors") or [])
+        if len(ref_red) != len(r_p) or len(ref_blue) != len(b_p) or not r_p:
+            return
+
+        ref_red_set = {str(x).strip().lower() for x in ref_red}
+        ref_blue_set = {str(x).strip().lower() for x in ref_blue}
+        keep_sc = sum(1 for x in r_p if str(x).strip().lower() in ref_red_set) + sum(
+            1 for x in b_p if str(x).strip().lower() in ref_blue_set
+        )
+        swap_sc = sum(1 for x in r_p if str(x).strip().lower() in ref_blue_set) + sum(
+            1 for x in b_p if str(x).strip().lower() in ref_red_set
+        )
+        if swap_sc > keep_sc:
+            r_p, b_p = b_p, r_p
+            r_c, b_c = b_c, r_c
+            r_col, b_col = b_col, r_col
+
+        def _reorder(ref_list, names, civs, cols):
+            entries = [
+                {"name": n, "lower": str(n).strip().lower(), "civ": c, "col": cl, "used": False}
+                for n, c, cl in zip(names, civs, cols)
+            ]
+            ordered = []
+            for ref_name in ref_list:
+                rl = str(ref_name).strip().lower()
+                found = next((e for e in entries if not e["used"] and e["lower"] == rl), None)
+                if found:
+                    found["used"] = True
+                    ordered.append(found)
+                else:
+                    ordered.append(None)
+            rem = [e for e in entries if not e["used"]]
+            ri = 0
+            for idx in range(len(ordered)):
+                if ordered[idx] is None and ri < len(rem):
+                    ordered[idx] = rem[ri]
+                    ri += 1
+            return (
+                [e["name"] for e in ordered],
+                [e["civ"] for e in ordered],
+                [e["col"] for e in ordered],
+            )
+
+        parsed["redPlayers"], parsed["redCivs"], parsed["redColors"] = _reorder(ref_red, r_p, r_c, r_col)
+        parsed["bluePlayers"], parsed["blueCivs"], parsed["blueColors"] = _reorder(ref_blue, b_p, b_c, b_col)
+
     def _send_parsed_diplomacy_to_server(self, parsed: dict, allow_same_civ: bool = False):
+        self._align_parsed_with_current_match(parsed)
         red_str = ", ".join(
             f"{p} [{c} - {COLOR_NAMES_VI.get(col, col)}]"
             for p, c, col in zip(parsed["redPlayers"], parsed["redCivs"], parsed["redColors"])

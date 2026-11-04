@@ -615,6 +615,103 @@ function deduplicateConsecutiveSameCivGames(match) {
   return changed;
 }
 
+function reorderLineupByReferenceTeam(refTeam, players, civs, colors, streamerLower = '') {
+  const entries = players.map((p, idx) => ({
+    player: p,
+    pLower: String(p || '').trim().toLowerCase(),
+    civ: civs[idx],
+    color: colors[idx],
+    used: false
+  }));
+
+  const ordered = [];
+  if (Array.isArray(refTeam) && refTeam.length === entries.length) {
+    for (const refName of refTeam) {
+      const rLower = String(refName || '').trim().toLowerCase();
+      const found = entries.find(e => !e.used && e.pLower === rLower);
+      if (found) {
+        found.used = true;
+        ordered.push(found);
+      } else {
+        ordered.push(null);
+      }
+    }
+    const remaining = entries.filter(e => !e.used);
+    let remIdx = 0;
+    for (let i = 0; i < ordered.length; i++) {
+      if (!ordered[i] && remIdx < remaining.length) {
+        ordered[i] = remaining[remIdx++];
+      }
+    }
+  } else {
+    if (streamerLower) {
+      entries.sort((a, b) => (a.pLower === streamerLower ? -1 : b.pLower === streamerLower ? 1 : 0));
+    }
+    ordered.push(...entries);
+  }
+
+  return {
+    players: ordered.map(e => e.player),
+    civs: ordered.map(e => e.civ),
+    colors: ordered.map(e => e.color)
+  };
+}
+
+function alignLineupWithLiveMatch(liveMatch, streamerName, redPlayers, bluePlayers, redCivs, blueCivs, redColors, blueColors) {
+  const sLower = String(streamerName || '').trim().toLowerCase();
+  let rP = [...redPlayers];
+  let bP = [...bluePlayers];
+  let rC = [...redCivs];
+  let bC = [...blueCivs];
+  let rCol = [...redColors];
+  let bCol = [...blueColors];
+
+  if (liveMatch && Array.isArray(liveMatch.redTeam) && Array.isArray(liveMatch.blueTeam) && liveMatch.redTeam.length === rP.length) {
+    const refRedSet = new Set(liveMatch.redTeam.map(n => String(n || '').trim().toLowerCase()));
+    const refBlueSet = new Set(liveMatch.blueTeam.map(n => String(n || '').trim().toLowerCase()));
+    const keepScore =
+      rP.filter(n => refRedSet.has(String(n || '').trim().toLowerCase())).length +
+      bP.filter(n => refBlueSet.has(String(n || '').trim().toLowerCase())).length;
+    const swapScore =
+      rP.filter(n => refBlueSet.has(String(n || '').trim().toLowerCase())).length +
+      bP.filter(n => refRedSet.has(String(n || '').trim().toLowerCase())).length;
+
+    // Nếu ở ván mới 2 đội đổi phòng / đổi slot khiến danh sách Đỏ - Xanh bị ngược so với Trận 1 -> tự động xoay lại đúng Team Đỏ & Team Xanh
+    if (swapScore > keepScore || (swapScore === keepScore && sLower && bP.some(n => String(n || '').trim().toLowerCase() === sLower) && !rP.some(n => String(n || '').trim().toLowerCase() === sLower))) {
+      [rP, bP] = [bP, rP];
+      [rC, bC] = [bC, rC];
+      [rCol, bCol] = [bCol, rCol];
+    }
+
+    const alignedRed = reorderLineupByReferenceTeam(liveMatch.redTeam, rP, rC, rCol, sLower);
+    const alignedBlue = reorderLineupByReferenceTeam(liveMatch.blueTeam, bP, bC, bCol, '');
+    return {
+      redPlayers: alignedRed.players,
+      bluePlayers: alignedBlue.players,
+      redCivs: alignedRed.civs,
+      blueCivs: alignedBlue.civs,
+      redColors: alignedRed.colors,
+      blueColors: alignedBlue.colors
+    };
+  }
+
+  // Với trận đầu tiên của kèo: đảm bảo đội của Streamer luôn nằm bên Team Đỏ và tên Streamer đứng đầu Team Đỏ
+  if (sLower && bP.some(n => String(n || '').trim().toLowerCase() === sLower) && !rP.some(n => String(n || '').trim().toLowerCase() === sLower)) {
+    [rP, bP] = [bP, rP];
+    [rC, bC] = [bC, rC];
+    [rCol, bCol] = [bCol, rCol];
+  }
+  const alignedRed = reorderLineupByReferenceTeam(null, rP, rC, rCol, sLower);
+  return {
+    redPlayers: alignedRed.players,
+    bluePlayers: bP,
+    redCivs: alignedRed.civs,
+    blueCivs: bC,
+    redColors: alignedRed.colors,
+    blueColors: bCol
+  };
+}
+
 async function handleAutoAddGame(data, authResult) {
   const canonicalStreamerName = authResult.canonicalName;
   const playerRecord = authResult.player;
@@ -626,26 +723,26 @@ async function handleAutoAddGame(data, authResult) {
   const rawRedPlayers = Array.isArray(data.redPlayers) ? data.redPlayers : [];
   const rawBluePlayers = Array.isArray(data.bluePlayers) ? data.bluePlayers : [];
 
-  const redPlayers = rawRedPlayers
+  const rawRedPlayersCleaned = rawRedPlayers
     .map(cleanPlayerName)
     .filter(name => name && !isFakePlayerName(name));
-  const bluePlayers = rawBluePlayers
+  const rawBluePlayersCleaned = rawBluePlayers
     .map(cleanPlayerName)
     .filter(name => name && !isFakePlayerName(name));
 
-  const redCivs = rawRedCivs.map(parseCiv).filter(civ => civ && civ !== 'Random');
-  const blueCivs = rawBlueCivs.map(parseCiv).filter(civ => civ && civ !== 'Random');
+  const rawRedCivsCleaned = rawRedCivs.map(parseCiv).filter(civ => civ && civ !== 'Random');
+  const rawBlueCivsCleaned = rawBlueCivs.map(parseCiv).filter(civ => civ && civ !== 'Random');
 
   if (
-    !redPlayers.length ||
-    !bluePlayers.length ||
-    redPlayers.length !== rawRedPlayers.length ||
-    bluePlayers.length !== rawBluePlayers.length ||
-    redCivs.length !== rawRedCivs.length ||
-    blueCivs.length !== rawBlueCivs.length ||
-    redPlayers.length !== bluePlayers.length ||
-    redCivs.length !== redPlayers.length ||
-    blueCivs.length !== bluePlayers.length
+    !rawRedPlayersCleaned.length ||
+    !rawBluePlayersCleaned.length ||
+    rawRedPlayersCleaned.length !== rawRedPlayers.length ||
+    rawBluePlayersCleaned.length !== rawBluePlayers.length ||
+    rawRedCivsCleaned.length !== rawRedCivs.length ||
+    rawBlueCivsCleaned.length !== rawBlueCivs.length ||
+    rawRedPlayersCleaned.length !== rawBluePlayersCleaned.length ||
+    rawRedCivsCleaned.length !== rawRedPlayersCleaned.length ||
+    rawBlueCivsCleaned.length !== rawBluePlayersCleaned.length
   ) {
     return {
       added: false,
@@ -653,10 +750,10 @@ async function handleAutoAddGame(data, authResult) {
     };
   }
 
-  const mode = getMode(redPlayers.length);
+  const mode = getMode(rawRedPlayersCleaned.length);
 
-  const redColors = Array.isArray(data.redColors) ? data.redColors.slice(0, redPlayers.length) : [];
-  const blueColors = Array.isArray(data.blueColors) ? data.blueColors.slice(0, bluePlayers.length) : [];
+  const rawRedColorsTrimmed = Array.isArray(data.redColors) ? data.redColors.slice(0, rawRedPlayersCleaned.length) : [];
+  const rawBlueColorsTrimmed = Array.isArray(data.blueColors) ? data.blueColors.slice(0, rawBluePlayersCleaned.length) : [];
   const streamerName = canonicalStreamerName || data.streamerName || 'Auto Bot';
 
   const effectiveOverlayCfg = data.overlayConfig
@@ -685,6 +782,20 @@ async function handleAutoAddGame(data, authResult) {
     await db.saveMatch(liveMatch);
     liveMatch = null;
   }
+
+  // Căn chỉnh tự động đội hình (Team Đỏ - Team Xanh) và thứ tự từng người chơi theo kèo đang LIVE
+  // Đảm bảo khi sang Game 2, 3... dù đổi chủ phòng (chuyển từ Slot 1-2 sang Slot 3-4) thì Team Đỏ và Team Xanh vẫn giữ cố định 100%
+  const aligned = alignLineupWithLiveMatch(
+    liveMatch,
+    streamerName,
+    rawRedPlayersCleaned,
+    rawBluePlayersCleaned,
+    rawRedCivsCleaned,
+    rawBlueCivsCleaned,
+    rawRedColorsTrimmed,
+    rawBlueColorsTrimmed
+  );
+  const { redPlayers, bluePlayers, redCivs, blueCivs, redColors, blueColors } = aligned;
 
   if (liveMatch && liveMatch.games && liveMatch.games.length) {
     deduplicateConsecutiveSameCivGames(liveMatch);
