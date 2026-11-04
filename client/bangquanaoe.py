@@ -790,6 +790,44 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         return best_full, short_map[best_full]
 
     @staticmethod
+    def post_clean_aoe_player_name(raw_s: str) -> str:
+        if not raw_s:
+            return ""
+        char_map = {
+            "Ä": "A", "Á": "A", "À": "A", "Â": "A", "Ã": "A", "Å": "A",
+            "ä": "a", "á": "a", "à": "a", "â": "a", "ã": "a", "å": "a",
+            "Ë": "E", "É": "E", "È": "E", "Ê": "E",
+            "ë": "e", "é": "e", "è": "e", "ê": "e",
+            "Ï": "I", "Í": "I", "Ì": "I", "Î": "I",
+            "ï": "i", "í": "i", "ì": "i", "î": "i",
+            "Ö": "O", "Ó": "O", "Ò": "O", "Ô": "O", "Õ": "O", "Ø": "O",
+            "ö": "o", "ó": "o", "ò": "o", "ô": "o", "õ": "o", "ø": "o",
+            "Ü": "U", "Ú": "U", "Ù": "U", "Û": "U",
+            "ü": "u", "ú": "u", "ù": "u", "û": "u",
+            "ß": "s",
+        }
+        s = "".join(char_map.get(ch, ch) for ch in raw_s)
+        s = re.sub(r"\[(?=[Hh][Aa][Nn])", "T", s)
+        s = "".join(ch for ch in s if ch.isascii() and (ch.isalnum() or ch in " _-"))
+        s = re.sub(r"\s+", " ", s).strip(" _-")
+        # Khắc phục các cặp chữ đặc trưng dễ bị Windows OCR đọc nhầm trên font pixel AOE1
+        s = re.sub(r"\bM[FF]M\b", "MEM", s)
+        s = re.sub(r"\bME-m(?:t)?\b", "MEM", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bUEU\b", "MEM", s)
+        s = re.sub(r"^8G([_ ])", r"BG\1", s)
+        s = re.sub(r"^BG\s+(?=Diem|Dieni)", "BG_", s, flags=re.IGNORECASE)
+        s = re.sub(r"Dieni(?=[Vv]u)", "Diem", s)
+        s = re.sub(r"\bluc(?:kv|icv|k|iy|iw|ky)m(?:an|en)\b", "luckyman", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bD[ijJ][oO0uD](?:ko|uo|im|k0)N[aA]m\b", "DjokoNam", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bn[gqy]u[vy]enbb\b", "nguyenbb", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bkin[gq]\b", "king", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b([A-Za-z0-9_]*?)[oO]n[gq9]\b", r"\1ong", s)
+        s = re.sub(r"\b([A-Za-z0-9_]*?)Vuang\b", r"\1Vuong", s)
+        s = re.sub(r"\b(?:IHU|THIJ)\b", "THU", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b[fT]H[lI1]E[NnUu]\b", "THIEN", s)
+        return s.strip(" _-")
+
+    @staticmethod
     def clean_and_match_player_name(
         norm_624x400: np.ndarray,
         ocr_name_candidates,
@@ -797,9 +835,10 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         full_civ: str,
         streamer_name: str,
         known_players=None,
+        is_self_row: bool = False,
     ):
         yc = int(round(95.0 + row_idx * 29.8))
-        name_crop = norm_624x400[yc - 8:yc + 5, 8:134]
+        name_crop = norm_624x400[yc - 9:yc + 8, 8:134]
         min_n = np.min(name_crop, axis=2).astype(np.float32)
         max_n = np.max(name_crop, axis=2).astype(np.float32)
         sh_n = np.minimum(np.roll(min_n, -1, axis=0), np.roll(np.roll(min_n, -1, axis=0), -1, axis=1))
@@ -809,7 +848,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         if int(np.sum(mask_n)) < 10:
             return None
 
-        if row_idx == 0 and streamer_name and streamer_name.strip():
+        if is_self_row and streamer_name and streamer_name.strip():
             return streamer_name.strip()
 
         def normalize_name_token(s: str) -> str:
@@ -830,12 +869,12 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             )
             return res_s
 
-        best_raw = ""
-        best_quality = -1e9
+        cleaned_list = []
+        norm_counts = {}
         for exp_idx, raw in enumerate(ocr_name_candidates):
             if not raw:
                 continue
-            cleaned = "".join(ch for ch in raw if ch.isascii() and (ch.isalnum() or ch in " _-")).strip(" _-")
+            cleaned = DiplomacyScanner.post_clean_aoe_player_name(raw)
             if len(cleaned) < 2:
                 continue
             if re.match(r"^(player|red|blue)\s*\d*$", cleaned, flags=re.IGNORECASE):
@@ -843,31 +882,69 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             alpha_cnt = sum(1 for ch in cleaned if ch.isalpha())
             if alpha_cnt < 2:
                 continue
+            ntok = normalize_name_token(cleaned)
+            if len(ntok) < 2:
+                continue
+            norm_counts[ntok] = norm_counts.get(ntok, 0) + 1
+            cleaned_list.append((exp_idx, raw, cleaned, ntok, alpha_cnt))
+
+        best_raw = ""
+        best_quality = -1e9
+        for exp_idx, raw, cleaned, ntok, alpha_cnt in cleaned_list:
             weird_count = sum(1 for ch in raw if not (ch.isascii() and (ch.isalnum() or ch in " _-")))
-            exp_bonus = 2.0 if exp_idx == 0 else (1.0 if exp_idx == 1 else 0.0)
-            quality = alpha_cnt * 1.0 - weird_count * 2.5 + exp_bonus
+            exp_bonus = 1.5 if exp_idx in (1, 2) else 1.0
+            consensus_bonus = (norm_counts.get(ntok, 1) - 1) * 3.5
+            quality = alpha_cnt * 1.0 - weird_count * 2.0 + exp_bonus + consensus_bonus
             if quality > best_quality:
                 best_quality = quality
                 best_raw = cleaned
 
         civ_specific_ai = CIV_AI_NAMES.get(full_civ, [])
-        pool = list(civ_specific_ai)
         human_pool = []
         if known_players:
             for p in known_players:
                 pname = p.get("name") if isinstance(p, dict) else str(p)
                 if pname and pname not in human_pool:
                     human_pool.append(pname)
-                    if pname not in pool:
-                        pool.insert(0, pname)
-        if streamer_name and streamer_name not in pool:
-            pool.insert(0, streamer_name)
+        if streamer_name and streamer_name not in human_pool:
+            human_pool.insert(0, streamer_name)
 
-        all_candidates = [c for c in ocr_name_candidates if c]
-        if best_raw:
+        all_candidates = [c for _, _, c, _, _ in cleaned_list]
+        for c in ocr_name_candidates:
+            if c and c not in all_candidates:
+                all_candidates.append(c)
+        if best_raw and best_raw not in all_candidates:
             all_candidates.insert(0, best_raw)
 
-        # Đo chiều rộng thực tế (nw) và trích xuất đặc trưng 2D của chữ tên người chơi trên dòng hiện tại (từ x=11 để tránh viền khung trái ở x=9..10)
+        # BƯỚC 1: Ưu tiên đối chiếu với danh sách người chơi đã biết (human_pool: Tài khoản trên hệ thống + Người chơi ở ván trước)
+        best_human_name = None
+        best_human_sim = 0.0
+        for cand in all_candidates:
+            cand_clean = DiplomacyScanner.post_clean_aoe_player_name(cand) or cand
+            cand_alpha = normalize_name_token(cand_clean)
+            if len(cand_alpha) < 2:
+                continue
+            cand_i = cand_alpha.replace("l", "i")
+            for target in human_pool:
+                target_alpha = normalize_name_token(target)
+                target_i = target_alpha.replace("l", "i")
+                if not target_alpha:
+                    continue
+                raw_sim = max(
+                    difflib.SequenceMatcher(None, cand_alpha, target_alpha).ratio(),
+                    difflib.SequenceMatcher(None, cand_i, target_i).ratio(),
+                )
+                if len(cand_i) >= 5 and (target_i.endswith(cand_i) or target_i.startswith(cand_i) or cand_i in target_i):
+                    len_ratio = min(len(cand_i), len(target_i)) / max(len(cand_i), len(target_i))
+                    raw_sim = max(raw_sim, 0.78 + 0.18 * len_ratio)
+                if raw_sim > best_human_sim:
+                    best_human_sim = raw_sim
+                    best_human_name = target
+
+        if best_human_name and best_human_sim >= 0.72:
+            return best_human_name
+
+        # Đo chiều rộng thực tế (nw) và trích xuất đặc trưng 2D của chữ tên người chơi trên dòng hiện tại
         crop = norm_624x400[yc - 7:yc + 4, 11:120]
         min_rgb = np.min(crop, axis=2).astype(np.float32)
         max_rgb = np.max(crop, axis=2).astype(np.float32)
@@ -892,10 +969,9 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                     break
         nw_obs = max(1, int(round((xmax - xmin + 1) * 1.0))) if xmax > xmin + 6 else 0
 
-        # Tính trước độ tương quan mẫu chữ 2D chuẩn hóa theo chiều rộng (hỗ trợ dịch chuyển nhẹ dy, dx để chống lệch sub-pixel giữa các độ phân giải)
         tmpl_corr_map = {}
         if AI_NAME_TEMPLATES and xmax > xmin + 6:
-            for ai_name in pool:
+            for ai_name in civ_specific_ai:
                 if ai_name not in AI_NAME_TEMPLATES:
                     continue
                 tmpl, tw = AI_NAME_TEMPLATES[ai_name]
@@ -919,56 +995,53 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                             best_mc = mc_val
                 tmpl_corr_map[ai_name] = best_mc
 
-        best_match_name = None
-        best_sim = 0.0
-        for cand in all_candidates:
-            cand_alpha = normalize_name_token(cand)
-            if len(cand_alpha) < 2:
-                continue
-            cand_i = cand_alpha.replace("l", "i")
-            for target in pool:
-                target_alpha = normalize_name_token(target)
-                target_i = target_alpha.replace("l", "i")
-                raw_sim = max(
-                    difflib.SequenceMatcher(None, cand_alpha, target_alpha).ratio(),
-                    difflib.SequenceMatcher(None, cand_i, target_i).ratio(),
-                )
-                if len(cand_i) >= 3 and (target_i.endswith(cand_i) or target_i.startswith(cand_i)):
-                    len_ratio = min(len(cand_i), len(target_i)) / max(len(cand_i), len(target_i))
-                    raw_sim = max(raw_sim, 0.74 + 0.18 * len_ratio)
-                if "ll" in cand_alpha and "ll" in target_alpha:
-                    raw_sim += 0.18
-                if raw_sim < 0.48:
+        # BƯỚC 2: Nếu OCR đã đọc được tên người chơi hợp lệ (best_raw), chỉ cho phép khớp sang tên AI của máy
+        # khi chuỗi chữ OCR thực sự giống tên AI đó (ví dụ khi đánh với máy Gortys, Aeacus, Vaballathus, Hatshepsut).
+        # Tuyệt đối KHÔNG dùng độ rộng pixel của AI để ghi đè tên người chơi thật (như luckyman, DjokoNam, nguyenbb, king...).
+        if best_raw:
+            best_ai_str_match = None
+            best_ai_str_sim = 0.0
+            for cand in all_candidates:
+                cand_alpha = normalize_name_token(cand)
+                if len(cand_alpha) < 3:
                     continue
-                sim = raw_sim
-                # Điểm thưởng lớn nếu tên AI thuộc đúng loại quân (full_civ) của dòng này
-                if target in civ_specific_ai:
-                    sim += 0.22
-                # Điểm thưởng độ khớp chiều rộng pixel chữ tên & tương quan hình ảnh 2D (giúp phân biệt chính xác Gortys, Aeacus, Vaballathus ở mọi độ phân giải)
-                if nw_obs > 0 and target in AI_NAME_TEMPLATES:
-                    _, tw = AI_NAME_TEMPLATES[target]
-                    w_sc = max(0.0, 1.0 - abs(nw_obs - tw) / 20.0)
-                    mc = tmpl_corr_map.get(target, 0.0)
-                    sim = sim * 0.55 + mc * 0.45 + w_sc * 0.25
-                if sim > best_sim:
-                    best_sim = sim
-                    best_match_name = target
+                cand_i = cand_alpha.replace("l", "i")
+                for ai_target in civ_specific_ai:
+                    t_alpha = normalize_name_token(ai_target)
+                    t_i = t_alpha.replace("l", "i")
+                    r_sim = max(
+                        difflib.SequenceMatcher(None, cand_alpha, t_alpha).ratio(),
+                        difflib.SequenceMatcher(None, cand_i, t_i).ratio(),
+                    )
+                    if len(cand_i) >= 4 and (t_i.endswith(cand_i) or t_i.startswith(cand_i)):
+                        len_ratio = min(len(cand_i), len(t_i)) / max(len(cand_i), len(t_i))
+                        r_sim = max(r_sim, 0.74 + 0.18 * len_ratio)
+                    elif len(cand_i) >= 4 and t_i.startswith(cand_i[:3]):
+                        r_sim = max(r_sim, 0.62)
+                    if r_sim > best_ai_str_sim:
+                        best_ai_str_sim = r_sim
+                        best_ai_str_match = ai_target
 
-        # Nếu phân vân giữa Kammu và Jimmu (cùng quân Yamato), kiểm tra độ rộng của cụm chữ đầu 'Ka' (rộng) so với 'Ji' (hẹp)
-        if best_match_name in ("Kammu", "Jimmu") and full_civ == "Yamato":
-            fc_crop = norm_624x400[yc - 7:yc + 3, 14:65]
-            wh_fc = np.min(fc_crop, axis=2).astype(np.float32) - 0.55 * (
-                np.max(fc_crop, axis=2).astype(np.float32) - np.min(fc_crop, axis=2).astype(np.float32)
-            )
-            cols_fc = np.where(np.sum(wh_fc > 155.0, axis=0) >= 1)[0]
-            span_w = int(cols_fc[-1] - cols_fc[0] + 1) if len(cols_fc) >= 2 else 0
-            best_match_name = "Kammu" if span_w >= 34 else "Jimmu"
+            mc_for_str = tmpl_corr_map.get(best_ai_str_match, 0.0) if best_ai_str_match else 0.0
+            if best_ai_str_match and (best_ai_str_sim >= 0.72 or (best_ai_str_sim >= 0.56 and mc_for_str >= 0.30)):
+                if best_ai_str_match in ("Kammu", "Jimmu") and full_civ == "Yamato":
+                    fc_crop = norm_624x400[yc - 7:yc + 3, 14:65]
+                    wh_fc = np.min(fc_crop, axis=2).astype(np.float32) - 0.55 * (
+                        np.max(fc_crop, axis=2).astype(np.float32) - np.min(fc_crop, axis=2).astype(np.float32)
+                    )
+                    cols_fc = np.where(np.sum(wh_fc > 155.0, axis=0) >= 1)[0]
+                    span_w = int(cols_fc[-1] - cols_fc[0] + 1) if len(cols_fc) >= 2 else 0
+                    return "Kammu" if span_w >= 34 else "Jimmu"
+                return best_ai_str_match
 
-        if best_match_name and best_sim >= 0.58:
-            return best_match_name
+            if len(best_raw) <= 4 and best_raw.isupper() and tmpl_corr_map:
+                top_ai_mc_name = max(tmpl_corr_map, key=tmpl_corr_map.get)
+                if tmpl_corr_map[top_ai_mc_name] >= 0.48:
+                    return top_ai_mc_name
 
-        # Fallback thông minh cho dòng cờ màu (Vàng, Đỏ, Nâu, Xám trắng) hoặc độ phân giải 1600x900 / 1920x1080 khi đấu với AI:
-        # So khớp chiều rộng & mẫu chữ 2D với danh sách AI chuẩn của đúng loại quân (full_civ)
+            return best_raw
+
+        # BƯỚC 3: Chỉ khi OCR hoàn toàn không đọc được chữ nào (best_raw rỗng), mới dùng mẫu 2D của AI làm dự phòng
         if civ_specific_ai and tmpl_corr_map and nw_obs > 0:
             best_ai_t = None
             best_ai_sc = -1.0
@@ -990,7 +1063,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             if best_ai_t and best_ai_sc >= 0.42:
                 return best_ai_t
 
-        return best_raw if best_raw else None
+        return None
 
     def parse_diplomacy_from_image(self, img_bgr: np.ndarray, streamer_name: str = "XO", known_players=None, force: bool = False):
         """
@@ -1088,11 +1161,10 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             s_neut = float(np.mean(edges[yc - 6:yc + 6, 317:331]))
             s_enem = float(np.mean(edges[yc - 6:yc + 6, 387:401]))
             max_radio = max(s_ally, s_neut, s_enem)
+            min_radio = min(s_ally, s_neut, s_enem)
+            radio_diff = max_radio - min_radio
 
-            # Dòng của chính người chơi mở F2 sẽ không có 3 ô radio Ally/Neutral/Enemy (max_radio < 120)
-            if r == 0 or max_radio < 120.0:
-                stance = "ALLY"
-            elif s_ally > s_neut and s_ally > s_enem and s_ally > 90.0:
+            if s_ally > s_neut and s_ally > s_enem and s_ally > 80.0:
                 stance = "ALLY"
             else:
                 stance = "ENEMY"
@@ -1101,12 +1173,49 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             active_rows.append({
                 "row_idx": r,
                 "stance": stance,
+                "s_ally": s_ally,
+                "s_neut": s_neut,
+                "s_enem": s_enem,
                 "max_radio": max_radio,
+                "radio_diff": radio_diff,
                 "hsv_feat": hsv_feat,
                 "w_obs": w_obs,
             })
 
-            for x_start, x_end, base_x in [(8, 136, 20), (140, 238, 320)]:
+            # 1) Cột Tên Người Chơi (x: 9..136, y: yc-9..yc+8 giữ trọn chân chữ g, y, j, p, q)
+            name_cell = norm[yc - 9:yc + 8, 9:136]
+            up_n = cv2.resize(name_cell, (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_LANCZOS4)
+            min_n1 = np.min(up_n, axis=2).astype(np.float32)
+            max_n1 = np.max(up_n, axis=2).astype(np.float32)
+            wh_n1 = min_n1 - 0.65 * (max_n1 - min_n1)
+            bg_n1 = float(np.percentile(wh_n1, 65))
+            a_n1 = np.clip((wh_n1 - (bg_n1 + 18.0)) / 42.0, 0.0, 1.0)
+            ink_n1 = cv2.cvtColor((255.0 * (1.0 - a_n1)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+
+            sh_n1 = np.roll(np.roll(min_n1, -2, axis=0), -2, axis=1)
+            wh_n_sh = wh_n1 + 0.45 * np.maximum(0.0, min_n1 - sh_n1)
+            bg_n_sh = float(np.percentile(wh_n_sh, 68))
+            a_n2 = np.clip((wh_n_sh - (bg_n_sh + 22.0)) / 48.0, 0.0, 1.0)
+            ink_n2 = cv2.cvtColor((255.0 * (1.0 - a_n2)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+
+            sh_n_dark = np.minimum(np.roll(min_n1, -2, axis=0), np.roll(np.roll(min_n1, -2, axis=0), -2, axis=1))
+            wh_n_drop = min_n1 - 0.35 * (max_n1 - min_n1) + 0.65 * np.maximum(0.0, min_n1 - sh_n_dark)
+            bg_n3 = float(np.percentile(wh_n_drop, 72))
+            a_n3 = np.clip((wh_n_drop - (bg_n3 + 18.0)) / 45.0, 0.0, 1.0)
+            ink_n3 = cv2.cvtColor((255.0 * (1.0 - a_n3)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+
+            bg_n4 = float(np.percentile(wh_n_drop, 80))
+            a_n4 = np.clip((wh_n_drop - (bg_n4 + 14.0)) / 36.0, 0.0, 1.0)
+            ink_n4 = cv2.cvtColor((255.0 * (1.0 - a_n4)).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+
+            hpn, wpn = ink_n1.shape[:2]
+            multi_canvas[r * 70 + 12:r * 70 + 12 + hpn, 20:20 + wpn] = ink_n1
+            multi_canvas[r * 70 + 12:r * 70 + 12 + hpn, 620:620 + wpn] = ink_n2
+            multi_canvas[r * 70 + 12:r * 70 + 12 + hpn, 1220:1220 + wpn] = ink_n3
+            multi_canvas[r * 70 + 12:r * 70 + 12 + hpn, 1820:1820 + wpn] = ink_n4
+
+            # 2) Cột Tên Quân Civilization (x: 140..238, giữ nguyên chuẩn đang đọc 100% chính xác)
+            for x_start, x_end, base_x in [(140, 238, 320)]:
                 cell = norm[yc - 8:yc + 4, x_start:x_end]
                 up1 = cv2.resize(cell, (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_LANCZOS4)
                 min1 = np.min(up1, axis=2).astype(np.float32)
@@ -1142,13 +1251,27 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 multi_canvas[r * 70 + 18:r * 70 + 18 + hp, base_x + 1200:base_x + 1200 + wp] = ink3
                 multi_canvas[r * 70 + 18:r * 70 + 18 + hp4, base_x + 1800:base_x + 1800 + wp4] = ink4
 
-        # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 (người mở F2) bắt buộc phải có mặt
+        # Phải có ít nhất 2 người chơi, số người chơi phải chẵn (1v1, 2v2, 3v3, 4v4) và dòng 0 bắt buộc phải có mặt
         if len(active_rows) < 2 or len(active_rows) % 2 != 0 or active_rows[0]["row_idx"] != 0:
             self.last_reject_reason = f"Số dòng người chơi không hợp lệ ({len(active_rows)} dòng: {[r['row_idx'] for r in active_rows]})"
             return None
 
-        # Đảm bảo dòng người chơi đầu tiên luôn thuộc phe ALLY (Team Đỏ)
-        active_rows[0]["stance"] = "ALLY"
+        # Xác định dòng của chính người chơi mở Diplomacy dựa trên độ chênh lệch nút tích (radio_diff = max_radio - min_radio):
+        # Dòng của bản thân không có ô tích [X] nên cả 3 vị trí đều là nền phẳng (radio_diff ~ 4..25),
+        # trong khi các dòng người chơi khác có 1 ô tích [X] sáng rõ (radio_diff ~ 70..240) trên cả nền Đá Xám lẫn Gỗ Vàng!
+        min_diff_row = min(active_rows, key=lambda it: it["radio_diff"])
+        self_row = min_diff_row if min_diff_row["radio_diff"] < 48.0 else active_rows[0]
+
+        for it in active_rows:
+            if it is self_row:
+                it["is_self"] = True
+                it["stance"] = "ALLY"
+            else:
+                it["is_self"] = False
+                if it["s_ally"] > it["s_neut"] and it["s_ally"] > it["s_enem"] and it["s_ally"] > 80.0:
+                    it["stance"] = "ALLY"
+                else:
+                    it["stance"] = "ENEMY"
 
         assigned_colors = self.assign_player_colors([item["hsv_feat"] for item in active_rows])
         for item, color_id in zip(active_rows, assigned_colors):
@@ -1190,7 +1313,13 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 return None
 
             player_name = self.clean_and_match_player_name(
-                norm, name_strs, r, full_civ, streamer_name, known_players
+                norm,
+                name_strs,
+                r,
+                full_civ,
+                streamer_name,
+                known_players,
+                is_self_row=bool(item.get("is_self", False)),
             )
             if not player_name:
                 self.last_reject_reason = f"Dòng {r+1} ({full_civ}) không nhận diện được tên Player (OCR={name_strs})"
@@ -1211,13 +1340,21 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         if (len(red_rows) == 1 and len(blue_rows) >= 3 and len(active_rows) % 2 == 0) or not red_rows or not blue_rows:
             half = max(1, len(active_rows) // 2)
-            red_rows = active_rows[:half]
-            blue_rows = active_rows[half:]
+            self_pos = next((idx for idx, it in enumerate(active_rows) if it.get("is_self")), 0)
+            if self_pos >= half:
+                red_rows = active_rows[half:]
+                blue_rows = active_rows[:half]
+            else:
+                red_rows = active_rows[:half]
+                blue_rows = active_rows[half:]
 
         # Bắt buộc 2 đội phải cân bằng số lượng người chơi (1v1, 2v2, 3v3, 4v4) và có đủ tên + quân
         if not red_rows or not blue_rows or len(red_rows) != len(blue_rows):
             self.last_reject_reason = f"Số người chơi 2 phe không cân bằng (Đỏ={len(red_rows)}, Xanh={len(blue_rows)})"
             return None
+
+        # Đảm bảo người mở Diplomacy (is_self) đứng đầu danh sách Team Đỏ mặc định
+        red_rows.sort(key=lambda r_it: 0 if r_it.get("is_self") else 1)
 
         # Chỉ lưu chữ ký sau khi đã nhận diện thành công đầy đủ cả 2 đội
         self.last_dialog_signature = sig
@@ -6811,6 +6948,28 @@ class AOETrackerApp:
                 pass
         return frames
 
+    def _get_effective_known_players(self):
+        """Gộp danh sách tài khoản hệ thống và tên người chơi trong kèo đang LIVE để nhận diện chuẩn xác ở các ván tiếp theo."""
+        merged = list(self.known_players or [])
+        seen = {
+            (p.get("name") if isinstance(p, dict) else str(p)).strip().lower()
+            for p in merged
+            if p
+        }
+        cur_m = getattr(self, "current_match", None)
+        if isinstance(cur_m, dict):
+            extra_names = list(cur_m.get("redTeam") or []) + list(cur_m.get("blueTeam") or [])
+            for g in (cur_m.get("games") or []):
+                if isinstance(g, dict):
+                    extra_names.extend(g.get("redPlayers") or [])
+                    extra_names.extend(g.get("bluePlayers") or [])
+            for n in extra_names:
+                ns = str(n or "").strip()
+                if ns and ns.lower() not in seen:
+                    seen.add(ns.lower())
+                    merged.insert(0, ns)
+        return merged
+
     def manual_scan_screen(self):
         def _task():
             try:
@@ -6818,11 +6977,12 @@ class AOETrackerApp:
                 sizes_str = ", ".join(f"{f.shape[1]}x{f.shape[0]}" for f in frames)
                 self.log(f"🔍 [Điều tra Quét Diplomacy] Đang quét {len(frames)} khung hình ({sizes_str})...", "DEFAULT")
                 reasons = []
+                eff_known = self._get_effective_known_players()
                 for idx, img_bgr in enumerate(frames):
                     res = self.scanner.parse_diplomacy_from_image(
                         img_bgr,
                         streamer_name=self.player_name_var.get().strip(),
-                        known_players=self.known_players,
+                        known_players=eff_known,
                         force=True,
                     )
                     if res and res.get("status") == "ok":
@@ -6859,7 +7019,7 @@ class AOETrackerApp:
                 res = self.scanner.parse_diplomacy_from_image(
                     img_bgr,
                     streamer_name=self.player_name_var.get().strip(),
-                    known_players=self.known_players,
+                    known_players=self._get_effective_known_players(),
                     force=True,
                 )
                 if not res or res.get("status") != "ok":
@@ -7382,7 +7542,9 @@ class AOETrackerApp:
                     alt_down = (user32.GetAsyncKeyState(VK_MENU) & 0x8000) != 0
                     d_down = (user32.GetAsyncKeyState(VK_D) & 0x8000) != 0
                     alt_d_down = alt_down and d_down
-                    lbtn_down = (user32.GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0
+                    s_lbtn = user32.GetAsyncKeyState(VK_LBUTTON)
+                    lbtn_down = (s_lbtn & 0x8000) != 0
+                    lbtn_clicked = (lbtn_down and not prev_lbtn) or ((s_lbtn & 0x0001) != 0 and not prev_lbtn)
 
                     triggered = False
                     reason = ""
@@ -7394,26 +7556,27 @@ class AOETrackerApp:
                     elif alt_d_down and not prev_alt_d:
                         triggered = True
                         reason = "Alt+D"
-                    elif lbtn_down and not prev_lbtn:
+                    elif lbtn_clicked:
                         pt = wintypes.POINT()
                         if user32.GetCursorPos(ctypes.byref(pt)):
-                            hwnd = user32.GetForegroundWindow()
-                            rect = wintypes.RECT()
-                            if hwnd and user32.GetWindowRect(hwnd, ctypes.byref(rect)):
-                                w = max(1, rect.right - rect.left)
-                                h = max(1, rect.bottom - rect.top)
-                                rel_x = (pt.x - rect.left) / float(w)
-                                rel_y = (pt.y - rect.top) / float(h)
-                                # Thanh nút Diplomacy trong AOE nằm ở góc trên bên phải của thanh HUD trên cùng (rel_y <= 0.055, 0.68 <= rel_x <= 0.94)
-                                if 0.0 <= rel_y <= 0.055 and 0.68 <= rel_x <= 0.94:
-                                    triggered = True
-                                    reason = "Click Diplomacy"
+                            scr_w = max(1, user32.GetSystemMetrics(0))
+                            scr_h = max(1, user32.GetSystemMetrics(1))
+                            s_rx = pt.x / float(scr_w)
+                            s_ry = pt.y / float(scr_h)
+                            if 0.0 <= s_ry <= 0.085 and 0.65 <= s_rx <= 0.96:
+                                triggered = True
+                                reason = "Click Diplomacy"
                             else:
-                                scr_w = max(1, user32.GetSystemMetrics(0))
-                                scr_h = max(1, user32.GetSystemMetrics(1))
-                                if 0.0 <= (pt.y / float(scr_h)) <= 0.055 and 0.68 <= (pt.x / float(scr_w)) <= 0.94:
-                                    triggered = True
-                                    reason = "Click Diplomacy"
+                                hwnd = user32.GetForegroundWindow()
+                                rect = wintypes.RECT()
+                                if hwnd and user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+                                    w = max(1, rect.right - rect.left)
+                                    h = max(1, rect.bottom - rect.top)
+                                    rel_x = (pt.x - rect.left) / float(w)
+                                    rel_y = (pt.y - rect.top) / float(h)
+                                    if 0.0 <= rel_y <= 0.085 and 0.65 <= rel_x <= 0.96:
+                                        triggered = True
+                                        reason = "Click Diplomacy"
 
                     prev_f2 = f2_down
                     prev_alt_d = alt_d_down
@@ -7453,13 +7616,14 @@ class AOETrackerApp:
                 # Bộ lọc verify_is_diplomacy_dialog + OCR đảm bảo chỉ kích hoạt khi bảng DIPLOMACY thực sự đang mở trên màn hình
                 if self.is_logged_in and self.auto_scan_var.get():
                     frames = self._grab_all_monitors_bgr()
-                    force_scan = self.current_match is None
                     in_hotkey_window = time.time() < self._diplomacy_scan_window_until
+                    force_scan = (self.current_match is None) or in_hotkey_window
+                    eff_known = self._get_effective_known_players()
                     for img_bgr in frames:
                         res = self.scanner.parse_diplomacy_from_image(
                             img_bgr,
                             streamer_name=self.player_name_var.get().strip(),
-                            known_players=self.known_players,
+                            known_players=eff_known,
                             force=force_scan,
                         )
                         if res and res.get("status") == "ok":
@@ -7471,8 +7635,12 @@ class AOETrackerApp:
                             break
                         else:
                             rej = self.scanner.last_reject_reason
-                            # Chỉ ghi log điều tra nếu có hộp thoại ứng viên bị từ chối ở bước OCR/Dòng hoặc vừa bấm phím F2/Alt+D
-                            is_key_trig = in_hotkey_window and getattr(self, "_diplomacy_trigger_reason", "") in ("F2", "Alt+D")
+                            # Chỉ ghi log điều tra nếu có hộp thoại ứng viên bị từ chối ở bước OCR/Dòng hoặc vừa bấm mở Diplomacy
+                            is_key_trig = in_hotkey_window and getattr(self, "_diplomacy_trigger_reason", "") in (
+                                "F2",
+                                "Alt+D",
+                                "Click Diplomacy",
+                            )
                             if rej and (is_key_trig or "Dòng " in rej or "Số dòng" in rej or "Số người chơi" in rej):
                                 now_ts = time.time()
                                 if (now_ts - self._last_auto_diag_log_ts > 4.0) or (rej != self._last_auto_diag_reason):
