@@ -248,7 +248,7 @@ class DiplomacyScanner:
 
         cx_base, cy_base = w / 2.0, h / 2.0
         hw_min = max(70, int(w * hw_min_ratio))
-        hw_max = int(w * 0.46)
+        hw_max = int(w * 0.36)
         step = max(1, int(w / 900))
 
         candidates = []
@@ -263,6 +263,8 @@ class DiplomacyScanner:
             right_line = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
             top_line = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
             bot_line = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
+            if min(left_line, right_line) < 42.0 or min(top_line, bot_line) < 42.0:
+                continue
 
             score = (
                 min(left_line, right_line) * 2.0
@@ -333,7 +335,7 @@ class DiplomacyScanner:
             cys = np.arange(int(h * 0.25), int(h * 0.75), 3)
             CX, CY = np.meshgrid(cxs, cys)
             off_peaks = []
-            for hw in range(max(70, int(w * 0.10)), int(w * 0.45), 2):
+            for hw in range(max(70, int(w * 0.10)), int(w * 0.49), 2):
                 hh = int(round(hw * (301.0 / 468.0)))
                 x1, x2 = CX - hw, CX + hw
                 y1, y2 = CY - hh, CY + hh
@@ -355,24 +357,26 @@ class DiplomacyScanner:
             for sc_p, cx_p, cy_p, hw_p in off_peaks[:12]:
                 best_ref_sc = -1.0
                 best_ref_box = None
-                for hw_r in (hw_p - 1, hw_p, hw_p + 1):
+                for hw_r in (hw_p - 2, hw_p - 1, hw_p, hw_p + 1, hw_p + 2):
                     if hw_r < 50:
                         continue
-                    hh_r = int(round(hw_r * (301.0 / 468.0)))
-                    for dy_r in (-1, 0, 1):
-                        for dx_r in (-1, 0, 1):
-                            x1, x2 = cx_p + dx_r - hw_r, cx_p + dx_r + hw_r
-                            y1, y2 = cy_p + dy_r - hh_r, cy_p + dy_r + hh_r
-                            if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
-                                continue
-                            l_r = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
-                            r_r = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
-                            t_r = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
-                            b_r = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
-                            sc_r = min(l_r, r_r) * 2.0 + min(t_r, b_r) * 2.0 + (l_r + r_r + t_r + b_r) * 0.5
-                            if sc_r > best_ref_sc:
-                                best_ref_sc = sc_r
-                                best_ref_box = (x1, y1, x2, y2)
+                    hh_base_r = int(round(hw_r * (301.0 / 468.0)))
+                    for dh_r in (-3, -2, -1, 0, 1, 2, 3):
+                        hh_r = hh_base_r + dh_r
+                        for dy_r in (-1, 0, 1):
+                            for dx_r in (-1, 0, 1):
+                                x1, x2 = cx_p + dx_r - hw_r, cx_p + dx_r + hw_r
+                                y1, y2 = cy_p + dy_r - hh_r, cy_p + dy_r + hh_r
+                                if y1 < 2 or y2 >= h - 2 or x1 < 2 or x2 >= w - 2:
+                                    continue
+                                l_r = float(np.mean(sobelx[y1:y2, x1 - 1:x1 + 2]))
+                                r_r = float(np.mean(sobelx[y1:y2, x2 - 1:x2 + 2]))
+                                t_r = float(np.mean(sobely[y1 - 1:y1 + 2, x1:x2]))
+                                b_r = float(np.mean(sobely[y2 - 1:y2 + 2, x1:x2]))
+                                sc_r = min(l_r, r_r) * 2.0 + min(t_r, b_r) * 2.0 + (l_r + r_r + t_r + b_r) * 0.5
+                                if sc_r > best_ref_sc:
+                                    best_ref_sc = sc_r
+                                    best_ref_box = (x1, y1, x2, y2)
                 if best_ref_box is not None:
                     refined_candidates.append((best_ref_sc, best_ref_box))
 
@@ -810,6 +814,13 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         s = re.sub(r"\[(?=[Hh][Aa][Nn])", "T", s)
         s = "".join(ch for ch in s if ch.isascii() and (ch.isalnum() or ch in " _-"))
         s = re.sub(r"\s+", " ", s).strip(" _-")
+        # Loại bỏ hậu tố tên Quân nếu từng bị dính từ đuôi dải cờ sang cột Civilization
+        s = re.sub(
+            r"[\s_\-]+(?:[Il1tZz\.\-]*\s*)?(?:Persian|Egyptian|Eqvniian|Macedonian|lacedoni\w*|Assyrian|Hittite|Minoan|Phoenician|Palmyran|Babylonian|Choson|Carthaginian|Shang|Yamato|Sumerian|Greek|Roman)\b.*$",
+            "",
+            s,
+            flags=re.IGNORECASE,
+        ).strip(" _-")
         # Khắc phục các cặp chữ đặc trưng dễ bị Windows OCR đọc nhầm trên font pixel AOE1
         s = re.sub(r"\bM[FF]M\b", "MEM", s)
         s = re.sub(r"\bME-m(?:t)?\b", "MEM", s, flags=re.IGNORECASE)
@@ -818,9 +829,17 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         s = re.sub(r"^BG\s+(?=Diem|Dieni)", "BG_", s, flags=re.IGNORECASE)
         s = re.sub(r"Dieni(?=[Vv]u)", "Diem", s)
         s = re.sub(r"\bluc(?:kv|icv|k|iy|iw|ky)m(?:an|en)\b", "luckyman", s, flags=re.IGNORECASE)
-        s = re.sub(r"\bD[ijJ][oO0uD](?:ko|uo|im|k0)N[aA]m\b", "DjokoNam", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bD[ijJ][oO0uUD](?:ko|ku|uo|im|k0|kn)N[aAd](?:m|tn|in)\b", "DjokoNam", s, flags=re.IGNORECASE)
         s = re.sub(r"\bn[gqy]u[vy]enbb\b", "nguyenbb", s, flags=re.IGNORECASE)
-        s = re.sub(r"\bkin[gq]\b", "king", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b(?:[Il1]king|kin[gq]|kiri[Zz2]|ki\s+n\s+g|ki\s+ng|k\s+ing)\b", "king", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b(?:[LlI1]?Aja[wxv]|LAJax)\b", "Ajax", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b(?:[zapg3]pp[li1]e|ap\s+pie|lappip)\b", "apple", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b(?:Pig|Piq|Pill|Plg|Ptq|fhq)\s+A[trlu]{1,2}[ui]la\b", "Pig Atula", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b(?:MINH|MINif|rilNii|M1NH)\s+MEM(?:\s+MA[I1l]?)?\b", "MINH MEM MAI", s, flags=re.IGNORECASE)
+        s = re.sub(r"^MEM\s+MAI$", "MINH MEM MAI", s, flags=re.IGNORECASE)
+        s = re.sub(r"\bBG[_\s]+Die(?:m|rn|ni)Vu[ou]ng\b", "BG_DiemVuong", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b(?:THU\s+)?(?:THAN|IRAN|IHAN|I\s+HAN)\s+[fTH]{1,2}[lI1]?E[NnUu]\b", "THU THAN THIEN", s, flags=re.IGNORECASE)
+        s = re.sub(r"\b(?:THU\s+THAN\s+)?THIEN\b", lambda m: "THU THAN THIEN" if len(s) <= 6 and s.upper() == "THIEN" else m.group(0), s)
         s = re.sub(r"\b([A-Za-z0-9_]*?)[oO]n[gq9]\b", r"\1ong", s)
         s = re.sub(r"\b([A-Za-z0-9_]*?)Vuang\b", r"\1Vuong", s)
         s = re.sub(r"\b(?:IHU|THIJ)\b", "THU", s, flags=re.IGNORECASE)
@@ -871,6 +890,7 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
 
         cleaned_list = []
         norm_counts = {}
+        exact_counts = {}
         for exp_idx, raw in enumerate(ocr_name_candidates):
             if not raw:
                 continue
@@ -886,15 +906,17 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             if len(ntok) < 2:
                 continue
             norm_counts[ntok] = norm_counts.get(ntok, 0) + 1
+            exact_counts[cleaned.lower()] = exact_counts.get(cleaned.lower(), 0) + 1
             cleaned_list.append((exp_idx, raw, cleaned, ntok, alpha_cnt))
 
         best_raw = ""
         best_quality = -1e9
         for exp_idx, raw, cleaned, ntok, alpha_cnt in cleaned_list:
             weird_count = sum(1 for ch in raw if not (ch.isascii() and (ch.isalnum() or ch in " _-")))
+            single_char_toks = sum(1 for tok in cleaned.split() if len(tok) == 1)
             exp_bonus = 1.5 if exp_idx in (1, 2) else 1.0
-            consensus_bonus = (norm_counts.get(ntok, 1) - 1) * 3.5
-            quality = alpha_cnt * 1.0 - weird_count * 2.0 + exp_bonus + consensus_bonus
+            consensus_bonus = (norm_counts.get(ntok, 1) - 1) * 3.5 + (exact_counts.get(cleaned.lower(), 1) - 1) * 2.0
+            quality = alpha_cnt * 1.0 - weird_count * 2.0 - single_char_toks * 2.5 + exp_bonus + consensus_bonus
             if quality > best_quality:
                 best_quality = quality
                 best_raw = cleaned
@@ -903,7 +925,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
         human_pool = []
         if known_players:
             for p in known_players:
-                pname = p.get("name") if isinstance(p, dict) else str(p)
+                raw_pname = p.get("name") if isinstance(p, dict) else str(p)
+                pname = DiplomacyScanner.post_clean_aoe_player_name(raw_pname) or raw_pname
                 if pname and pname not in human_pool:
                     human_pool.append(pname)
         if streamer_name and streamer_name not in human_pool:
@@ -1182,8 +1205,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                 "w_obs": w_obs,
             })
 
-            # 1) Cột Tên Người Chơi (x: 9..136, y: yc-9..yc+8 giữ trọn chân chữ g, y, j, p, q)
-            name_cell = norm[yc - 9:yc + 8, 9:136]
+            # 1) Cột Tên Người Chơi (x: 9..124, y: yc-9..yc+8 giữ trọn tên dài & tách biệt hoàn toàn với cột Quân ở base_x=340)
+            name_cell = norm[yc - 9:yc + 8, 9:124]
             up_n = cv2.resize(name_cell, (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_LANCZOS4)
             min_n1 = np.min(up_n, axis=2).astype(np.float32)
             max_n1 = np.max(up_n, axis=2).astype(np.float32)
@@ -1214,8 +1237,8 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
             multi_canvas[r * 70 + 12:r * 70 + 12 + hpn, 1220:1220 + wpn] = ink_n3
             multi_canvas[r * 70 + 12:r * 70 + 12 + hpn, 1820:1820 + wpn] = ink_n4
 
-            # 2) Cột Tên Quân Civilization (x: 140..238, giữ nguyên chuẩn đang đọc 100% chính xác)
-            for x_start, x_end, base_x in [(140, 238, 320)]:
+            # 2) Cột Tên Quân Civilization (x: 140..238, đặt tại base_x=340 cách biệt hoàn toàn với cột Tên)
+            for x_start, x_end, base_x in [(140, 238, 340)]:
                 cell = norm[yc - 8:yc + 4, x_start:x_end]
                 up1 = cv2.resize(cell, (0, 0), fx=2.5, fy=2.5, interpolation=cv2.INTER_LANCZOS4)
                 min1 = np.min(up1, axis=2).astype(np.float32)
@@ -1299,12 +1322,28 @@ ConvertTo-Json -InputObject @($words) -Depth 3 -Compress
                     if exp_idx > 3:
                         continue
                     rel_x = wx % 600
-                    if rel_x < 300:
-                        name_cands[exp_idx].append((rel_x, str(w.get("text", ""))))
+                    ww = max(8, int(w.get("w", 16)))
+                    if rel_x < 322:
+                        name_cands[exp_idx].append((rel_x, ww, str(w.get("text", ""))))
                     else:
                         civ_cands[exp_idx].append((rel_x, str(w.get("text", ""))))
 
-            name_strs = [" ".join(t for _, t in sorted(cand)) for cand in name_cands if cand]
+            name_strs = []
+            for cand in name_cands:
+                if not cand:
+                    continue
+                scand = sorted(cand, key=lambda it: it[0])
+                kept_tokens = []
+                prev_end = None
+                for rx, rw, tok in scand:
+                    alpha_tok = sum(1 for ch in tok if ch.isalpha())
+                    # Nếu token nằm xa về bên phải (vùng đuôi dải cờ x >= 170) và cách chữ trước > 38px hoặc chỉ là ký tự rác 1 chữ
+                    if prev_end is not None and rx >= 170 and (rx - prev_end > 38 or alpha_tok <= 1):
+                        continue
+                    kept_tokens.append(tok)
+                    prev_end = rx + rw
+                if kept_tokens:
+                    name_strs.append(" ".join(kept_tokens))
             civ_strs = [" ".join(t for _, t in sorted(cand)) for cand in civ_cands if cand]
 
             full_civ, short_civ = self.match_civ_for_row(norm, r, civ_strs, item["w_obs"])

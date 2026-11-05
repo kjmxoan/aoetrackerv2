@@ -106,10 +106,10 @@
   </style>
 </head>
 <body class="p-2">
-  <div id="app"
-       class="w-[370px] relative select-none"
-       :class="forcePreviewParam ? 'chat-active-bright' : (isHypeDimmed ? 'chat-hype-dimmed' : (isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright'))"
-       style="background: transparent !important;">
+  <div id="app" class="w-[370px] relative select-none" style="background: transparent !important;">
+    <div class="w-[370px] relative select-none"
+         :class="forcePreviewParam ? 'chat-active-bright' : (isHypeDimmed ? 'chat-hype-dimmed' : (isIdleDimmed ? 'chat-idle-dimmed' : 'chat-active-bright'))"
+         :style="(!forcePreviewParam && isIdleDimmed) ? 'opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; background: transparent !important;' : 'background: transparent !important;'">
     <!-- KHUNG CHAT ẢO CĂN VỊ TRÍ OBS (Size chuẩn 380 x 450) — chỉ hiện khi chưa có trận LIVE và chưa có bình luận mới -->
     <div v-if="isVirtualPreview" class="virtual-chat-frame relative flex flex-col justify-between px-2.5 py-2 stroke-text">
       <span class="virtual-corner" style="top:-2px;left:-2px;border-width:3px 0 0 3px;border-top-left-radius:12px;"></span>
@@ -242,6 +242,7 @@
       </div>
     </div>
     </template>
+    </div>
   </div>
 
   <script>
@@ -303,11 +304,13 @@
         },
         wakeUpOverlay() {
           this.isIdleDimmed = false;
+          try { document.body.classList.remove('chat-idle-dimmed'); } catch (e) {}
           if (this.idleTimer) clearTimeout(this.idleTimer);
           // Sau 10 giây (10000ms) không có thêm comment hoặc người tặng sao -> làm trong suốt hoàn toàn khung chat-overlay và phần text
           this.idleTimer = setTimeout(() => {
             if (!this.forcePreviewParam) {
               this.isIdleDimmed = true;
+              try { document.body.classList.add('chat-idle-dimmed'); } catch (e) {}
             }
           }, 10000);
         },
