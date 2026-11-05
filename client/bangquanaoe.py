@@ -1792,25 +1792,121 @@ class AOETrackerApp:
         if getattr(self, "_cached_social_data", None):
             self._update_friends_and_social_ui(self._cached_social_data)
 
+    def _make_safe_string_var(self, value: str = ""):
+        tk = self.tk
+        root_ref = self.root
+
+        class _SafeStringVar(tk.StringVar):
+            def __init__(self, master=None, val=""):
+                super().__init__(master=master, value=val)
+                self._cached_val = str(val or "")
+                try:
+                    self.trace_add("write", self._on_write)
+                except Exception:
+                    pass
+
+            def _on_write(self, *_args):
+                if threading.current_thread() is threading.main_thread():
+                    try:
+                        self._cached_val = str(super().get())
+                    except Exception:
+                        pass
+
+            def get(self):
+                if threading.current_thread() is threading.main_thread():
+                    try:
+                        self._cached_val = str(super().get())
+                    except Exception:
+                        pass
+                return self._cached_val
+
+            def set(self, val):
+                s_val = str(val if val is not None else "")
+                self._cached_val = s_val
+                if threading.current_thread() is threading.main_thread():
+                    super().set(s_val)
+                else:
+                    try:
+                        root_ref.after(0, lambda v=s_val: super(_SafeStringVar, self).set(v))
+                    except Exception:
+                        pass
+
+        return _SafeStringVar(master=self.root, val=value)
+
+    def _make_safe_bool_var(self, value: bool = False):
+        tk = self.tk
+        root_ref = self.root
+
+        class _SafeBooleanVar(tk.BooleanVar):
+            def __init__(self, master=None, val=False):
+                super().__init__(master=master, value=bool(val))
+                self._cached_val = bool(val)
+                try:
+                    self.trace_add("write", self._on_write)
+                except Exception:
+                    pass
+
+            def _on_write(self, *_args):
+                if threading.current_thread() is threading.main_thread():
+                    try:
+                        self._cached_val = bool(super().get())
+                    except Exception:
+                        pass
+
+            def get(self):
+                if threading.current_thread() is threading.main_thread():
+                    try:
+                        self._cached_val = bool(super().get())
+                    except Exception:
+                        pass
+                return self._cached_val
+
+            def set(self, val):
+                b_val = bool(val)
+                self._cached_val = b_val
+                if threading.current_thread() is threading.main_thread():
+                    super().set(b_val)
+                else:
+                    try:
+                        root_ref.after(0, lambda v=b_val: super(_SafeBooleanVar, self).set(v))
+                    except Exception:
+                        pass
+
+        return _SafeBooleanVar(master=self.root, val=value)
+
+    def _force_repaint_widget(self, widget=None):
+        """Ép Windows GDI xóa nền cũ và vẽ lại toàn bộ khung con ngay lập tức để chống lưu bóng chữ cũ."""
+        target = widget or getattr(self, "main_app_frame", None) or self.root
+        try:
+            target.update_idletasks()
+            if os.name == "nt":
+                import ctypes
+                hwnd = int(target.winfo_id())
+                # RDW_INVALIDATE (0x0001) | RDW_ERASE (0x0004) | RDW_ALLCHILDREN (0x0080) | RDW_UPDATENOW (0x0100)
+                ctypes.windll.user32.RedrawWindow(hwnd, None, None, 0x0185)
+        except Exception:
+            pass
+
     def _build_ui(self):
         tk = self.tk
+        self._refresh_state_lock = threading.Lock()
 
-        # Khởi tạo toàn bộ biến điều khiển dùng chung giữa Màn hình Đăng nhập, Bảng Điều Khiển và Tab Cài đặt VIP
-        self.server_url_var = tk.StringVar(value=self.settings.get("server_url", DEFAULT_SERVER_URL))
-        self.player_name_var = tk.StringVar(value=self.settings.get("player_name", "XO"))
-        self.player_pass_var = tk.StringVar(value=self.settings.get("player_password", "111"))
-        self.auto_scan_var = tk.BooleanVar(value=bool(self.settings.get("auto_scan", True)))
-        self.target_score_var = tk.StringVar(value=str(self.settings.get("target_score", 100)))
-        self.show_date_var = tk.BooleanVar(value=bool(self.settings.get("show_date_corner", True)))
-        self.c_mode_var = tk.BooleanVar(value=bool(self.settings.get("c_mode_enabled", False)))
-        self.show_idle_preview_var = tk.BooleanVar(value=bool(self.settings.get("show_idle_preview", True)))
+        # Khởi tạo toàn bộ biến điều khiển dùng chung (Thread-Safe) giữa Màn hình Đăng nhập, Bảng Điều Khiển và Tab Cài đặt VIP
+        self.server_url_var = self._make_safe_string_var(self.settings.get("server_url", DEFAULT_SERVER_URL))
+        self.player_name_var = self._make_safe_string_var(self.settings.get("player_name", "XO"))
+        self.player_pass_var = self._make_safe_string_var(self.settings.get("player_password", "111"))
+        self.auto_scan_var = self._make_safe_bool_var(bool(self.settings.get("auto_scan", True)))
+        self.target_score_var = self._make_safe_string_var(str(self.settings.get("target_score", 100)))
+        self.show_date_var = self._make_safe_bool_var(bool(self.settings.get("show_date_corner", True)))
+        self.c_mode_var = self._make_safe_bool_var(bool(self.settings.get("c_mode_enabled", False)))
+        self.show_idle_preview_var = self._make_safe_bool_var(bool(self.settings.get("show_idle_preview", True)))
         saved_mode_code = self.settings.get("marquee_mode", "ALL")
-        self.marquee_label_var = tk.StringVar(
-            value=MARQUEE_MODE_TO_LABEL.get(saved_mode_code, MARQUEE_MODE_LABELS[0][1])
+        self.marquee_label_var = self._make_safe_string_var(
+            MARQUEE_MODE_TO_LABEL.get(saved_mode_code, MARQUEE_MODE_LABELS[0][1])
         )
-        self.custom_marquee_var = tk.StringVar(value=self.settings.get("custom_marquee_text", ""))
-        self.obs_url_preview_var = tk.StringVar()
-        self.obs_chat_url_preview_var = tk.StringVar()
+        self.custom_marquee_var = self._make_safe_string_var(self.settings.get("custom_marquee_text", ""))
+        self.obs_url_preview_var = self._make_safe_string_var()
+        self.obs_chat_url_preview_var = self._make_safe_string_var()
         self.player_name_var.trace_add("write", lambda *_: self._update_obs_preview_entry())
         self._update_obs_preview_entry()
 
@@ -2037,13 +2133,13 @@ class AOETrackerApp:
         #    MODERN ESPORTS DASHBOARD – DARK PREMIUM – GOLD ACCENT (4 KHU VỰC A / B / C / D)
         # ======================================================================
         self.log_drawer_open = False
-        self.match_search_var = tk.StringVar()
+        self.match_search_var = self._make_safe_string_var()
         self.match_filter_mode = "ALL"
         self._match_filter_btns = {}
-        self.chat_search_var = tk.StringVar()
+        self.chat_search_var = self._make_safe_string_var()
         self.chat_filter_tab = "ALL"
         self._chat_filter_btns = {}
-        self.chat_antispam_var = tk.BooleanVar(value=True)
+        self.chat_antispam_var = self._make_safe_bool_var(True)
         self._cached_social_data = {}
 
         self.match_search_var.trace_add(
@@ -2352,16 +2448,16 @@ class AOETrackerApp:
 
         self.header_ver_badge_btn = tk.Button(
             self.status_log_bar,
-            text="🟢 Cập nhật mới",
+            text=f"🏷️ Ver {APP_VERSION_NUMBER}",
             command=self.open_download_tool_url,
             font=("Segoe UI", 8, "bold"),
             fg="#34d399",
-            bg="#0e261e",
+            bg="#11151b",
             relief="flat",
             padx=8,
             pady=1,
             highlightthickness=1,
-            highlightbackground="#14532d",
+            highlightbackground="#2b3541",
             cursor="hand2",
         )
         self.header_ver_badge_btn.pack(side="left", padx=(0, 16))
@@ -2561,6 +2657,7 @@ class AOETrackerApp:
             pady=8,
         )
         battle_card.pack(fill="x", side="top", pady=(0, 6))
+        self.battle_card = battle_card
 
         # Thanh tiêu đề Scoreboard: TRẬN ĐẤU ĐANG DIỄN RA | Nút Hoàn tác (-1) + Nhãn LIVE
         sb_top_bar = tk.Frame(battle_card, bg="#131720")
@@ -2618,6 +2715,7 @@ class AOETrackerApp:
         sb_board_inner.columnconfigure(0, weight=4, uniform="sb_col")
         sb_board_inner.columnconfigure(1, weight=4, uniform="sb_col")
         sb_board_inner.columnconfigure(2, weight=4, uniform="sb_col")
+        self.sb_board_inner = sb_board_inner
 
         # --- CỘT TRÁI: TEAM ĐỎ ---
         self.red_card = tk.Frame(
@@ -2637,7 +2735,7 @@ class AOETrackerApp:
             font=("Segoe UI", 11, "bold"),
             fg="#ef4444",
             bg="#18131a",
-        ).pack()
+        ).pack(fill="x")
 
         self.red_primary_player_lbl = tk.Label(
             self.red_card,
@@ -2646,17 +2744,17 @@ class AOETrackerApp:
             fg="#ffffff",
             bg="#18131a",
         )
-        self.red_primary_player_lbl.pack(pady=(1, 0))
+        self.red_primary_player_lbl.pack(fill="x", pady=(1, 0))
 
         self.red_roster_lbl = tk.Label(
             self.red_card,
-            text="Ấn nút Diplomacy trong game",
+            text="[Chưa chọn quân] (Chờ mở Diplomacy)",
             font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
             bg="#18131a",
             justify="center",
         )
-        self.red_roster_lbl.pack(pady=(1, 1))
+        self.red_roster_lbl.pack(fill="x", pady=(1, 1))
 
         self.red_count_lbl = tk.Label(
             self.red_card,
@@ -2669,7 +2767,7 @@ class AOETrackerApp:
         )
         self.red_count_lbl.pack(pady=(1, 0))
 
-        # --- CỘT GIỮA: TỶ SỐ LỚN TRUNG TÂM & KẾT THÚC KÈO (Đóng khung trung tâm chuẩn thiết kế) ---
+        # --- CỘT GIỮA: TỶ SỐ LỚN TRUNG TÂM & KẾT THÚC KÈO (Đóng khung trung tâm chuẩn thiết kế, cố định chiều cao) ---
         center_hud = tk.Frame(
             sb_board_inner,
             bg="#171c28",
@@ -2679,6 +2777,7 @@ class AOETrackerApp:
             pady=6,
         )
         center_hud.grid(row=0, column=1, sticky="nsew", padx=4)
+        self.center_hud = center_hud
 
         self.match_mode_lbl = tk.Label(
             center_hud,
@@ -2686,8 +2785,9 @@ class AOETrackerApp:
             font=("Segoe UI", 8, "bold"),
             fg="#eca133",
             bg="#171c28",
+            height=1,
         )
-        self.match_mode_lbl.pack(side="top", pady=(0, 0))
+        self.match_mode_lbl.pack(side="top", fill="x", pady=(0, 0))
 
         self.score_lbl = tk.Label(
             center_hud,
@@ -2695,19 +2795,21 @@ class AOETrackerApp:
             font=("Segoe UI", 26, "bold"),
             fg="#ffffff",
             bg="#171c28",
+            height=1,
         )
-        self.score_lbl.pack(side="top", pady=(0, 0))
+        self.score_lbl.pack(side="top", fill="x", pady=(0, 0))
 
         self.c_mode_summary_lbl = tk.Label(
             center_hud,
-            text="Ấn nút Diplomacy trong game để bắt đầu",
+            text="Ấn nút Diplomacy để bắt đầu\nTổng 0 trận",
             font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
             bg="#171c28",
-            wraplength=200,
+            wraplength=260,
+            height=2,
             justify="center",
         )
-        self.c_mode_summary_lbl.pack(side="top", pady=(0, 1))
+        self.c_mode_summary_lbl.pack(side="top", fill="x", pady=(0, 1))
 
         self.match_history_lbl = tk.Label(
             center_hud,
@@ -2717,10 +2819,11 @@ class AOETrackerApp:
             bg="#11151e",
             padx=6,
             pady=1,
-            wraplength=200,
+            wraplength=260,
+            height=1,
             justify="center",
         )
-        self.match_history_lbl.pack(side="top", pady=(1, 2))
+        self.match_history_lbl.pack(side="top", fill="x", pady=(1, 2))
 
         self.stars_counter_lbl = tk.Label(
             center_hud,
@@ -2728,8 +2831,9 @@ class AOETrackerApp:
             font=("Segoe UI", 8, "bold"),
             fg="#fbbf24",
             bg="#171c28",
+            height=1,
         )
-        self.stars_counter_lbl.pack(side="top", pady=(0, 4))
+        self.stars_counter_lbl.pack(side="top", fill="x", pady=(0, 4))
 
         self.btn_end_match = tk.Button(
             center_hud,
@@ -2747,7 +2851,7 @@ class AOETrackerApp:
             pady=3,
             cursor="hand2",
         )
-        self.btn_end_match.pack(side="bottom")
+        self.btn_end_match.pack(side="top", pady=(2, 2))
         self._bind_hover(self.btn_end_match, "#261419", "#3b1822", "#f87171", "#fecaca")
 
         # --- CỘT PHẢI: TEAM XANH ---
@@ -2768,26 +2872,26 @@ class AOETrackerApp:
             font=("Segoe UI", 11, "bold"),
             fg="#3b82f6",
             bg="#121826",
-        ).pack()
+        ).pack(fill="x")
 
         self.blue_primary_player_lbl = tk.Label(
             self.blue_card,
-            text="Đối thủ",
+            text="Đội khách",
             font=("Segoe UI", 11, "bold"),
             fg="#ffffff",
             bg="#121826",
         )
-        self.blue_primary_player_lbl.pack(pady=(1, 0))
+        self.blue_primary_player_lbl.pack(fill="x", pady=(1, 0))
 
         self.blue_roster_lbl = tk.Label(
             self.blue_card,
-            text="Ấn nút Diplomacy trong game",
+            text="[Chưa chọn quân] (Chờ mở Diplomacy)",
             font=("Segoe UI", 8, "bold"),
             fg="#94a3b8",
             bg="#121826",
             justify="center",
         )
-        self.blue_roster_lbl.pack(pady=(1, 1))
+        self.blue_roster_lbl.pack(fill="x", pady=(1, 1))
 
         self.blue_count_lbl = tk.Label(
             self.blue_card,
@@ -2907,7 +3011,7 @@ class AOETrackerApp:
         friend_add_box = tk.Frame(friends_hdr, bg="#131720")
         friend_add_box.pack(side="right")
 
-        self.friend_target_var = tk.StringVar()
+        self.friend_target_var = self._make_safe_string_var()
         tk.Entry(
             friend_add_box,
             textvariable=self.friend_target_var,
@@ -3054,17 +3158,18 @@ class AOETrackerApp:
         chat_hdr = tk.Frame(chat_card, bg="#131720")
         chat_hdr.pack(fill="x", side="top", pady=(0, 6))
 
+        chat_hdr_btns = tk.Frame(chat_hdr, bg="#131720")
+        chat_hdr_btns.pack(side="right")
+
         self.lobby_badge_lbl = tk.Label(
             chat_hdr,
             text="💬  SẢNH CHAT LIVE - MÁY XO",
             font=("Segoe UI", 10, "bold"),
             fg="#e2e8f0",
             bg="#131720",
+            anchor="w",
         )
-        self.lobby_badge_lbl.pack(side="left")
-
-        chat_hdr_btns = tk.Frame(chat_hdr, bg="#131720")
-        chat_hdr_btns.pack(side="right")
+        self.lobby_badge_lbl.pack(side="left", fill="x", expand=True)
 
         btn_my_lobby = tk.Button(
             chat_hdr_btns,
@@ -3264,7 +3369,7 @@ class AOETrackerApp:
         chat_input_row = tk.Frame(chat_card, bg="#131720")
         chat_input_row.pack(fill="x", side="bottom", pady=(4, 0))
 
-        self.chat_msg_var = tk.StringVar()
+        self.chat_msg_var = self._make_safe_string_var()
         chat_entry = tk.Entry(
             chat_input_row,
             textvariable=self.chat_msg_var,
@@ -3753,6 +3858,7 @@ class AOETrackerApp:
                 self.tab_battle_underline.configure(bg="#eca133")
             if hasattr(self, "tab_settings_underline"):
                 self.tab_settings_underline.configure(bg="#131720")
+        self._force_repaint_widget(self.main_app_frame)
 
     def toggle_log_drawer(self):
         self.log_drawer_open = not self.log_drawer_open
@@ -3763,6 +3869,7 @@ class AOETrackerApp:
         else:
             self.log_drawer_frame.pack_forget()
             self.btn_toggle_log.configure(text="📜 Xem chi tiết Nhật ký", fg="#fbbf24")
+        self._force_repaint_widget(self.main_app_frame)
 
     def toggle_expand_log_height(self):
         if not self.log_drawer_open:
@@ -3775,6 +3882,7 @@ class AOETrackerApp:
             self.log_box.configure(height=7)
             self.btn_expand_log.configure(text="🔎 Phóng to Log (14 dòng)", fg="#60a5fa")
         self.log_box.see("end")
+        self._force_repaint_widget(self.main_app_frame)
 
     def copy_all_logs_to_clipboard(self):
         try:
@@ -3789,6 +3897,7 @@ class AOETrackerApp:
         self.login_screen_frame.pack_forget()
         self.main_app_frame.pack(fill="both", expand=True)
         self.switch_main_tab("BATTLE")
+        self._force_repaint_widget(self.main_app_frame)
 
     def logout_to_login_screen(self):
         self.is_logged_in = False
@@ -5633,6 +5742,9 @@ class AOETrackerApp:
         threading.Thread(target=self.refresh_initial_state, daemon=True).start()
 
     def refresh_initial_state(self):
+        lock = getattr(self, "_refresh_state_lock", None)
+        if lock is not None and not lock.acquire(blocking=False):
+            return
         try:
             api_url = self.get_api_endpoint()
             name = self.player_name_var.get().strip()
@@ -5693,7 +5805,7 @@ class AOETrackerApp:
                 if watched_match:
                     self._update_battle_arena_ui(watched_match, is_spectating=True)
                 elif time.time() - getattr(self, "_last_diplomacy_push_ts", 0.0) > 10.0:
-                    self._reset_battle_arena_ui(f"Đang theo dõi Sảnh {lobby_target} (Chưa có kèo Live)")
+                    self._reset_battle_arena_ui(f"Đang theo dõi Sảnh {lobby_target}\n(Chưa có kèo Live)")
             elif my_live_match:
                 self.current_match = my_live_match
                 self._update_battle_arena_ui(my_live_match, is_spectating=False)
@@ -5702,6 +5814,12 @@ class AOETrackerApp:
                 self._reset_battle_arena_ui()
         except Exception:
             pass
+        finally:
+            if lock is not None:
+                try:
+                    lock.release()
+                except Exception:
+                    pass
 
     def _condense_spam_text(self, text: str) -> str:
         """Thu gọn tin nhắn lặp từ kiểu 'hay hay hay hay...' thành 'hay (xN)'."""
@@ -6070,6 +6188,7 @@ class AOETrackerApp:
                             self.chat_box.insert("end", f"{msg}\n", "MSG")
                 self.chat_box.see("end")
                 self.chat_box.configure(state="disabled")
+                self._force_repaint_widget(self.main_app_frame)
             except Exception:
                 pass
 
@@ -6299,7 +6418,7 @@ class AOETrackerApp:
             sets.append(f"Séc {idx}: {cur_r}-{cur_b}")
         return f"🏆 Tỉ số C: {c_r} - {c_b}  |  " + " • ".join(sets)
 
-    def _reset_battle_arena_ui(self, summary_text: str = "Ấn nút Diplomacy trong game để bắt đầu\nTổng 0 trận"):
+    def _reset_battle_arena_ui(self, summary_text: str = "Ấn nút Diplomacy để bắt đầu\nTổng 0 trận"):
         def _render():
             try:
                 t_score = self.target_score_var.get() or 7
@@ -6314,10 +6433,11 @@ class AOETrackerApp:
                     self.blue_primary_player_lbl.config(text="Đội khách")
                 self.red_roster_lbl.config(text="[Chưa chọn quân] (Chờ mở Diplomacy)")
                 self.blue_roster_lbl.config(text="[Chưa chọn quân] (Chờ mở Diplomacy)")
-                self.red_count_lbl.config(text="")
-                self.blue_count_lbl.config(text="")
+                self.red_count_lbl.config(text="Chủ nhà")
+                self.blue_count_lbl.config(text="Đội khách")
                 if hasattr(self, "scoreboard_live_badge"):
                     self.scoreboard_live_badge.config(text="LIVE", fg="#34d399", bg="#0d2e22")
+                self._force_repaint_widget(getattr(self, "left_workspace_col", None) or self.main_app_frame)
             except Exception:
                 pass
 
@@ -6350,7 +6470,7 @@ class AOETrackerApp:
             col_idx = red_colors[0] if red_colors else 0
             col_name = COLOR_NAMES_VI.get(col_idx, f"Màu {col_idx + 1}")
             red_text = f"[{civ}] ({col_name})"
-            red_cnt_txt = ""
+            red_cnt_txt = "1 người chơi"
         else:
             red_primary = " • ".join(str(x) for x in red_players[:2]) + ("..." if len(red_players) > 2 else "")
             if not red_primary:
@@ -6370,7 +6490,7 @@ class AOETrackerApp:
             col_idx = blue_colors[0] if blue_colors else 1
             col_name = COLOR_NAMES_VI.get(col_idx, f"Màu {col_idx + 1}")
             blue_text = f"[{civ}] ({col_name})"
-            blue_cnt_txt = ""
+            blue_cnt_txt = "1 người chơi"
         else:
             blue_primary = " • ".join(str(x) for x in blue_players[:2]) + ("..." if len(blue_players) > 2 else "")
             if not blue_primary:
@@ -6433,6 +6553,7 @@ class AOETrackerApp:
                         self.scoreboard_live_badge.config(text="KẾT THÚC", fg="#fbbf24", bg="#2a1f10")
                     else:
                         self.scoreboard_live_badge.config(text="LIVE", fg="#34d399", bg="#0d2e22")
+                self._force_repaint_widget(getattr(self, "left_workspace_col", None) or self.main_app_frame)
             except Exception:
                 pass
 
