@@ -221,6 +221,191 @@
   border-radius: 8px;
 }
 
+/* ==========================================================================
+   UI/UX PRO MAX — HỆ THỐNG BUTTON PHÂN CẤP & SEGMENTED NAVIGATION DOCK
+   Tuân thủ: primary-action, nav-hierarchy, button-sizing, scale-feedback, focus-states
+   ========================================================================== */
+
+/* 1. Khung điều hướng gộp 1 khối (Segmented Navigation Dock) — Xóa bỏ viền rời rạc */
+.hud-segmented-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(8, 13, 24, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hud-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px 13px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hud-seg-btn:hover {
+  color: #f8fafc;
+  background: rgba(30, 41, 59, 0.65);
+}
+
+.hud-seg-btn.is-active {
+  background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
+  color: #020617;
+  font-weight: 800;
+  box-shadow: 0 2px 12px rgba(56, 189, 248, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.hud-seg-btn.is-active-gold {
+  background: linear-gradient(180deg, #facc15 0%, #eab308 100%);
+  color: #020617;
+  font-weight: 800;
+  box-shadow: 0 2px 12px rgba(250, 204, 21, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* 2. Hệ thống Button 4 cấp độ (Primary / Secondary / Ghost / Danger) */
+.hud-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hud-btn:active {
+  transform: scale(0.97);
+}
+
+.hud-btn:focus-visible,
+.hud-seg-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+/* Primary CTA — Tối đa 1 nút nổi bật trên mỗi vùng */
+.hud-btn-primary {
+  background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
+  color: #020617;
+  font-weight: 800;
+  border: 1px solid rgba(186, 230, 253, 0.45);
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.hud-btn-primary:hover {
+  background: linear-gradient(180deg, #7dd3fc 0%, #38bdf8 100%);
+  box-shadow: 0 6px 18px rgba(56, 189, 248, 0.4);
+}
+
+/* Gold Primary CTA — Dùng cho Tải Tool / Nâng cấp VIP */
+.hud-btn-gold {
+  background: linear-gradient(180deg, #facc15 0%, #eab308 100%);
+  color: #020617;
+  font-weight: 800;
+  border: 1px solid rgba(254, 240, 138, 0.5);
+  box-shadow: 0 4px 14px rgba(234, 179, 8, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.hud-btn-gold:hover {
+  background: linear-gradient(180deg, #fde047 0%, #facc15 100%);
+}
+
+/* Secondary Button — Viền mảnh kính mờ tinh tế, không gây nhiễu màu */
+.hud-btn-secondary {
+  background: rgba(15, 23, 42, 0.72);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.hud-btn-secondary:hover {
+  background: rgba(30, 41, 59, 0.88);
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.hud-btn-secondary.is-active {
+  background: rgba(14, 165, 233, 0.16);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.55);
+}
+
+/* Ghost Button — Dành cho hành động phụ (Hướng dẫn, Donate, Làm mới) */
+.hud-btn-ghost {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid transparent;
+}
+
+.hud-btn-ghost:hover {
+  background: rgba(30, 41, 59, 0.65);
+  color: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+/* Danger Button — Tách biệt rõ cho hành động xóa / kết thúc */
+.hud-btn-danger {
+  background: rgba(69, 10, 10, 0.65);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.hud-btn-danger:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #f87171;
+}
+
+/* Compact Icon Button (34x34px desktop, >=44px mobile touch area) */
+.hud-btn-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.65);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.hud-btn-icon:hover {
+  background: rgba(30, 41, 59, 0.9);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+/* Unified User Account Pill — Gộp Tên + Hạng VIP + Thoát vào 1 khối gọn */
+.hud-account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  background: rgba(8, 13, 24, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+}
+
 /* Honor & Celebration Plate (Hiệu ứng Vinh Danh khi Người Chơi Tặng Sao / Vật Phẩm AOE) */
 @keyframes aoeHonorShimmer {
   0% { background-position: -200% 0; }

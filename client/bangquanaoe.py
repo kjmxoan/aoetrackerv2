@@ -2533,45 +2533,52 @@ class AOETrackerApp:
         # Vạch ngăn cách giữa Logo và cụm Tab chuyển trang
         tk.Frame(left_hdr, bg=C_BORDER, width=1, height=30).pack(side="left", padx=(16, 10), pady=4)
 
-        nav_left_tabs = tk.Frame(left_hdr, bg=C_PANEL)
-        nav_left_tabs.pack(side="left", fill="y")
+        # Thanh Điều Hướng Gộp 1 Khối (Segmented Navigation Dock — Xóa bỏ nút 'Tài khoản' bị trùng với cụm phải)
+        nav_left_tabs = tk.Frame(
+            left_hdr,
+            bg="#080d18",
+            highlightthickness=1,
+            highlightbackground=C_BORDER,
+            padx=3,
+            pady=3,
+        )
+        nav_left_tabs.pack(side="left", pady=4)
 
         def _mk_tab(text, command, active=False):
-            wrap = tk.Frame(nav_left_tabs, bg=C_PANEL)
-            wrap.pack(side="left", padx=(0, 4), fill="y")
+            wrap = tk.Frame(nav_left_tabs, bg="#080d18")
+            wrap.pack(side="left", padx=2, fill="y")
             btn = tk.Button(
                 wrap,
                 text=text,
                 command=command,
                 font=("Segoe UI", 9, "bold"),
-                bg=C_PANEL,
+                bg="#111c30" if active else "#080d18",
                 fg="#fbbf24" if active else C_MUTED,
-                activebackground="#1a202c",
+                activebackground="#1a263d",
                 activeforeground="#fbbf24" if active else "#ffffff",
                 relief="flat",
                 bd=0,
                 padx=11,
-                pady=9,
+                pady=5,
                 cursor="hand2",
             )
             btn.pack(fill="x")
-            underline = tk.Frame(wrap, bg=C_GOLD if active else C_PANEL, height=3)
+            underline = tk.Frame(wrap, bg=C_GOLD if active else "#080d18", height=2)
             underline.pack(fill="x", side="bottom")
             return btn, underline
 
-        # Tab 1: Bảng điều khiển | Tab 2: Cài đặt VIP | Tab 3: Giải Trí Chờ Kèo (5 Game) | Tab 4: Tài khoản
+        # 3 Tab Không Gian Làm Việc Chính (Đã lược bỏ Tab 'Tài khoản' bị thừa do trùng với Pill Tài khoản bên phải)
         self.tab_battle_btn, self.tab_battle_underline = _mk_tab(
-            "⊞ Bảng điều khiển", lambda: self.switch_main_tab("BATTLE"), active=True
+            "⊞ Sảnh Kèo Đấu", lambda: self.switch_main_tab("BATTLE"), active=True
         )
         self.tab_settings_btn, self.tab_settings_underline = _mk_tab(
-            "⚙️ Cài đặt VIP", lambda: self.switch_main_tab("SETTINGS")
+            "⚙️ Cấu Hình OBS & VIP", lambda: self.switch_main_tab("SETTINGS")
         )
         self.tab_minigames_btn, self.tab_minigames_underline = _mk_tab(
-            "🎮 Giải Trí Chờ Kèo", lambda: self.switch_main_tab("MINIGAMES")
+            "🎮 Giải Trí (5 Game)", lambda: self.switch_main_tab("MINIGAMES")
         )
-        self.my_profile_btn, _profile_underline = _mk_tab("👤 Tài khoản", self.open_my_profile_window)
 
-        # Cụm phải Header: HUD Glass Toggle, Quỹ Sao, Hạng VIP, Menu Quản trị & Đăng xuất
+        # Cụm phải Header: Gộp Gọn (Ghost Kính Mờ + Unified Account Pill + Admin) chuẩn UI/UX Pro Max
         right_hdr = tk.Frame(hdr_outer, bg=C_PANEL)
         right_hdr.pack(side="right", anchor="e")
 
@@ -2588,84 +2595,103 @@ class AOETrackerApp:
                 pass
             if hasattr(self, "hud_glass_btn"):
                 self.hud_glass_btn.config(
-                    text="✨ HUD Kính mờ: BẬT" if self._hud_translucent_enabled else "🔳 HUD Kính mờ: TẮT",
+                    text="✨ Kính mờ: BẬT" if self._hud_translucent_enabled else "🔳 Kính mờ: TẮT",
                     fg="#38bdf8" if self._hud_translucent_enabled else "#94a3b8",
-                    bg="#0c1d33" if self._hud_translucent_enabled else "#141f33",
-                    highlightbackground="#38bdf8" if self._hud_translucent_enabled else C_BORDER,
+                    bg="#0b1526" if self._hud_translucent_enabled else C_PANEL,
+                    highlightbackground="#1e3a5f" if self._hud_translucent_enabled else C_BORDER,
                 )
 
         self.hud_glass_btn = tk.Button(
             right_hdr,
-            text="✨ HUD Kính mờ: BẬT" if self._hud_translucent_enabled else "🔳 HUD Kính mờ: TẮT",
+            text="✨ Kính mờ: BẬT" if self._hud_translucent_enabled else "🔳 Kính mờ: TẮT",
             command=_toggle_hud_glass,
             font=("Segoe UI", 8, "bold"),
             fg="#38bdf8" if self._hud_translucent_enabled else "#94a3b8",
-            bg="#0c1d33" if self._hud_translucent_enabled else "#141f33",
+            bg="#0b1526" if self._hud_translucent_enabled else C_PANEL,
             activebackground="#162b47",
             activeforeground="#f8fafc",
             relief="flat",
             padx=8,
-            pady=3,
+            pady=4,
             highlightthickness=1,
-            highlightbackground="#38bdf8" if self._hud_translucent_enabled else C_BORDER,
+            highlightbackground="#1e3a5f" if self._hud_translucent_enabled else C_BORDER,
             cursor="hand2",
         )
         self.hud_glass_btn.pack(side="left", padx=(0, 6))
 
-        self.my_stars_badge_lbl = tk.Label(
+        # Unified Account Pill: Gộp Quỹ Sao + Hạng VIP + Thoát vào 1 khung duy nhất (không tách 3 hộp rời rạc)
+        account_pill = tk.Frame(
             right_hdr,
-            text="👑 Quỹ Sao: 0 ⭐",
-            font=("Segoe UI", 9, "bold"),
-            fg="#fbbf24",
-            bg="#231a0e",
-            padx=10,
-            pady=4,
+            bg="#080d18",
             highlightthickness=1,
-            highlightbackground="#d4af37",
+            highlightbackground=C_BORDER,
+            padx=4,
+            pady=2,
+        )
+        account_pill.pack(side="left", padx=(0, 6))
+
+        self.my_stars_badge_lbl = tk.Label(
+            account_pill,
+            text="👑 Quỹ Sao: 0 ⭐",
+            font=("Segoe UI", 8, "bold"),
+            fg="#fbbf24",
+            bg="#080d18",
+            padx=7,
+            pady=2,
             cursor="hand2",
         )
-        self.my_stars_badge_lbl.pack(side="left", padx=(0, 6))
+        self.my_stars_badge_lbl.pack(side="left")
         self.my_stars_badge_lbl.bind("<Button-1>", lambda _e: self.open_my_profile_window())
 
+        tk.Frame(account_pill, bg=C_BORDER, width=1, height=16).pack(side="left", padx=3)
+
         self.tier_badge_lbl = tk.Label(
-            right_hdr,
+            account_pill,
             text="💎 Hạng Kim Cương",
-            font=("Segoe UI", 9, "bold"),
-            fg="#fde68a",
-            bg="#1c1a12",
-            padx=10,
-            pady=4,
-            highlightthickness=1,
-            highlightbackground="#d4af37",
+            font=("Segoe UI", 8, "bold"),
+            fg="#e2e8f0",
+            bg="#080d18",
+            padx=7,
+            pady=2,
             cursor="hand2",
         )
-        self.tier_badge_lbl.pack(side="left", padx=(0, 6))
+        self.tier_badge_lbl.pack(side="left")
         self.tier_badge_lbl.bind("<Button-1>", lambda _e: self.open_my_profile_window())
+        # Giữ tương thích biến cũ
+        self.my_profile_btn = self.tier_badge_lbl
+
+        tk.Frame(account_pill, bg=C_BORDER, width=1, height=16).pack(side="left", padx=3)
+
+        self.logout_btn = tk.Button(
+            account_pill,
+            text="↪ Thoát",
+            command=self.logout_to_login_screen,
+            font=("Segoe UI", 8, "bold"),
+            fg="#fca5a5",
+            bg="#080d18",
+            activebackground="#450a0a",
+            activeforeground="#ffffff",
+            relief="flat",
+            bd=0,
+            padx=6,
+            pady=2,
+            cursor="hand2",
+        )
+        self.logout_btn.pack(side="left")
 
         self.admin_mgr_btn = _mk_btn(
             right_hdr,
             "🛡️ Quản trị ▾",
             self._show_admin_management_menu,
-            fg="#fbbf24",
-            bg="#241b0f",
-            hover_bg="#362712",
-            border="#b45309",
+            fg="#e2e8f0",
+            bg="#0f172a",
+            hover_bg="#1e293b",
+            border=C_BORDER,
+            font=("Segoe UI", 8, "bold"),
+            padx=9,
             pady=4,
         )
-        self.admin_mgr_btn.pack(side="left", padx=(0, 6))
-
-        self.logout_btn = _mk_btn(
-            right_hdr,
-            "🚪 Đăng xuất",
-            self.logout_to_login_screen,
-            fg="#fecaca",
-            bg="#3a1418",
-            hover_bg="#7f1d1d",
-            hover_fg="#ffffff",
-            border="#7f1d1d",
-            pady=4,
-        )
-        self.logout_btn.pack(side="left")
+        self.admin_mgr_btn.pack(side="left")
 
         # Cụm trạng thái hệ thống (tự giãn theo nội dung, xếp 2 dòng gọn gàng để không bao giờ bị cắt chữ "XO ĐÃ KẾT NỐI")
         center_hdr = tk.Frame(hdr_outer, bg=C_PANEL)
@@ -2715,12 +2741,12 @@ class AOETrackerApp:
                 if narrow and not self._hdr_clock_hidden:
                     self.date_corner_lbl.pack_forget()
                     self._hdr_clock_hidden = True
-                    for t_btn in (self.tab_battle_btn, self.tab_settings_btn, self.tab_minigames_btn, self.my_profile_btn):
-                        t_btn.configure(padx=6)
+                    for t_btn in (self.tab_battle_btn, self.tab_settings_btn, self.tab_minigames_btn):
+                        t_btn.configure(padx=7)
                 elif not narrow and self._hdr_clock_hidden:
                     self.date_corner_lbl.pack(side="left")
                     self._hdr_clock_hidden = False
-                    for t_btn in (self.tab_battle_btn, self.tab_settings_btn, self.tab_minigames_btn, self.my_profile_btn):
+                    for t_btn in (self.tab_battle_btn, self.tab_settings_btn, self.tab_minigames_btn):
                         t_btn.configure(padx=11)
             except Exception:
                 pass
@@ -2865,6 +2891,10 @@ class AOETrackerApp:
             quick_bar,
             "🖼️ Test ảnh",
             self.test_from_image_file,
+            fg="#cbd5e1",
+            bg="#0b111e",
+            hover_bg="#162238",
+            border=C_BORDER,
             padx=9,
             pady=3,
         )
@@ -2874,38 +2904,53 @@ class AOETrackerApp:
             quick_bar,
             "🙌 Tay đâu! [F8]",
             lambda: self._trigger_global_hype_hotkey("Nút F8"),
-            fg="#fbbf24",
-            bg="#2b1911",
-            hover_bg="#452310",
-            border="#d97706",
+            fg="#fde047",
+            bg="#0b111e",
+            hover_bg="#1e293b",
+            border=C_BORDER,
             padx=9,
             pady=3,
         )
         self.btn_hype_f8.pack(side="left", padx=(0, 6))
 
-        # Cụm nút Tiện ích OBS & Liên kết nhanh nằm bên phải cùng thanh công cụ (Giống thanh tiện ích trên Web)
-        obs_tools_right = tk.Frame(quick_bar, bg=C_PANEL)
+        # Cụm nút Tiện ích OBS & Liên kết nhanh gộp trong 1 khung Segmented (Chuẩn UI/UX Pro Max: không nhiễu 5 viền màu khác nhau)
+        obs_tools_right = tk.Frame(
+            quick_bar,
+            bg="#080d18",
+            highlightthickness=1,
+            highlightbackground=C_BORDER,
+            padx=2,
+            pady=2,
+        )
         obs_tools_right.pack(side="right")
 
-        for lbl_txt, cmd_fn, fg_c, brd_c in [
-            ("🖥️ Link OBS", self.copy_obs_link, "#fbbf24", "#b45309"),
-            ("💬 OBS Chat", self.copy_obs_chat_link, "#38bdf8", "#0284c7"),
-            ("🔵 FB Live", self.show_fb_group_live_bridge_window, "#60a5fa", "#1d4ed8"),
-            ("📖 Hướng dẫn", self.show_obs_guide_window, "#cbd5e1", C_BORDER),
-            ("🌐 Mở Web", self.open_web_dashboard, "#34d399", "#059669"),
-        ]:
-            b_tool = _mk_btn(
+        for idx_t, (lbl_txt, cmd_fn, fg_c, is_primary_obs) in enumerate(
+            [
+                ("📋 Link OBS", self.copy_obs_link, "#38bdf8", True),
+                ("💬 Link Chat", self.copy_obs_chat_link, "#cbd5e1", False),
+                ("📘 FB Live", self.show_fb_group_live_bridge_window, "#cbd5e1", False),
+                ("📖 Hướng dẫn", self.show_obs_guide_window, "#94a3b8", False),
+                ("🌐 Mở Web", self.open_web_dashboard, "#34d399", False),
+            ]
+        ):
+            if idx_t > 0:
+                tk.Frame(obs_tools_right, bg="#162238", width=1, height=15).pack(side="left", padx=1)
+            b_tool = tk.Button(
                 obs_tools_right,
-                lbl_txt,
-                cmd_fn,
-                fg=fg_c,
-                hover_fg="#ffffff",
-                border=brd_c,
+                text=lbl_txt,
+                command=cmd_fn,
                 font=("Segoe UI", 8, "bold"),
+                fg="#020617" if is_primary_obs else fg_c,
+                bg="#38bdf8" if is_primary_obs else "#080d18",
+                activebackground="#7dd3fc" if is_primary_obs else "#162238",
+                activeforeground="#020617" if is_primary_obs else "#ffffff",
+                relief="flat",
+                bd=0,
                 padx=8,
-                pady=3,
+                pady=2,
+                cursor="hand2",
             )
-            b_tool.pack(side="left", padx=(4, 0))
+            b_tool.pack(side="left", padx=1)
             if lbl_txt == "🌐 Mở Web":
                 self.open_web_btn = b_tool
 
