@@ -2453,6 +2453,7 @@ app.post('/api', async (req, res) => {
 
     // ==================== BẢNG XẾP HẠNG MINI GAMES CÔ LẬP (5 GAME: CARO, SUDOKU, CHESS, SNAKE, 2048) ====================
     if (action === 'getMinigameLeaderboard') {
+      const gameKey = String(data.game || '').trim().toLowerCase();
       const currentSettings = await db.getSettings();
       const boards = currentSettings.minigameLeaderboards || {
         caro: [],
@@ -2461,7 +2462,11 @@ app.post('/api', async (req, res) => {
         snake: [],
         '2048': []
       };
-      return res.json({ status: 'success', leaderboards: boards });
+      return res.json({
+        status: 'success',
+        leaderboards: boards,
+        leaderboard: gameKey && Array.isArray(boards[gameKey]) ? boards[gameKey] : []
+      });
     }
 
     if (action === 'saveMinigameScore') {
@@ -2473,7 +2478,7 @@ app.post('/api', async (req, res) => {
       const pName = String(data.playerName || 'Khách XO').trim().slice(0, 32) || 'Khách XO';
       const pTier = String(data.tier || 'BRONZE').trim().toUpperCase();
       const scoreVal = Number(data.score || 0);
-      const extraText = String(data.detail || '').trim().slice(0, 60);
+      const extraText = String(data.extra || data.detail || '').trim().slice(0, 60);
       if (isNaN(scoreVal) || scoreVal <= 0) {
         return res.json({ status: 'error', message: 'Điểm số không hợp lệ!' });
       }
@@ -2488,14 +2493,13 @@ app.post('/api', async (req, res) => {
       const list = Array.isArray(boards[gameKey]) ? [...boards[gameKey]] : [];
       const now = Date.now();
       const existingIdx = list.findIndex(item => String(item.playerName || '').toLowerCase() === pName.toLowerCase());
-      const isBetter = gameKey === 'sudoku'
-        ? (existingIdx === -1 || scoreVal >= Number(list[existingIdx].score || 0))
-        : (existingIdx === -1 || scoreVal >= Number(list[existingIdx].score || 0));
+      const isBetter = existingIdx === -1 || scoreVal >= Number(list[existingIdx].score || 0);
       if (existingIdx === -1) {
         list.push({
           playerName: pName,
           tier: pTier,
           score: scoreVal,
+          extra: extraText,
           detail: extraText,
           updatedAt: now,
           timeText: formatVietnamDateOnly(now)
@@ -2505,7 +2509,8 @@ app.post('/api', async (req, res) => {
           playerName: pName,
           tier: pTier,
           score: scoreVal,
-          detail: extraText || list[existingIdx].detail || '',
+          extra: extraText || list[existingIdx].extra || list[existingIdx].detail || '',
+          detail: extraText || list[existingIdx].detail || list[existingIdx].extra || '',
           updatedAt: now,
           timeText: formatVietnamDateOnly(now)
         };
@@ -2513,7 +2518,369 @@ app.post('/api', async (req, res) => {
       list.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
       boards[gameKey] = list.slice(0, 30);
       await db.saveSetting('minigameLeaderboards', boards);
-      return res.json({ status: 'success', leaderboards: boards });
+      return res.json({
+        status: 'success',
+        leaderboards: boards,
+        leaderboard: boards[gameKey]
+      });
+    }
+
+    // ==================== SẢNH CỜ CARO ONLINE PVP (2 NGƯỜI CHƠI CÓ TÀI KHOẢN XO TRÊN WEB & APP WINDOWS) ====================
+    if (
+      action === 'caroListRooms' ||
+      action === 'caroCreateRoom' ||
+      action === 'caroJoinRoom' ||
+      action === 'caroGetRoom' ||
+      action === 'caroMove' ||
+      action === 'caroResetGame' ||
+      action === 'caroResign' ||
+      action === 'caroLeaveRoom' ||
+      action === 'caroRoomChat'
+    ) {
+      global.__caroOnlineRooms = global.__caroOnlineRooms || new Map();
+      const roomsMap = global.__caroOnlineRooms;
+      const now = Date.now();
+
+      // Dọn bàn cờ treo quá 45 phút không có tương tác
+      for (const [rCode, rObj] of roomsMap.entries()) {
+        if (now - (rObj.updatedAt || rObj.createdAt || 0) > 45 * 60 * 1000) {
+          roomsMap.delete(rCode);
+        }
+      }
+
+      const genRocks = (N = 20) => {
+        const rocks = [];
+        while (rocks.length < 12) {
+          const rx = 2 + Math.floor(Math.random() * (N - 4));
+          const ry = 2 + Math.floor(Math.random() * (N - 4));
+          if ((rx === 10 && ry === 10) || rocks.some(([x, y]) => x === rx && y === ry)) continue;
+          rocks.push([rx, ry]);
+        }
+        return rocks;
+      };
+
+      const checkCaroServerWin = (room, x, y, role) => {
+        const N = room.N || 20;
+        const opp = role === 'X' ? 'O' : 'X';
+        const grid = new Map();
+        for (const [rx, ry] of (room.rocks || [])) grid.set(`${rx},${ry}`, '#');
+        for (const m of (room.moves || [])) grid.set(`${m.x},${m.y}`, m.role);
+
+        const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+        for (const [dx, dy] of dirs) {
+          let count = 1;
+          let ax = x, ay = y, ex = x, ey = y;
+          let i = x + dx, j = y + dy;
+          while (i >= 0 && i < N && j >= 0 && j < N && grid.get(`${i},${j}`) === role) {
+            count++; ex = i; ey = j; i += dx; j += dy;
+          }
+          const b1 = !(i >= 0 && i < N && j >= 0 && j < N) || grid.get(`${i},${j}`) === opp || grid.get(`${i},${j}`) === '#';
+          i = x - dx; j = y - dy;
+          while (i >= 0 && i < N && j >= 0 && j < N && grid.get(`${i},${j}`) === role) {
+            count++; ax = i; ay = j; i -= dx; j -= dy;
+          }
+          const b2 = !(i >= 0 && i < N && j >= 0 && j < N) || grid.get(`${i},${j}`) === opp || grid.get(`${i},${j}`) === '#';
+          if (count >= 6 || (count === 5 && !(b1 && b2))) {
+            return [[ax, ay], [ex, ey]];
+          }
+        }
+        return null;
+      };
+
+      const getRoleForPlayer = (room, pName) => {
+        if (!room || !pName) return 'V';
+        const low = String(pName).toLowerCase();
+        if (room.players.X && String(room.players.X.name).toLowerCase() === low) return 'X';
+        if (room.players.O && String(room.players.O.name).toLowerCase() === low) return 'O';
+        return 'V';
+      };
+
+      const summarizeRoom = (room) => ({
+        code: room.code,
+        title: room.title,
+        obstacles: Boolean(room.obstacles),
+        playerX: room.players.X ? { name: room.players.X.name, tier: room.players.X.tier } : null,
+        playerO: room.players.O ? { name: room.players.O.name, tier: room.players.O.tier } : null,
+        movesCount: (room.moves || []).length,
+        winner: room.winner,
+        scores: room.scores || { X: 0, O: 0 },
+        status: (!room.players.X || !room.players.O) ? 'WAITING' : (room.winner ? 'FINISHED' : 'PLAYING'),
+        updatedAt: room.updatedAt
+      });
+
+      if (action === 'caroListRooms') {
+        const list = Array.from(roomsMap.values())
+          .map(summarizeRoom)
+          .sort((a, b) => {
+            if (a.status === 'WAITING' && b.status !== 'WAITING') return -1;
+            if (a.status !== 'WAITING' && b.status === 'WAITING') return 1;
+            return (b.updatedAt || 0) - (a.updatedAt || 0);
+          });
+        return res.json({ status: 'success', rooms: list });
+      }
+
+      const pName = String(data.playerName || '').trim().slice(0, 24);
+      const pTier = String(data.tier || 'BRONZE').trim().toUpperCase();
+
+      if (action === 'caroCreateRoom') {
+        if (!pName || pName.toLowerCase() === 'khách') {
+          return res.json({ status: 'error', message: '🔒 Vui lòng Đăng nhập tài khoản XO để tạo bàn đấu Caro Online!' });
+        }
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let k = 0; k < 4; k++) code += chars[Math.floor(Math.random() * chars.length)];
+        while (roomsMap.has(code)) {
+          code = '';
+          for (let k = 0; k < 4; k++) code += chars[Math.floor(Math.random() * chars.length)];
+        }
+        const obstacles = Boolean(data.obstacles);
+        const newRoom = {
+          code,
+          title: String(data.title || `Bàn của ${pName}`).trim().slice(0, 40),
+          N: 20,
+          obstacles,
+          rocks: obstacles ? genRocks(20) : [],
+          players: {
+            X: { name: pName, tier: pTier, lastSeen: now },
+            O: null
+          },
+          moves: [],
+          winner: null,
+          winLine: null,
+          winReason: '',
+          scores: { X: 0, O: 0 },
+          chat: [
+            {
+              id: now,
+              sender: 'Hệ thống',
+              sys: true,
+              text: `🏟️ ${pName} đã mở bàn #${code}. Đang chờ kỳ thủ thứ 2 vào so tài!`,
+              timeText: formatVietnamTime(now).slice(0, 5)
+            }
+          ],
+          createdAt: now,
+          updatedAt: now
+        };
+        roomsMap.set(code, newRoom);
+        broadcastRealtimeEvent({ type: 'CARO_LOBBY_UPDATED', roomCode: code });
+        return res.json({ status: 'success', role: 'X', room: newRoom });
+      }
+
+      const code = String(data.code || '').trim().toUpperCase();
+      const room = roomsMap.get(code);
+      if (!room) {
+        return res.json({ status: 'error', message: `Không tìm thấy bàn cờ #${code} (hoặc bàn đã đóng)!` });
+      }
+
+      if (action === 'caroJoinRoom') {
+        if (!pName || pName.toLowerCase() === 'khách') {
+          return res.json({ status: 'error', message: '🔒 Vui lòng Đăng nhập tài khoản XO để vào bàn đấu Caro Online!' });
+        }
+        room.updatedAt = now;
+        let role = getRoleForPlayer(room, pName);
+        if (role === 'V') {
+          if (!room.players.X) {
+            room.players.X = { name: pName, tier: pTier, lastSeen: now };
+            role = 'X';
+          } else if (!room.players.O) {
+            room.players.O = { name: pName, tier: pTier, lastSeen: now };
+            role = 'O';
+            room.chat.push({
+              id: now + Math.random(),
+              sender: 'Hệ thống',
+              sys: true,
+              text: `⚔️ ${pName} đã ngồi vào vị trí Quân O! Trận đấu bắt đầu!`,
+              timeText: formatVietnamTime(now).slice(0, 5)
+            });
+            if (room.chat.length > 35) room.chat = room.chat.slice(-35);
+          }
+        } else {
+          room.players[role].lastSeen = now;
+          room.players[role].tier = pTier;
+        }
+        broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
+        return res.json({ status: 'success', role, room });
+      }
+
+      if (action === 'caroGetRoom') {
+        const role = getRoleForPlayer(room, pName);
+        if (role === 'X' || role === 'O') {
+          room.players[role].lastSeen = now;
+        }
+        return res.json({ status: 'success', role, room });
+      }
+
+      if (action === 'caroMove') {
+        const role = getRoleForPlayer(room, pName);
+        if (role !== 'X' && role !== 'O') {
+          return res.json({ status: 'error', message: 'Bạn đang là khán giả, không thể đánh nước cờ này!' });
+        }
+        if (!room.players.X || !room.players.O) {
+          return res.json({ status: 'error', message: '⏳ Cần đủ 2 người chơi trong bàn mới có thể bắt đầu đánh!' });
+        }
+        if (room.winner) {
+          return res.json({ status: 'error', message: 'Ván đấu đã kết thúc. Hãy bấm "Ván Mới" để tái đấu!' });
+        }
+        const expectedTurn = room.moves.length % 2 === 0 ? 'X' : 'O';
+        if (role !== expectedTurn) {
+          return res.json({ status: 'error', message: 'Chưa tới lượt đi của bạn!' });
+        }
+        const x = Number(data.x), y = Number(data.y);
+        if (isNaN(x) || isNaN(y) || x < 0 || x >= room.N || y < 0 || y >= room.N) {
+          return res.json({ status: 'error', message: 'Tọa độ nước đi không hợp lệ!' });
+        }
+        if (room.moves.some(m => m.x === x && m.y === y) || (room.rocks || []).some(([rx, ry]) => rx === x && ry === y)) {
+          return res.json({ status: 'error', message: 'Ô này đã có quân cờ hoặc đá chặn!' });
+        }
+        room.moves.push({ x, y, role, by: pName, ts: now });
+        room.updatedAt = now;
+        const wl = checkCaroServerWin(room, x, y, role);
+        if (wl) {
+          room.winner = role;
+          room.winLine = wl;
+          room.winReason = `${pName} (${role}) nối 5 quân chiến thắng!`;
+          room.scores[role] = (room.scores[role] || 0) + 1;
+          room.chat.push({
+            id: now + Math.random(),
+            sender: 'Hệ thống',
+            sys: true,
+            text: `🏆 ${pName} (${role}) đã giành chiến thắng sau ${room.moves.length} nước đi! Tỉ số bàn: ${room.scores.X} - ${room.scores.O}`,
+            timeText: formatVietnamTime(now).slice(0, 5)
+          });
+          // Cộng điểm lên BXH Caro cho người thắng PvP Online
+          try {
+            const currentSettings = await db.getSettings();
+            const boards = currentSettings.minigameLeaderboards || { caro: [], sudoku: [], chess: [], snake: [], '2048': [] };
+            const list = Array.isArray(boards.caro) ? [...boards.caro] : [];
+            const idx = list.findIndex(item => String(item.playerName || '').toLowerCase() === pName.toLowerCase());
+            const oppName = role === 'X' ? (room.players.O && room.players.O.name) : (room.players.X && room.players.X.name);
+            const prevBest = idx >= 0 ? Number(list[idx].score || 0) : 0;
+            const newScore = Math.max(prevBest + 180, 600);
+            const entry = {
+              playerName: pName,
+              tier: pTier,
+              score: newScore,
+              extra: `Thắng PvP vs ${oppName || 'Đối thủ'}`,
+              detail: `Thắng PvP vs ${oppName || 'Đối thủ'}`,
+              updatedAt: now,
+              timeText: formatVietnamDateOnly(now)
+            };
+            if (idx === -1) list.push(entry);
+            else list[idx] = entry;
+            list.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+            boards.caro = list.slice(0, 30);
+            await db.saveSetting('minigameLeaderboards', boards);
+          } catch (e) {}
+        } else if (room.moves.length >= room.N * room.N - (room.rocks || []).length) {
+          room.winner = 'DRAW';
+          room.winReason = 'Hòa cờ (Hết ô trống)!';
+        }
+        broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
+        return res.json({ status: 'success', role, room });
+      }
+
+      if (action === 'caroResetGame') {
+        const role = getRoleForPlayer(room, pName);
+        if (role !== 'X' && role !== 'O') {
+          return res.json({ status: 'error', message: 'Chỉ kỳ thủ trong bàn mới có thể bắt đầu ván mới!' });
+        }
+        // Đổi bên X <-> O ở ván mới để công bằng lượt đi trước
+        if (room.players.X && room.players.O && room.moves.length > 0) {
+          const oldX = room.players.X;
+          room.players.X = room.players.O;
+          room.players.O = oldX;
+          const oldScoreX = room.scores.X || 0;
+          room.scores.X = room.scores.O || 0;
+          room.scores.O = oldScoreX;
+        }
+        room.moves = [];
+        room.winner = null;
+        room.winLine = null;
+        room.winReason = '';
+        if (room.obstacles) room.rocks = genRocks(room.N);
+        room.updatedAt = now;
+        room.chat.push({
+          id: now + Math.random(),
+          sender: 'Hệ thống',
+          sys: true,
+          text: `🔄 ${pName} đã mở ván đấu mới (Đổi bên đi trước: ${room.players.X ? room.players.X.name : 'X'} cầm X)!`,
+          timeText: formatVietnamTime(now).slice(0, 5)
+        });
+        const newRole = getRoleForPlayer(room, pName);
+        broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
+        return res.json({ status: 'success', role: newRole, room });
+      }
+
+      if (action === 'caroResign') {
+        const role = getRoleForPlayer(room, pName);
+        if ((role === 'X' || role === 'O') && !room.winner && room.players.X && room.players.O) {
+          const opp = role === 'X' ? 'O' : 'X';
+          room.winner = opp;
+          room.winReason = `${pName} (${role}) đã nhận thua!`;
+          room.scores[opp] = (room.scores[opp] || 0) + 1;
+          room.updatedAt = now;
+          room.chat.push({
+            id: now + Math.random(),
+            sender: 'Hệ thống',
+            sys: true,
+            text: `🏳️ ${pName} đã nhận thua. Chiến thắng thuộc về ${room.players[opp].name}!`,
+            timeText: formatVietnamTime(now).slice(0, 5)
+          });
+          broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
+        }
+        return res.json({ status: 'success', role, room });
+      }
+
+      if (action === 'caroLeaveRoom') {
+        const role = getRoleForPlayer(room, pName);
+        if (role === 'X' || role === 'O') {
+          const opp = role === 'X' ? 'O' : 'X';
+          if (!room.winner && room.moves.length > 0 && room.players[opp]) {
+            room.winner = opp;
+            room.winReason = `${pName} rời bàn khi đang đấu!`;
+            room.scores[opp] = (room.scores[opp] || 0) + 1;
+          }
+          room.players[role] = null;
+          room.updatedAt = now;
+          room.chat.push({
+            id: now + Math.random(),
+            sender: 'Hệ thống',
+            sys: true,
+            text: `🚪 ${pName} đã rời bàn cờ.`,
+            timeText: formatVietnamTime(now).slice(0, 5)
+          });
+          if (!room.players.X && !room.players.O) {
+            roomsMap.delete(code);
+          } else if (!room.players.X && room.players.O) {
+            // Đôn người còn lại lên làm chủ bàn X
+            room.players.X = room.players.O;
+            room.players.O = null;
+            room.moves = [];
+            room.winner = null;
+            room.winLine = null;
+          }
+          broadcastRealtimeEvent({ type: 'CARO_LOBBY_UPDATED', roomCode: code });
+        }
+        return res.json({ status: 'success' });
+      }
+
+      if (action === 'caroRoomChat') {
+        const text = String(data.text || '').trim().slice(0, 140);
+        if (text && pName) {
+          room.chat.push({
+            id: now + Math.random(),
+            sender: pName,
+            tier: pTier,
+            sys: false,
+            text,
+            timeText: formatVietnamTime(now).slice(0, 5)
+          });
+          if (room.chat.length > 35) room.chat = room.chat.slice(-35);
+          room.updatedAt = now;
+          broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
+        }
+        return res.json({ status: 'success', room });
+      }
     }
 
     if (action === 'adminUpdateReleaseConfig') {

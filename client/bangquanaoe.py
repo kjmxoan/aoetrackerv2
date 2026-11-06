@@ -8455,6 +8455,12 @@ class TkMinigamesHub:
             except Exception:
                 pass
             self._snake_job = None
+        if getattr(self, "_caro_poll_job", None):
+            try:
+                self.app.root.after_cancel(self._caro_poll_job)
+            except Exception:
+                pass
+            self._caro_poll_job = None
         self.active_game = game_key
         for k, b in self.game_tab_btns.items():
             if k == game_key:
@@ -8593,13 +8599,17 @@ class TkMinigamesHub:
                 self._2048_move("RIGHT")
 
     # ==========================================================================
-    # 1. CỜ CARO (20x20, AI 5 Levels / 2P / Obstacles)
+    # 1. CỜ CARO (20x20, Sảnh Online 2 Tài Khoản / AI 5 Levels / 2P / Obstacles)
     # ==========================================================================
     def _init_caro_state(self):
         self.caro_N = 20
-        self.caro_mode = "ai"
+        self.caro_mode = "online"
         self.caro_level = 3
         self.caro_obstacles = False
+        self.caro_online_rooms = []
+        self.caro_online_room = None
+        self.caro_online_seat = None
+        self._caro_poll_job = None
         self._reset_caro_board()
 
     def _reset_caro_board(self):
@@ -8621,32 +8631,17 @@ class TkMinigamesHub:
         ctrl.pack(fill="x", pady=(0, 6))
 
         tk.Label(ctrl, text="Chế độ:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121721").pack(side="left")
-        mode_btn = tk.Button(
-            ctrl,
-            text="🤖 Đấu Máy AI" if self.caro_mode == "ai" else "👥 2 Người Chơi",
-            command=self._toggle_caro_mode,
-            font=("Segoe UI", 9, "bold"),
-            bg="#1a2130",
-            fg="#fbbf24",
-            relief="flat",
-            padx=10,
-            pady=3,
-            cursor="hand2",
-        )
-        mode_btn.pack(side="left", padx=6)
-
-        tk.Label(ctrl, text="Cấp AI:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121721").pack(side="left", padx=(6, 2))
-        for lv in range(1, 6):
+        for m_key, m_txt in (("online", "🌐 Sảnh Online (2 TK)"), ("ai", "🤖 Đấu Máy AI"), ("2p", "👥 2 Người Cùng Máy")):
             tk.Button(
                 ctrl,
-                text=f"Cấp {lv}",
-                command=lambda l=lv: self._set_caro_level(l),
+                text=m_txt,
+                command=lambda mk=m_key: self._set_caro_mode(mk),
                 font=("Segoe UI", 8, "bold"),
-                bg="#f59e0b" if self.caro_level == lv else "#1a2130",
-                fg="#0b0e14" if self.caro_level == lv else "#cbd5e1",
+                bg="#f59e0b" if self.caro_mode == m_key else "#1a2130",
+                fg="#0b0e14" if self.caro_mode == m_key else "#cbd5e1",
                 relief="flat",
-                padx=6,
-                pady=2,
+                padx=8,
+                pady=3,
                 cursor="hand2",
             ).pack(side="left", padx=2)
 
@@ -8664,30 +8659,89 @@ class TkMinigamesHub:
         )
         obs_btn.pack(side="left", padx=6)
 
-        tk.Button(
-            ctrl,
-            text="🔄 Ván Mới",
-            command=lambda: (self._reset_caro_board(), self._draw_caro()),
-            font=("Segoe UI", 9, "bold"),
-            bg="#f59e0b",
-            fg="#0b0e14",
-            relief="flat",
-            padx=12,
-            pady=3,
-            cursor="hand2",
-        ).pack(side="right")
-        tk.Button(
-            ctrl,
-            text="↩️ Đi Lại",
-            command=self._caro_undo,
-            font=("Segoe UI", 9, "bold"),
-            bg="#1a2130",
-            fg="#e2e8f0",
-            relief="flat",
-            padx=10,
-            pady=3,
-            cursor="hand2",
-        ).pack(side="right", padx=6)
+        if self.caro_mode == "online":
+            if not self.caro_online_room:
+                self._build_caro_online_lobby()
+                return
+            else:
+                # Online Room Controls
+                tk.Button(
+                    ctrl,
+                    text="🚪 Rời Bàn",
+                    command=self._caro_online_leave,
+                    font=("Segoe UI", 8, "bold"),
+                    bg="#7f1d1d",
+                    fg="#fecaca",
+                    relief="flat",
+                    padx=8,
+                    pady=3,
+                    cursor="hand2",
+                ).pack(side="right", padx=2)
+                tk.Button(
+                    ctrl,
+                    text="🏳️ Xin Thua",
+                    command=self._caro_online_resign,
+                    font=("Segoe UI", 8, "bold"),
+                    bg="#1a2130",
+                    fg="#f87171",
+                    relief="flat",
+                    padx=8,
+                    pady=3,
+                    cursor="hand2",
+                ).pack(side="right", padx=2)
+                tk.Button(
+                    ctrl,
+                    text="🔄 Ván Mới / Đổi Bên",
+                    command=self._caro_online_rematch,
+                    font=("Segoe UI", 8, "bold"),
+                    bg="#f59e0b",
+                    fg="#0b0e14",
+                    relief="flat",
+                    padx=8,
+                    pady=3,
+                    cursor="hand2",
+                ).pack(side="right", padx=2)
+        else:
+            if self.caro_mode == "ai":
+                tk.Label(ctrl, text="Cấp:", font=("Segoe UI", 8, "bold"), fg="#cbd5e1", bg="#121721").pack(side="left", padx=(4, 2))
+                for lv in range(1, 6):
+                    tk.Button(
+                        ctrl,
+                        text=f"C{lv}",
+                        command=lambda l=lv: self._set_caro_level(l),
+                        font=("Segoe UI", 8, "bold"),
+                        bg="#f59e0b" if self.caro_level == lv else "#1a2130",
+                        fg="#0b0e14" if self.caro_level == lv else "#cbd5e1",
+                        relief="flat",
+                        padx=5,
+                        pady=2,
+                        cursor="hand2",
+                    ).pack(side="left", padx=1)
+
+            tk.Button(
+                ctrl,
+                text="🔄 Ván Mới",
+                command=lambda: (self._reset_caro_board(), self._draw_caro()),
+                font=("Segoe UI", 9, "bold"),
+                bg="#f59e0b",
+                fg="#0b0e14",
+                relief="flat",
+                padx=10,
+                pady=3,
+                cursor="hand2",
+            ).pack(side="right")
+            tk.Button(
+                ctrl,
+                text="↩️ Đi Lại",
+                command=self._caro_undo,
+                font=("Segoe UI", 9, "bold"),
+                bg="#1a2130",
+                fg="#e2e8f0",
+                relief="flat",
+                padx=8,
+                pady=3,
+                cursor="hand2",
+            ).pack(side="right", padx=4)
 
         self.caro_status_lbl = tk.Label(
             self.stage_panel,
@@ -8703,10 +8757,368 @@ class TkMinigamesHub:
         self.caro_canvas.pack(anchor="center")
         self.caro_canvas.bind("<Button-1>", self._on_caro_click)
         self._draw_caro()
+        if self.caro_mode == "online" and self.caro_online_room:
+            self._schedule_caro_poll()
 
-    def _toggle_caro_mode(self):
-        self.caro_mode = "2p" if self.caro_mode == "ai" else "ai"
+    def _build_caro_online_lobby(self):
+        tk = self.tk
+        pname = self.app.player_name_var.get().strip() or "Khách"
+        tier = getattr(self.app, "current_player_tier", "BRONZE") or "BRONZE"
+
+        hdr = tk.Frame(self.stage_panel, bg="#172033", highlightthickness=1, highlightbackground="#f59e0b", padx=12, pady=10)
+        hdr.pack(fill="x", pady=(0, 8))
+
+        tk.Label(
+            hdr,
+            text=f"🌐 SẢNH ĐẤU CARO ONLINE 1v1 — TÀI KHOẢN: {pname.upper()} ({tier})",
+            font=("Segoe UI", 10, "bold"),
+            fg="#fbbf24",
+            bg="#172033",
+        ).pack(anchor="w")
+        tk.Label(
+            hdr,
+            text="Tạo bàn mới hoặc nhập Mã Bàn (#XXXX) để thách đấu trực tiếp với tài khoản XO khác trên cả Website & App Windows!",
+            font=("Segoe UI", 8, "bold"),
+            fg="#94a3b8",
+            bg="#172033",
+        ).pack(anchor="w", pady=(2, 6))
+
+        act_bar = tk.Frame(hdr, bg="#172033")
+        act_bar.pack(fill="x")
+
+        tk.Button(
+            act_bar,
+            text="➕ Tạo Bàn Mới",
+            command=self._caro_online_create,
+            font=("Segoe UI", 9, "bold"),
+            bg="#f59e0b",
+            fg="#0b0e14",
+            relief="flat",
+            padx=12,
+            pady=4,
+            cursor="hand2",
+        ).pack(side="left", padx=(0, 10))
+
+        tk.Label(act_bar, text="Mã bàn:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#172033").pack(side="left")
+        self.caro_code_var = tk.StringVar()
+        code_ent = tk.Entry(
+            act_bar,
+            textvariable=self.caro_code_var,
+            font=("Consolas", 10, "bold"),
+            width=8,
+            bg="#0b0e14",
+            fg="#fbbf24",
+            insertbackground="#fbbf24",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#334155",
+        )
+        code_ent.pack(side="left", padx=6, ipady=3)
+
+        tk.Button(
+            act_bar,
+            text="⚔️ Vào Bàn",
+            command=lambda: self._caro_online_join(self.caro_code_var.get().strip().upper()),
+            font=("Segoe UI", 9, "bold"),
+            bg="#1a2130",
+            fg="#38bdf8",
+            relief="flat",
+            padx=10,
+            pady=4,
+            cursor="hand2",
+        ).pack(side="left")
+
+        tk.Button(
+            act_bar,
+            text="🔄 Làm mới Sảnh",
+            command=self._caro_fetch_lobby,
+            font=("Segoe UI", 8, "bold"),
+            bg="#1a2130",
+            fg="#e2e8f0",
+            relief="flat",
+            padx=10,
+            pady=4,
+            cursor="hand2",
+        ).pack(side="right")
+
+        self.caro_lobby_list_frame = tk.Frame(self.stage_panel, bg="#121721")
+        self.caro_lobby_list_frame.pack(fill="both", expand=True)
+        self._render_caro_lobby_list()
+        self._caro_fetch_lobby()
+        self._schedule_caro_poll()
+
+    def _render_caro_lobby_list(self):
+        if not hasattr(self, "caro_lobby_list_frame") or not self.caro_lobby_list_frame.winfo_exists():
+            return
+        tk = self.tk
+        for child in self.caro_lobby_list_frame.winfo_children():
+            child.destroy()
+
+        rooms = self.caro_online_rooms or []
+        if not rooms:
+            empty_f = tk.Frame(self.caro_lobby_list_frame, bg="#1a2130", highlightthickness=1, highlightbackground="#262f40", pady=36)
+            empty_f.pack(fill="x", pady=10)
+            tk.Label(
+                empty_f,
+                text="Hiện chưa có bàn cờ Caro Online nào đang mở.\nBấm [➕ Tạo Bàn Mới] ở trên để mở phòng và gửi mã bàn 4 ký tự cho bạn bè vào chiến ngay!",
+                font=("Segoe UI", 9, "bold"),
+                fg="#94a3b8",
+                bg="#1a2130",
+                justify="center",
+            ).pack()
+            return
+
+        for r in rooms[:8]:
+            card = tk.Frame(self.caro_lobby_list_frame, bg="#1a2130", highlightthickness=1, highlightbackground="#2e3f5c", padx=12, pady=8)
+            card.pack(fill="x", pady=4)
+            rid = r.get("roomId", "")
+            px = r.get("playerX") or {}
+            po = r.get("playerO") or {}
+            st = r.get("status", "WAITING")
+            sc = r.get("scores") or {"X": 0, "O": 0}
+            obs_txt = " • 🪨 Đá cản" if r.get("obstacles") else ""
+            st_txt = "🟢 Đang chờ đối thủ (1/2)" if not po else ("⚔️ Đang giao đấu (2/2)" if st == "PLAYING" else "🏁 Vừa kết thúc")
+            st_col = "#34d399" if not po else "#fbbf24"
+
+            left_f = tk.Frame(card, bg="#1a2130")
+            left_f.pack(side="left", fill="x", expand=True)
+            tk.Label(
+                left_f,
+                text=f"BÀN #{rid}{obs_txt}   |   {st_txt}   |   Tỉ số: {sc.get('X', 0)} - {sc.get('O', 0)}",
+                font=("Consolas", 9, "bold"),
+                fg=st_col,
+                bg="#1a2130",
+            ).pack(anchor="w")
+            tk.Label(
+                left_f,
+                text=f"❌ Quân X: {px.get('name', '---')} ({px.get('tier', 'BRONZE')})     vs     ⭕ Quân O: {po.get('name', 'Đang chờ người vào...') if po else 'Đang chờ người vào...'}",
+                font=("Segoe UI", 9, "bold"),
+                fg="#ffffff",
+                bg="#1a2130",
+            ).pack(anchor="w", pady=(2, 0))
+
+            btn_txt = "⚔️ Vào Đấu Ngay" if not po else "👁️ Vào Bàn"
+            btn_bg = "#f59e0b" if not po else "#121721"
+            btn_fg = "#0b0e14" if not po else "#38bdf8"
+            tk.Button(
+                card,
+                text=btn_txt,
+                command=lambda code=rid: self._caro_online_join(code),
+                font=("Segoe UI", 9, "bold"),
+                bg=btn_bg,
+                fg=btn_fg,
+                relief="flat",
+                padx=12,
+                pady=5,
+                cursor="hand2",
+            ).pack(side="right")
+
+    def _schedule_caro_poll(self):
+        if getattr(self, "_caro_poll_job", None):
+            try:
+                self.app.root.after_cancel(self._caro_poll_job)
+            except Exception:
+                pass
+            self._caro_poll_job = None
+        if self.active_game != "caro" or self.caro_mode != "online":
+            return
+
+        def _tick():
+            if self.active_game != "caro" or self.caro_mode != "online":
+                return
+            if self.caro_online_room:
+                self._caro_poll_room_once()
+            else:
+                self._caro_fetch_lobby()
+            self._caro_poll_job = self.app.root.after(1500, _tick)
+
+        self._caro_poll_job = self.app.root.after(1500, _tick)
+
+    def _caro_fetch_lobby(self):
+        def _t():
+            try:
+                res = requests.post(self.app.get_api_endpoint(), json={"action": "caroListRooms"}, timeout=6)
+                d = res.json()
+                if d.get("status") == "success" and isinstance(d.get("rooms"), list):
+                    self.caro_online_rooms = d["rooms"]
+                    self.app.root.after(0, self._render_caro_lobby_list)
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def _caro_apply_online_room(self, room: dict, rebuild_if_needed: bool = False):
+        was_none = self.caro_online_room is None
+        self.caro_online_room = room
+        pname = (self.app.player_name_var.get().strip() or "Khách").lower()
+        px_name = ((room.get("playerX") or {}).get("name") or "").lower()
+        po_name = ((room.get("playerO") or {}).get("name") or "").lower()
+        if px_name and px_name == pname:
+            self.caro_online_seat = "X"
+        elif po_name and po_name == pname:
+            self.caro_online_seat = "O"
+        else:
+            self.caro_online_seat = "V"
+
+        if isinstance(room.get("board"), list) and len(room["board"]) == self.caro_N:
+            self.caro_board = [[str(c or "") for c in row] for row in room["board"]]
+        raw_moves = room.get("moves") or []
+        self.caro_moves = [(int(m.get("x", 0)), int(m.get("y", 0)), str(m.get("role", "X"))) for m in raw_moves]
+        self.caro_winner = room.get("winner")
+        wl = room.get("winLine")
+        if isinstance(wl, dict):
+            self.caro_win_line = (int(wl.get("ax", 0)), int(wl.get("ay", 0)), int(wl.get("ex", 0)), int(wl.get("ey", 0)))
+        else:
+            self.caro_win_line = None
+
+        if was_none or rebuild_if_needed:
+            self.select_game("caro")
+        else:
+            self._draw_caro()
+
+    def _caro_online_create(self):
+        pname = self.app.player_name_var.get().strip() or "Khách"
+        tier = getattr(self.app, "current_player_tier", "BRONZE") or "BRONZE"
+
+        def _t():
+            try:
+                res = requests.post(
+                    self.app.get_api_endpoint(),
+                    json={
+                        "action": "caroCreateRoom",
+                        "playerName": pname,
+                        "tier": tier,
+                        "obstacles": bool(self.caro_obstacles),
+                    },
+                    timeout=8,
+                )
+                d = res.json()
+                if d.get("status") == "success" and d.get("room"):
+                    self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], True))
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def _caro_online_join(self, code: str):
+        code = (code or "").replace("#", "").strip().upper()
+        if not code:
+            return
+        pname = self.app.player_name_var.get().strip() or "Khách"
+        tier = getattr(self.app, "current_player_tier", "BRONZE") or "BRONZE"
+
+        def _t():
+            try:
+                res = requests.post(
+                    self.app.get_api_endpoint(),
+                    json={"action": "caroJoinRoom", "roomId": code, "playerName": pname, "tier": tier},
+                    timeout=8,
+                )
+                d = res.json()
+                if d.get("status") == "success" and d.get("room"):
+                    self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], True))
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def _caro_poll_room_once(self):
+        if not self.caro_online_room:
+            return
+        rid = self.caro_online_room.get("roomId", "")
+        pname = self.app.player_name_var.get().strip() or "Khách"
+
+        def _t():
+            try:
+                res = requests.post(
+                    self.app.get_api_endpoint(),
+                    json={"action": "caroGetRoom", "roomId": rid, "playerName": pname},
+                    timeout=6,
+                )
+                d = res.json()
+                if d.get("status") == "success" and d.get("room"):
+                    self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], False))
+                elif res.status_code == 404:
+                    def _closed():
+                        self.caro_online_room = None
+                        self.caro_online_seat = None
+                        self.select_game("caro")
+                    self.app.root.after(0, _closed)
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def _caro_online_rematch(self):
+        if not self.caro_online_room:
+            return
+        rid = self.caro_online_room.get("roomId", "")
+        pname = self.app.player_name_var.get().strip() or "Khách"
+
+        def _t():
+            try:
+                res = requests.post(
+                    self.app.get_api_endpoint(),
+                    json={"action": "caroResetGame", "roomId": rid, "playerName": pname},
+                    timeout=8,
+                )
+                d = res.json()
+                if d.get("status") == "success" and d.get("room"):
+                    self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], False))
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def _caro_online_resign(self):
+        if not self.caro_online_room:
+            return
+        rid = self.caro_online_room.get("roomId", "")
+        pname = self.app.player_name_var.get().strip() or "Khách"
+
+        def _t():
+            try:
+                res = requests.post(
+                    self.app.get_api_endpoint(),
+                    json={"action": "caroResign", "roomId": rid, "playerName": pname},
+                    timeout=8,
+                )
+                d = res.json()
+                if d.get("status") == "success" and d.get("room"):
+                    self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], False))
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def _caro_online_leave(self):
+        if not self.caro_online_room:
+            return
+        rid = self.caro_online_room.get("roomId", "")
+        pname = self.app.player_name_var.get().strip() or "Khách"
+        self.caro_online_room = None
+        self.caro_online_seat = None
         self._reset_caro_board()
+        self.select_game("caro")
+
+        def _t():
+            try:
+                requests.post(
+                    self.app.get_api_endpoint(),
+                    json={"action": "caroLeaveRoom", "roomId": rid, "playerName": pname},
+                    timeout=6,
+                )
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def _set_caro_mode(self, mode_key: str):
+        if self.caro_mode == "online" and mode_key != "online" and self.caro_online_room:
+            self._caro_online_leave()
+        self.caro_mode = mode_key
+        if mode_key != "online":
+            self._reset_caro_board()
         self.select_game("caro")
 
     def _set_caro_level(self, lv: int):
@@ -8716,11 +9128,12 @@ class TkMinigamesHub:
 
     def _toggle_caro_obs(self):
         self.caro_obstacles = not self.caro_obstacles
-        self._reset_caro_board()
+        if self.caro_mode != "online":
+            self._reset_caro_board()
         self.select_game("caro")
 
     def _caro_undo(self):
-        if self.caro_winner or not self.caro_moves:
+        if self.caro_mode == "online" or self.caro_winner or not self.caro_moves:
             return
         steps = 2 if (self.caro_mode == "ai" and len(self.caro_moves) >= 2) else 1
         for _ in range(steps):
@@ -8789,6 +9202,38 @@ class TkMinigamesHub:
         x, y = int(ev.x // cell), int(ev.y // cell)
         if not (0 <= x < self.caro_N and 0 <= y < self.caro_N) or self.caro_board[y][x] != "":
             return
+
+        if self.caro_mode == "online":
+            rm = self.caro_online_room
+            if not rm or rm.get("status") != "PLAYING":
+                return
+            if self.caro_online_seat not in ("X", "O") or rm.get("turn") != self.caro_online_seat:
+                return
+            rid = rm.get("roomId", "")
+            pname = self.app.player_name_var.get().strip() or "Khách"
+            # Optimistic draw
+            self.caro_board[y][x] = self.caro_online_seat
+            self.caro_moves.append((x, y, self.caro_online_seat))
+            self._draw_caro()
+
+            def _t():
+                try:
+                    res = requests.post(
+                        self.app.get_api_endpoint(),
+                        json={"action": "caroMove", "roomId": rid, "playerName": pname, "x": x, "y": y},
+                        timeout=8,
+                    )
+                    d = res.json()
+                    if d.get("status") == "success" and d.get("room"):
+                        self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], False))
+                        if d["room"].get("winner"):
+                            self.fetch_leaderboard("caro")
+                except Exception:
+                    pass
+
+            threading.Thread(target=_t, daemon=True).start()
+            return
+
         role = "X" if len(self.caro_moves) % 2 == 0 else "O"
         self.caro_board[y][x] = role
         self.caro_moves.append((x, y, role))
@@ -8882,6 +9327,34 @@ class TkMinigamesHub:
         if self.caro_win_line:
             ax, ay, ex, ey = self.caro_win_line
             c.create_line((ax + 0.5) * cell, (ay + 0.5) * cell, (ex + 0.5) * cell, (ey + 0.5) * cell, fill="#10b981", width=4)
+
+        if self.caro_mode == "online" and self.caro_online_room:
+            rm = self.caro_online_room
+            rid = rm.get("roomId", "")
+            px = (rm.get("playerX") or {}).get("name", "---")
+            po = (rm.get("playerO") or {}).get("name", "Đang chờ...")
+            sc = rm.get("scores") or {"X": 0, "O": 0}
+            if rm.get("status") == "WAITING":
+                self.caro_status_lbl.configure(
+                    text=f"Bàn #{rid}  •  ❌ {px} vs ⭕ Đang chờ đối thủ vào bàn...",
+                    fg="#fbbf24",
+                )
+            elif self.caro_winner:
+                w_name = px if self.caro_winner == "X" else (po if self.caro_winner == "O" else "HÒA")
+                self.caro_status_lbl.configure(
+                    text=f"🏆 Bàn #{rid}: {w_name} ({self.caro_winner}) CHIẾN THẮNG!  •  Tỉ số: {sc.get('X', 0)} - {sc.get('O', 0)}",
+                    fg="#34d399",
+                )
+            else:
+                turn = rm.get("turn", "X")
+                my_turn = turn == self.caro_online_seat
+                turn_txt = f"⚡ ĐẾN LƯỢT BẠN ({self.caro_online_seat})" if my_turn else f"⏳ Đợi lượt {turn}"
+                self.caro_status_lbl.configure(
+                    text=f"Bàn #{rid}  |  ❌ {px} ({sc.get('X', 0)}) - ({sc.get('O', 0)}) ⭕ {po}  |  {turn_txt}",
+                    fg="#34d399" if my_turn else "#fbbf24",
+                )
+            return
+
         if self.caro_winner:
             msg = f"🏆 CHIẾN THẮNG: {'BẠN (X)' if (self.caro_mode == 'ai' and self.caro_winner == 'X') else ('MÁY AI (O)' if self.caro_mode == 'ai' else self.caro_winner)}!"
             self.caro_status_lbl.configure(text=msg, fg="#34d399")

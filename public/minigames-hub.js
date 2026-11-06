@@ -103,22 +103,365 @@
   }
 
   // ============================================================================
-  // 1. CỜ CARO ENGINE (20x20, AI 5 Levels, 2P, Obstacles, Undo)
+  // 1. CỜ CARO ENGINE (20x20, Online PvP Lobby 2 Tài Khoản XO, AI 5 Levels, 2P, Obstacles)
   // ============================================================================
   const caro = {
     N: 20,
     board: [],
     moves: [],
     rocks: [],
-    mode: 'ai', // 'ai' | '2p'
+    mode: 'online', // 'online' | 'ai' | '2p'
     aiLevel: 3, // 1..5
     obstacles: false,
     humanRole: 'X',
     winner: null,
     winLine: null,
     thinking: false,
+    // Online PvP state
+    roomsList: [],
+    onlineRoom: null,
+    onlineRole: 'V',
+    pollTimer: null,
     init() {
       this.newGame();
+      this.startPolling();
+    },
+    startPolling() {
+      clearInterval(this.pollTimer);
+      this.pollTimer = setInterval(() => {
+        if (state.activeGame !== 'caro' || this.mode !== 'online') return;
+        const mount = document.getElementById('xo-minigames-mount');
+        if (!mount || mount.offsetParent === null) return;
+        if (this.onlineRoom && this.onlineRoom.code) {
+          this.refreshOnlineRoom();
+        } else {
+          this.fetchRoomsList();
+        }
+      }, 1400);
+    },
+    async fetchRoomsList() {
+      try {
+        const res = await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'caroListRooms' })
+        });
+        const d = await res.json();
+        if (d.status === 'success' && Array.isArray(d.rooms)) {
+          this.roomsList = d.rooms;
+          this.renderOnlineLobbyBox();
+        }
+      } catch (e) {}
+    },
+    async createOnlineRoom() {
+      const info = state.getPlayerInfo();
+      const playerName = (info && info.name) ? info.name : '';
+      const tier = (info && info.tier) ? info.tier : 'BRONZE';
+      if (!playerName || playerName.toLowerCase() === 'khách') {
+        state.onNotify('🔒 Vui lòng Đăng nhập tài khoản XO (góc trên bên phải) để tạo bàn đấu Caro Online!', 'error');
+        return;
+      }
+      try {
+        const res = await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'caroCreateRoom',
+            playerName,
+            tier,
+            obstacles: this.obstacles
+          })
+        });
+        const d = await res.json();
+        if (d.status === 'success' && d.room) {
+          this.onlineRole = d.role || 'X';
+          this.applyOnlineRoomData(d.room);
+          renderActiveGameStage();
+          state.onNotify(`🏟️ Đã mở bàn Caro Online #${d.room.code}! Hãy gửi mã bàn hoặc chờ người chơi khác vào bàn.`);
+        } else {
+          state.onNotify(d.message || 'Không thể tạo bàn cờ!', 'error');
+        }
+      } catch (e) {
+        state.onNotify('Lỗi kết nối khi tạo bàn cờ!', 'error');
+      }
+    },
+    async joinOnlineRoom(codeInput) {
+      const code = String(codeInput || '').trim().toUpperCase().replace(/^#/, '');
+      if (!code) {
+        state.onNotify('Vui lòng nhập mã bàn cờ (VD: XO88)!', 'error');
+        return;
+      }
+      const info = state.getPlayerInfo();
+      const playerName = (info && info.name) ? info.name : '';
+      const tier = (info && info.tier) ? info.tier : 'BRONZE';
+      if (!playerName || playerName.toLowerCase() === 'khách') {
+        state.onNotify('🔒 Vui lòng Đăng nhập tài khoản XO để vào bàn đấu Caro Online!', 'error');
+        return;
+      }
+      try {
+        const res = await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'caroJoinRoom', code, playerName, tier })
+        });
+        const d = await res.json();
+        if (d.status === 'success' && d.room) {
+          this.onlineRole = d.role || 'V';
+          this.applyOnlineRoomData(d.room);
+          renderActiveGameStage();
+          state.onNotify(`⚔️ Đã vào bàn #${d.room.code} với tư cách ${this.onlineRole === 'V' ? 'Khán giả' : 'Kỳ thủ Quân ' + this.onlineRole}!`);
+        } else {
+          state.onNotify(d.message || 'Không tìm thấy bàn cờ này!', 'error');
+        }
+      } catch (e) {
+        state.onNotify('Lỗi kết nối khi vào bàn!', 'error');
+      }
+    },
+    async refreshOnlineRoom() {
+      if (!this.onlineRoom || !this.onlineRoom.code) return;
+      const info = state.getPlayerInfo();
+      const playerName = (info && info.name) ? info.name : '';
+      try {
+        const res = await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'caroGetRoom', code: this.onlineRoom.code, playerName })
+        });
+        const d = await res.json();
+        if (d.status === 'success' && d.room) {
+          this.onlineRole = d.role || this.onlineRole;
+          this.applyOnlineRoomData(d.room);
+          this.draw();
+          this.updateStatus();
+          this.renderOnlineRoomHeaderAndChat();
+        } else {
+          this.onlineRoom = null;
+          renderActiveGameStage();
+        }
+      } catch (e) {}
+    },
+    applyOnlineRoomData(room) {
+      this.onlineRoom = room;
+      this.N = room.N || 20;
+      this.board = Array.from({ length: this.N }, () => Array(this.N).fill(''));
+      this.rocks = room.rocks || [];
+      for (const [rx, ry] of this.rocks) {
+        if (ry >= 0 && ry < this.N && rx >= 0 && rx < this.N) this.board[ry][rx] = '#';
+      }
+      this.moves = room.moves || [];
+      for (const m of this.moves) {
+        if (m.y >= 0 && m.y < this.N && m.x >= 0 && m.x < this.N) this.board[m.y][m.x] = m.role;
+      }
+      this.winner = room.winner || null;
+      this.winLine = room.winLine || null;
+    },
+    async sendOnlineMove(x, y) {
+      if (!this.onlineRoom) return;
+      const info = state.getPlayerInfo();
+      const playerName = (info && info.name) ? info.name : '';
+      const tier = (info && info.tier) ? info.tier : 'BRONZE';
+      try {
+        const res = await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'caroMove',
+            code: this.onlineRoom.code,
+            playerName,
+            tier,
+            x,
+            y
+          })
+        });
+        const d = await res.json();
+        if (d.status === 'success' && d.room) {
+          this.onlineRole = d.role || this.onlineRole;
+          this.applyOnlineRoomData(d.room);
+          this.draw();
+          this.updateStatus();
+          this.renderOnlineRoomHeaderAndChat();
+          if (d.room.winner) fetchLeaderboard('caro');
+        } else if (d.message) {
+          state.onNotify(d.message, 'error');
+        }
+      } catch (e) {}
+    },
+    async resetOnlineGame() {
+      if (!this.onlineRoom) return;
+      const info = state.getPlayerInfo();
+      const playerName = (info && info.name) ? info.name : '';
+      try {
+        const res = await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'caroResetGame', code: this.onlineRoom.code, playerName })
+        });
+        const d = await res.json();
+        if (d.status === 'success' && d.room) {
+          this.onlineRole = d.role || this.onlineRole;
+          this.applyOnlineRoomData(d.room);
+          this.draw();
+          this.updateStatus();
+          this.renderOnlineRoomHeaderAndChat();
+        } else if (d.message) {
+          state.onNotify(d.message, 'error');
+        }
+      } catch (e) {}
+    },
+    async resignOnlineGame() {
+      if (!this.onlineRoom) return;
+      const info = state.getPlayerInfo();
+      const playerName = (info && info.name) ? info.name : '';
+      try {
+        const res = await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'caroResign', code: this.onlineRoom.code, playerName })
+        });
+        const d = await res.json();
+        if (d.status === 'success' && d.room) {
+          this.applyOnlineRoomData(d.room);
+          this.draw();
+          this.updateStatus();
+          this.renderOnlineRoomHeaderAndChat();
+        }
+      } catch (e) {}
+    },
+    async leaveOnlineRoom() {
+      if (!this.onlineRoom) return;
+      const info = state.getPlayerInfo();
+      const playerName = (info && info.name) ? info.name : '';
+      try {
+        await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'caroLeaveRoom', code: this.onlineRoom.code, playerName })
+        });
+      } catch (e) {}
+      this.onlineRoom = null;
+      this.onlineRole = 'V';
+      renderActiveGameStage();
+      this.fetchRoomsList();
+    },
+    async sendOnlineChat(textInput) {
+      if (!this.onlineRoom) return;
+      const inp = document.getElementById('xo-caro-chat-inp');
+      const text = (textInput || (inp ? inp.value : '')).trim();
+      if (!text) return;
+      if (inp && !textInput) inp.value = '';
+      const info = state.getPlayerInfo();
+      const playerName = (info && info.name) ? info.name : 'Kỳ thủ';
+      const tier = (info && info.tier) ? info.tier : 'BRONZE';
+      try {
+        const res = await fetch('/api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'caroRoomChat',
+            code: this.onlineRoom.code,
+            playerName,
+            tier,
+            text
+          })
+        });
+        const d = await res.json();
+        if (d.status === 'success' && d.room) {
+          this.onlineRoom = d.room;
+          this.renderOnlineRoomHeaderAndChat();
+        }
+      } catch (e) {}
+    },
+    renderOnlineLobbyBox() {
+      const box = document.getElementById('xo-caro-rooms-grid');
+      if (!box) return;
+      if (!this.roomsList.length) {
+        box.innerHTML = `
+          <div class="col-span-full bg-slate-950/80 border border-slate-800 rounded-xl p-6 text-center space-y-2">
+            <div class="text-2xl">⭕⚔️❌</div>
+            <div class="text-sm font-bold text-white">Hiện chưa có bàn cờ Caro Online nào đang mở</div>
+            <div class="text-xs text-slate-400">Hãy bấm nút <b class="text-amber-300">"➕ Tạo Bàn Mới"</b> ở trên để mở bàn và mời bạn bè (trên Web hoặc App Windows) vào so tài!</div>
+          </div>
+        `;
+        return;
+      }
+      box.innerHTML = this.roomsList.map(r => {
+        const waiting = r.status === 'WAITING';
+        const px = r.playerX ? `${esc(r.playerX.name)} ${tierBadgeHtml(r.playerX.tier)}` : '<span class="text-slate-400 italic">Trống</span>';
+        const po = r.playerO ? `${esc(r.playerO.name)} ${tierBadgeHtml(r.playerO.tier)}` : '<span class="text-amber-300 font-bold animate-pulse">⏳ Đang chờ đối thủ...</span>';
+        return `
+          <div class="bg-slate-950/90 border ${waiting ? 'border-amber-500/50' : 'border-slate-800'} rounded-xl p-3.5 flex flex-col justify-between gap-2.5 hover:border-amber-400 transition">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-black text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40">#${esc(r.code)}</span>
+                <span class="font-bold text-xs text-white truncate">${esc(r.title)}</span>
+              </div>
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${waiting ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'}">
+                ${waiting ? '🟢 Chờ người (1/2)' : `⚔️ Nước #${r.movesCount}`}
+              </span>
+            </div>
+            <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2 text-xs space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-amber-400 font-extrabold">❌ Quân X:</span>
+                <span class="font-semibold text-white flex items-center gap-1">${px}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sky-400 font-extrabold">⭕ Quân O:</span>
+                <span class="font-semibold text-white flex items-center gap-1">${po}</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-2 pt-0.5">
+              <span class="text-[11px] text-slate-400 font-semibold">
+                Tỉ số: <b class="text-amber-300">${(r.scores && r.scores.X) || 0} - ${(r.scores && r.scores.O) || 0}</b>
+                ${r.obstacles ? ' &bull; 🪨 Có đá cản' : ''}
+              </span>
+              <button data-join-code="${esc(r.code)}" class="xo-caro-join-btn ${waiting ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40'} font-extrabold px-3 py-1.5 rounded-xl text-xs transition">
+                ${waiting ? '⚔️ Vào Đấu Ngay' : '👁️ Vào Bàn'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      box.querySelectorAll('.xo-caro-join-btn').forEach(btn => {
+        btn.onclick = () => this.joinOnlineRoom(btn.dataset.joinCode);
+      });
+    },
+    renderOnlineRoomHeaderAndChat() {
+      const hdr = document.getElementById('xo-caro-online-match-bar');
+      if (hdr && this.onlineRoom) {
+        const r = this.onlineRoom;
+        const pxName = r.players.X ? esc(r.players.X.name) : 'Đang chờ X...';
+        const poName = r.players.O ? esc(r.players.O.name) : '⏳ Đang chờ đối thủ vào bàn...';
+        const pxTier = r.players.X ? tierBadgeHtml(r.players.X.tier) : '';
+        const poTier = r.players.O ? tierBadgeHtml(r.players.O.tier) : '';
+        hdr.innerHTML = `
+          <div class="grid grid-cols-11 gap-2 items-center bg-slate-950/90 border border-amber-500/40 rounded-xl p-2.5 text-xs">
+            <div class="col-span-4 text-left truncate">
+              <div class="text-[10px] font-extrabold text-amber-400 uppercase">❌ Quân X ${this.onlineRole === 'X' ? '(Bạn)' : ''}</div>
+              <div class="font-bold text-white flex items-center gap-1 mt-0.5 truncate">${pxName} ${pxTier}</div>
+            </div>
+            <div class="col-span-3 text-center">
+              <div class="font-display font-black text-base sm:text-xl text-amber-300">${(r.scores && r.scores.X) || 0} - ${(r.scores && r.scores.O) || 0}</div>
+              <div class="text-[10px] text-slate-400 font-mono">Bàn #${esc(r.code)}</div>
+            </div>
+            <div class="col-span-4 text-right truncate">
+              <div class="text-[10px] font-extrabold text-sky-400 uppercase">⭕ Quân O ${this.onlineRole === 'O' ? '(Bạn)' : ''}</div>
+              <div class="font-bold text-white flex items-center justify-end gap-1 mt-0.5 truncate">${poName} ${poTier}</div>
+            </div>
+          </div>
+        `;
+      }
+      const chatFeed = document.getElementById('xo-caro-chat-feed');
+      if (chatFeed && this.onlineRoom) {
+        const list = this.onlineRoom.chat || [];
+        chatFeed.innerHTML = list.map(m => m.sys
+          ? `<div class="text-[11px] text-amber-300/90 italic bg-slate-900/70 px-2.5 py-1 rounded-lg">${esc(m.text)}</div>`
+          : `<div class="text-xs bg-slate-900/90 border border-slate-800 px-2.5 py-1.5 rounded-lg flex items-center justify-between gap-2">
+               <div><b class="text-sky-300">${esc(m.sender)}:</b> <span class="text-slate-100">${esc(m.text)}</span></div>
+               <span class="text-[10px] text-slate-500 font-mono shrink-0">${esc(m.timeText || '')}</span>
+             </div>`
+        ).join('');
+        chatFeed.scrollTop = chatFeed.scrollHeight;
+      }
     },
     newGame() {
       this.board = Array.from({ length: this.N }, () => Array(this.N).fill(''));
@@ -275,6 +618,10 @@
       const x = Math.floor(((ev.clientX - rect.left) / rect.width) * this.N);
       const y = Math.floor(((ev.clientY - rect.top) / rect.height) * this.N);
       if (x < 0 || x >= this.N || y < 0 || y >= this.N) return;
+      if (this.mode === 'online') {
+        this.sendOnlineMove(x, y);
+        return;
+      }
       const curTurn = this.turn();
       if (this.mode === 'ai' && curTurn !== this.humanRole) return;
       if (this.playMove(x, y, curTurn)) {
@@ -291,6 +638,29 @@
     updateStatus() {
       const el = document.getElementById('xo-caro-status');
       if (!el) return;
+      if (this.mode === 'online' && this.onlineRoom) {
+        const r = this.onlineRoom;
+        if (!r.players.X || !r.players.O) {
+          el.innerHTML = `<span class="text-amber-300 font-bold">⏳ Đang chờ kỳ thủ thứ 2 vào bàn #${esc(r.code)}... Hãy gửi mã bàn #${esc(r.code)} cho bạn bè!</span>`;
+          return;
+        }
+        if (this.winner === 'DRAW') {
+          el.innerHTML = `<span class="text-amber-300 font-bold">🤝 Ván đấu Hòa! Bấm "🔄 Ván Mới" để tái đấu.</span>`;
+          return;
+        }
+        if (this.winner) {
+          const wName = (r.players[this.winner] && r.players[this.winner].name) || this.winner;
+          el.innerHTML = `<span class="text-emerald-400 font-extrabold">🏆 ${esc(wName)} (${this.winner}) CHIẾN THẮNG! (${esc(r.winReason || '')})</span>`;
+          return;
+        }
+        const t = this.turn();
+        const tPlayer = (r.players[t] && r.players[t].name) || t;
+        const isMyTurn = this.onlineRole === t;
+        el.innerHTML = isMyTurn
+          ? `<span class="text-amber-300 font-extrabold">⚡ TỚI LƯỢT BẠN ĐÁNH (Quân ${t}) — Nước #${this.moves.length + 1}</span>`
+          : `<span class="text-sky-300 font-semibold">⏳ Đang chờ <b>${esc(tPlayer)}</b> (${t}) đi nước #${this.moves.length + 1}...</span>`;
+        return;
+      }
       if (this.winner === 'DRAW') {
         el.innerHTML = `<span class="text-amber-300 font-bold">🤝 Ván đấu Hòa!</span>`;
       } else if (this.winner) {
@@ -1247,45 +1617,193 @@
     });
 
     if (state.activeGame === 'caro') {
-      stage.innerHTML = `
-        <div class="space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-950/80 border border-slate-800 p-3 rounded-xl">
-            <div class="flex flex-wrap items-center gap-2 text-xs">
-              <select id="xo-caro-mode" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-bold">
-                <option value="ai" ${caro.mode === 'ai' ? 'selected' : ''}>🤖 Đấu Máy AI</option>
-                <option value="2p" ${caro.mode === '2p' ? 'selected' : ''}>👥 2 Người Chơi</option>
-              </select>
-              <select id="xo-caro-level" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-amber-300 font-bold" ${caro.mode === '2p' ? 'disabled' : ''}>
-                <option value="1" ${caro.aiLevel === 1 ? 'selected' : ''}>Cấp 1: Tập Sự</option>
-                <option value="2" ${caro.aiLevel === 2 ? 'selected' : ''}>Cấp 2: Phong Trào</option>
-                <option value="3" ${caro.aiLevel === 3 ? 'selected' : ''}>Cấp 3: Kỳ Thủ</option>
-                <option value="4" ${caro.aiLevel === 4 ? 'selected' : ''}>Cấp 4: Cao Thủ</option>
-                <option value="5" ${caro.aiLevel === 5 ? 'selected' : ''}>Cấp 5: Đại Kiện Tướng</option>
-              </select>
-              <label class="flex items-center gap-1.5 text-slate-200 cursor-pointer bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg">
-                <input type="checkbox" id="xo-caro-obs" class="accent-amber-500" ${caro.obstacles ? 'checked' : ''}>
-                <span>🪨 Chướng ngại vật</span>
-              </label>
-            </div>
-            <div class="flex items-center gap-2">
-              <button id="xo-caro-undo" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold">↩️ Đi lại</button>
-              <button id="xo-caro-new" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-extrabold shadow">🔄 Ván Mới</button>
-            </div>
-          </div>
-          <div id="xo-caro-status" class="text-xs sm:text-sm text-center bg-slate-900/90 border border-slate-800 py-2 rounded-xl"></div>
-          <div class="flex justify-center">
-            <canvas id="xo-caro-canvas" width="520" height="520" class="w-full max-w-[520px] aspect-square rounded-2xl border-2 border-amber-500/40 shadow-2xl cursor-pointer"></canvas>
-          </div>
+      const pInfo = state.getPlayerInfo() || { name: 'Khách', tier: 'BRONZE' };
+      const isLogged = pInfo.name && pInfo.name.toLowerCase() !== 'khách';
+
+      // Mode switch bar (3 modes: Online Lobby 2 Tài Khoản XO | Đấu Máy AI | 2 Người Cùng Máy)
+      const modeSwitchHtml = `
+        <div class="grid grid-cols-3 gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+          <button data-cmode="online" class="xo-caro-mode-tab py-2 px-2 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${caro.mode === 'online' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
+            <span>🌐 Sảnh Đấu Online (2 Tài Khoản)</span>
+          </button>
+          <button data-cmode="ai" class="xo-caro-mode-tab py-2 px-2 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${caro.mode === 'ai' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
+            <span>🤖 Đấu Máy AI (5 Cấp)</span>
+          </button>
+          <button data-cmode="2p" class="xo-caro-mode-tab py-2 px-2 rounded-lg text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${caro.mode === '2p' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
+            <span>👥 2 Người Cùng Máy</span>
+          </button>
         </div>
       `;
-      document.getElementById('xo-caro-mode').onchange = e => { caro.mode = e.target.value; renderActiveGameStage(); caro.newGame(); };
-      document.getElementById('xo-caro-level').onchange = e => { caro.aiLevel = Number(e.target.value); caro.newGame(); };
-      document.getElementById('xo-caro-obs').onchange = e => { caro.obstacles = e.target.checked; caro.newGame(); };
-      document.getElementById('xo-caro-undo').onclick = () => caro.undo();
-      document.getElementById('xo-caro-new').onclick = () => caro.newGame();
-      document.getElementById('xo-caro-canvas').onclick = ev => caro.handleClick(ev);
-      if (!caro.board.length) caro.init();
-      else { caro.draw(); caro.updateStatus(); }
+
+      if (caro.mode === 'online' && !caro.onlineRoom) {
+        stage.innerHTML = `
+          <div class="space-y-3">
+            ${modeSwitchHtml}
+            <div class="bg-slate-950/90 border border-amber-500/40 rounded-2xl p-4 space-y-3">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800 pb-3">
+                <div>
+                  <h3 class="font-display text-sm sm:text-base font-black text-amber-300 uppercase">
+                    🏟️ SẢNH BÀN CỜ CARO ONLINE (ĐẤU GIỮA 2 TÀI KHOẢN XO)
+                  </h3>
+                  <p class="text-xs text-slate-300 mt-0.5">
+                    Tạo bàn hoặc chọn bàn đang chờ để thi đấu trực tiếp giữa 2 người chơi trên Website &amp; App Windows
+                  </p>
+                </div>
+                <div class="text-xs shrink-0">
+                  ${isLogged
+                    ? `<span class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl font-bold text-white inline-flex items-center gap-1.5">👤 Kỳ thủ: <b class="text-amber-300">${esc(pInfo.name)}</b> ${tierBadgeHtml(pInfo.tier)}</span>`
+                    : `<span class="bg-rose-950/80 border border-rose-500/50 text-rose-200 px-3 py-1.5 rounded-xl font-bold inline-block">🔒 Hãy bấm "Đăng Nhập" ở góc trên để tạo/vào bàn</span>`}
+                </div>
+              </div>
+
+              <!-- Thanh công cụ Tạo bàn & Vào bàn bằng Mã -->
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <button id="xo-caro-create-room" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-4 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
+                    <span>➕ Tạo Bàn Mới</span>
+                  </button>
+                  <label class="flex items-center gap-1.5 text-xs text-slate-200 cursor-pointer bg-slate-900 border border-slate-700 px-3 py-2 rounded-xl">
+                    <input type="checkbox" id="xo-caro-online-obs" class="accent-amber-500" ${caro.obstacles ? 'checked' : ''}>
+                    <span>🪨 Bàn có Đá cản</span>
+                  </label>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <input id="xo-caro-join-code-inp" type="text" maxlength="8" placeholder="Nhập mã bàn (VD: XO88)..."
+                         class="bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl px-3 py-1.5 text-xs text-white font-mono uppercase outline-none w-44">
+                  <button id="xo-caro-join-code-btn" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold px-3.5 py-1.5 rounded-xl text-xs transition">
+                    ⚔️ Vào Bàn
+                  </button>
+                  <button id="xo-caro-refresh-rooms" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-1.5 rounded-xl text-xs">
+                    🔄
+                  </button>
+                </div>
+              </div>
+
+              <!-- Danh sách các bàn cờ đang mở -->
+              <div id="xo-caro-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1"></div>
+            </div>
+          </div>
+        `;
+        stage.querySelectorAll('.xo-caro-mode-tab').forEach(b => {
+          b.onclick = () => {
+            caro.mode = b.dataset.cmode;
+            if (caro.mode !== 'online') caro.newGame();
+            renderActiveGameStage();
+          };
+        });
+        document.getElementById('xo-caro-online-obs').onchange = e => { caro.obstacles = e.target.checked; };
+        document.getElementById('xo-caro-create-room').onclick = () => caro.createOnlineRoom();
+        document.getElementById('xo-caro-join-code-btn').onclick = () => {
+          const v = document.getElementById('xo-caro-join-code-inp').value;
+          caro.joinOnlineRoom(v);
+        };
+        document.getElementById('xo-caro-join-code-inp').onkeydown = e => {
+          if (e.key === 'Enter') caro.joinOnlineRoom(e.target.value);
+        };
+        document.getElementById('xo-caro-refresh-rooms').onclick = () => caro.fetchRoomsList();
+        caro.startPolling();
+        caro.fetchRoomsList();
+      } else if (caro.mode === 'online' && caro.onlineRoom) {
+        const r = caro.onlineRoom;
+        stage.innerHTML = `
+          <div class="space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-950/90 border border-slate-800 p-2.5 rounded-xl">
+              <div class="flex items-center gap-2">
+                <span class="bg-amber-500 text-slate-950 font-mono font-black text-xs px-2.5 py-1 rounded-lg">BÀN #${esc(r.code)}</span>
+                <button id="xo-caro-copy-code" class="bg-slate-900 hover:bg-slate-800 text-sky-300 border border-slate-700 px-2.5 py-1 rounded-lg text-xs font-bold">
+                  📋 Copy Mã Bàn
+                </button>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button id="xo-caro-online-new" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1 rounded-lg text-xs font-extrabold">🔄 Ván Mới / Đổi Bên</button>
+                <button id="xo-caro-online-resign" class="bg-slate-900 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 px-2.5 py-1 rounded-lg text-xs font-bold">🏳️ Xin Thua</button>
+                <button id="xo-caro-online-leave" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-lg text-xs font-bold">🚪 Rời Bàn</button>
+              </div>
+            </div>
+            <div id="xo-caro-online-match-bar"></div>
+            <div id="xo-caro-status" class="text-xs sm:text-sm text-center bg-slate-900/90 border border-slate-800 py-2 rounded-xl"></div>
+            <div class="flex justify-center">
+              <canvas id="xo-caro-canvas" width="520" height="520" class="w-full max-w-[520px] aspect-square rounded-2xl border-2 border-amber-500/40 shadow-2xl cursor-pointer"></canvas>
+            </div>
+            <!-- Khung Chat Nhanh Trong Bàn Cờ Caro Online -->
+            <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-amber-300">💬 Chat Trong Bàn Cờ (#${esc(r.code)})</span>
+                <div class="flex gap-1 overflow-x-auto no-scrollbar">
+                  ${['🔥 Nước đi cao đấy!', '😎 Chạy đi đâu!', '⚡ Nhanh tay bạn ơi!', '🤝 Ván hay quá!'].map(q =>
+                    `<button data-qchat="${esc(q)}" class="xo-caro-qchat text-[11px] bg-slate-900 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-slate-800 px-2 py-0.5 rounded-lg">${esc(q)}</button>`
+                  ).join('')}
+                </div>
+              </div>
+              <div id="xo-caro-chat-feed" class="max-h-28 overflow-y-auto space-y-1 pr-1"></div>
+              <div class="flex gap-2">
+                <input id="xo-caro-chat-inp" type="text" maxlength="140" placeholder="Nhắn tin cho đối thủ trong bàn..."
+                       class="flex-1 bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl px-3 py-1.5 text-xs text-white outline-none">
+                <button id="xo-caro-chat-send" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold px-3.5 py-1.5 rounded-xl text-xs">Gửi</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('xo-caro-copy-code').onclick = () => {
+          navigator.clipboard.writeText(r.code).then(() => state.onNotify(`📋 Đã copy mã bàn #${r.code}! Gửi cho bạn bè để vào bàn ngay.`));
+        };
+        document.getElementById('xo-caro-online-new').onclick = () => caro.resetOnlineGame();
+        document.getElementById('xo-caro-online-resign').onclick = () => caro.resignOnlineGame();
+        document.getElementById('xo-caro-online-leave').onclick = () => caro.leaveOnlineRoom();
+        document.getElementById('xo-caro-canvas').onclick = ev => caro.handleClick(ev);
+        document.getElementById('xo-caro-chat-send').onclick = () => caro.sendOnlineChat();
+        document.getElementById('xo-caro-chat-inp').onkeydown = e => { if (e.key === 'Enter') caro.sendOnlineChat(); };
+        stage.querySelectorAll('.xo-caro-qchat').forEach(b => {
+          b.onclick = () => caro.sendOnlineChat(b.dataset.qchat);
+        });
+        caro.startPolling();
+        caro.renderOnlineRoomHeaderAndChat();
+        caro.draw();
+        caro.updateStatus();
+      } else {
+        stage.innerHTML = `
+          <div class="space-y-3">
+            ${modeSwitchHtml}
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-950/80 border border-slate-800 p-3 rounded-xl">
+              <div class="flex flex-wrap items-center gap-2 text-xs">
+                <select id="xo-caro-level" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-amber-300 font-bold" ${caro.mode === '2p' ? 'disabled' : ''}>
+                  <option value="1" ${caro.aiLevel === 1 ? 'selected' : ''}>🤖 AI Cấp 1: Tập Sự</option>
+                  <option value="2" ${caro.aiLevel === 2 ? 'selected' : ''}>🤖 AI Cấp 2: Phong Trào</option>
+                  <option value="3" ${caro.aiLevel === 3 ? 'selected' : ''}>🤖 AI Cấp 3: Kỳ Thủ</option>
+                  <option value="4" ${caro.aiLevel === 4 ? 'selected' : ''}>🤖 AI Cấp 4: Cao Thủ</option>
+                  <option value="5" ${caro.aiLevel === 5 ? 'selected' : ''}>🤖 AI Cấp 5: Đại Kiện Tướng</option>
+                </select>
+                <label class="flex items-center gap-1.5 text-slate-200 cursor-pointer bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg">
+                  <input type="checkbox" id="xo-caro-obs" class="accent-amber-500" ${caro.obstacles ? 'checked' : ''}>
+                  <span>🪨 Chướng ngại vật</span>
+                </label>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="xo-caro-undo" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold">↩️ Đi lại</button>
+                <button id="xo-caro-new" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-extrabold shadow">🔄 Ván Mới</button>
+              </div>
+            </div>
+            <div id="xo-caro-status" class="text-xs sm:text-sm text-center bg-slate-900/90 border border-slate-800 py-2 rounded-xl"></div>
+            <div class="flex justify-center">
+              <canvas id="xo-caro-canvas" width="520" height="520" class="w-full max-w-[520px] aspect-square rounded-2xl border-2 border-amber-500/40 shadow-2xl cursor-pointer"></canvas>
+            </div>
+          </div>
+        `;
+        stage.querySelectorAll('.xo-caro-mode-tab').forEach(b => {
+          b.onclick = () => {
+            caro.mode = b.dataset.cmode;
+            if (caro.mode !== 'online') caro.newGame();
+            renderActiveGameStage();
+          };
+        });
+        document.getElementById('xo-caro-level').onchange = e => { caro.aiLevel = Number(e.target.value); caro.newGame(); };
+        document.getElementById('xo-caro-obs').onchange = e => { caro.obstacles = e.target.checked; caro.newGame(); };
+        document.getElementById('xo-caro-undo').onclick = () => caro.undo();
+        document.getElementById('xo-caro-new').onclick = () => caro.newGame();
+        document.getElementById('xo-caro-canvas').onclick = ev => caro.handleClick(ev);
+        if (!caro.board.length) caro.init();
+        else { caro.draw(); caro.updateStatus(); }
+      }
     } else if (state.activeGame === 'sudoku') {
       stage.innerHTML = `
         <div class="space-y-3">
