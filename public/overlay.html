@@ -18,14 +18,19 @@
       font-family: 'Chakra Petch', 'Roboto Condensed', sans-serif;
     }
     .premium-panel {
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.97) 0%, rgba(8, 12, 22, 0.99) 100%);
-      border: 1px solid rgba(236, 161, 51, 0.35);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      background: linear-gradient(180deg, rgba(13, 19, 32, 0.78) 0%, rgba(7, 11, 18, 0.88) 100%);
+      backdrop-filter: blur(14px) saturate(145%);
+      -webkit-backdrop-filter: blur(14px) saturate(145%);
+      border: 1px solid rgba(56, 189, 248, 0.32);
+      border-top-color: rgba(250, 204, 21, 0.45);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.68), inset 0 1px 0 rgba(255, 255, 255, 0.10);
     }
     .premium-tab {
-      background: rgba(13, 19, 33, 0.95);
-      border: 1px solid rgba(148, 163, 184, 0.28);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+      background: rgba(11, 17, 29, 0.82);
+      backdrop-filter: blur(10px) saturate(135%);
+      -webkit-backdrop-filter: blur(10px) saturate(135%);
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
     @keyframes marquee {
       0% { transform: translateX(100%); opacity: 0; }
@@ -188,12 +193,12 @@
           </div>
         </div>
 
-        <!-- Khung Bảng Quân & Tỉ Số Trung Tâm -->
+        <!-- Khung Bảng Quân & Tỉ Số Trung Tâm (HUD Sci-Fi Translucent Glass) -->
         <div class="flex items-stretch justify-between premium-panel text-slate-100 min-h-[118px] rounded-r-xl rounded-b-xl overflow-hidden">
           <!-- Đội Đỏ (Bên trái) -->
-          <div class="flex-1 px-3.5 py-2 bg-[#161219]/90 flex flex-col justify-center border-r border-slate-700/70">
+          <div class="flex-1 px-3.5 py-2 bg-[#161019]/75 flex flex-col justify-center border-r border-slate-700/60">
             <div v-for="(player, index) in currentRedTeam" :key="'red-'+index"
-                 class="flex justify-between items-center gap-2 text-[15px] font-bold leading-snug my-0.5">
+                 class="flex justify-between items-center gap-2 text-[15px] font-bold leading-snug py-0.5 border-b border-white/5 last:border-b-0">
               <span class="truncate text-left max-w-[112px]" :style="playerStyle(currentRedColors, index)">{{ player }}</span>
               <span class="uppercase text-right font-black flex items-center gap-1" :style="playerStyle(currentRedColors, index)">
                 <span v-if="isTopCiv(civAt(latestGame && latestGame.redCivs, index))" class="text-[9px] text-amber-300">⭐</span>
@@ -204,27 +209,27 @@
           </div>
 
           <!-- Cột Tỉ Số Trung Tâm Nổi Bật -->
-          <div class="w-[104px] shrink-0 flex flex-col justify-between items-center bg-[#0b1120] border-r border-slate-700/70 text-center">
-            <div class="w-full bg-gradient-to-r from-red-700 to-amber-600 text-white font-black text-xs py-1 uppercase tracking-wider">
+          <div class="w-[104px] shrink-0 flex flex-col justify-between items-center bg-[#090f1d]/85 border-r border-slate-700/60 text-center">
+            <div class="w-full bg-gradient-to-r from-red-700/90 via-amber-600/90 to-sky-700/90 text-white font-black text-xs py-1 uppercase tracking-wider border-b border-white/10">
               {{ overlayCfg.cModeEnabled ? ('CHẠM ' + (overlayCfg.cTargetWins || 3) + ' / C') : ('CHẠM ' + (overlayCfg.targetScore || 100)) }}
             </div>
-            <div class="my-auto font-score text-3xl font-black text-amber-400 tracking-tight">
+            <div class="my-auto font-score text-3xl font-black text-amber-400 tracking-tight tabular-nums drop-shadow">
               {{ mainScoreDisplay.red }} <span class="text-slate-500 text-xl mx-0.5">-</span> {{ mainScoreDisplay.blue }}
             </div>
-            <div class="w-full bg-slate-950/90 py-1 border-t border-slate-800">
+            <div class="w-full bg-slate-950/80 py-1 border-t border-slate-800/80">
               <span v-if="isVirtualPreview" class="text-[9px] font-extrabold uppercase tracking-wider text-emerald-400">
                 CHỜ MỞ DIPLOMACY
               </span>
-              <span v-else class="text-[11px] font-extrabold uppercase tracking-wider text-slate-200">
+              <span v-else class="text-[11px] font-extrabold uppercase tracking-wider text-sky-300 font-mono">
                 {{ overlayCfg.cModeEnabled ? ('C' + cModeData.currentSetNumber + ' • TRẬN ' + (activeMatch.games ? activeMatch.games.length : 1)) : ('TRẬN ' + (activeMatch.games ? activeMatch.games.length : 1)) }}
               </span>
             </div>
           </div>
 
           <!-- Đội Xanh (Bên phải) -->
-          <div class="flex-1 px-3.5 py-2 bg-[#101929]/90 flex flex-col justify-center">
+          <div class="flex-1 px-3.5 py-2 bg-[#0e1728]/75 flex flex-col justify-center">
             <div v-for="(player, index) in currentBlueTeam" :key="'blue-'+index"
-                 class="flex justify-between items-center gap-2 text-[15px] font-bold leading-snug my-0.5">
+                 class="flex justify-between items-center gap-2 text-[15px] font-bold leading-snug py-0.5 border-b border-white/5 last:border-b-0">
               <span class="uppercase text-left font-black flex items-center gap-1" :style="playerStyle(currentBlueColors, index)">
                 <span class="text-[11px]">{{ getCivIcon(civAt(latestGame && latestGame.blueCivs, index)) }}</span>
                 {{ getCivName(civAt(latestGame && latestGame.blueCivs, index)) }}

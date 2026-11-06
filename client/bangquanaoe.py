@@ -32,8 +32,8 @@ if os.name == "nt":
     except Exception:
         pass
 
-APP_VERSION_NUMBER = "5.4.0"
-APP_VERSION = f"v{APP_VERSION_NUMBER} Wood-Gold Esports"
+APP_VERSION_NUMBER = "5.5.0"
+APP_VERSION = f"v{APP_VERSION_NUMBER} HUD Sci-Fi Glass"
 APP_TITLE = "TOOL BẢNG QUÂN AOE BY XO"
 DEFAULT_SERVER_URL = "https://aoe-tracker.onrender.com/"
 
@@ -1570,44 +1570,45 @@ class AOETrackerApp:
             pass
         style.configure(
             "Premium.TCombobox",
-            fieldbackground="#1a2130",
-            background="#121721",
-            foreground="#e7ebf0",
-            arrowcolor="#8e99a7",
-            bordercolor="#262f40",
-            lightcolor="#262f40",
-            darkcolor="#0b0e14",
+            fieldbackground="#141f33",
+            background="#0e1524",
+            foreground="#f1f5f9",
+            arrowcolor="#38bdf8",
+            bordercolor="#1e2d47",
+            lightcolor="#1e2d47",
+            darkcolor="#070b12",
         )
         style.map(
             "Premium.TCombobox",
-            fieldbackground=[("readonly", "#1a2130")],
-            selectbackground=[("readonly", "#1a2130")],
-            selectforeground=[("readonly", "#e7ebf0")],
+            fieldbackground=[("readonly", "#141f33")],
+            selectbackground=[("readonly", "#141f33")],
+            selectforeground=[("readonly", "#f1f5f9")],
         )
         style.configure(
             "Treeview",
-            background="#1a2130",
-            foreground="#e7ebf0",
-            fieldbackground="#1a2130",
-            bordercolor="#262f40",
-            rowheight=26,
+            background="#0f1726",
+            foreground="#e2e8f0",
+            fieldbackground="#0f1726",
+            bordercolor="#1e2d47",
+            rowheight=28,
             font=("Segoe UI", 9),
         )
         style.configure(
             "Treeview.Heading",
-            background="#121721",
-            foreground="#e7ebf0",
-            bordercolor="#262f40",
+            background="#0a101d",
+            foreground="#38bdf8",
+            bordercolor="#1e2d47",
             font=("Segoe UI", 9, "bold"),
         )
         style.map(
             "Treeview",
-            background=[("selected", "#f59e0b")],
-            foreground=[("selected", "#0b0e14")],
+            background=[("selected", "#0369a1")],
+            foreground=[("selected", "#f8fafc")],
         )
         style.map(
             "Treeview.Heading",
-            background=[("active", "#222b38")],
+            background=[("active", "#16243d")],
+            foreground=[("active", "#facc15")],
         )
 
         # Thanh cuộn tối tùy biến (Custom Dark Scrollbar) mỏng ~8px: nền #121721, thanh trượt #334155, hover #475569
@@ -2397,12 +2398,19 @@ class AOETrackerApp:
         # ======================================================================
         # DESIGN TOKENS – WOOD-GOLD ESPORTS DARK THEME (PROFESSIONAL ESPORTS COMMAND CENTER)
         # ======================================================================
-        C_APP, C_PANEL, C_ELEV, C_BORDER = "#0b0e14", "#121721", "#1a2130", "#262f40"
-        C_GOLD, C_GOLD_H, C_ON_GOLD = "#f59e0b", "#d97706", "#0b0e14"
-        C_TXT, C_MUTED = "#e2e8f0", "#94a3b8"
-        C_RED_SURF, C_RED, C_RED_H = "#2a1215", "#dc2626", "#ef4444"
-        C_BLUE_SURF, C_BLUE, C_BLUE_H = "#111c2d", "#2563eb", "#3b82f6"
+        C_APP, C_PANEL, C_ELEV, C_BORDER = "#070b12", "#0e1524", "#141f33", "#1e2d47"
+        C_GOLD, C_GOLD_H, C_ON_GOLD = "#f59e0b", "#d97706", "#070b12"
+        C_TXT, C_MUTED = "#f1f5f9", "#94a3b8"
+        C_RED_SURF, C_RED, C_RED_H = "#261016", "#dc2626", "#ef4444"
+        C_BLUE_SURF, C_BLUE, C_BLUE_H = "#0e1b30", "#2563eb", "#3b82f6"
         C_OK = "#10b981"
+
+        # Áp dụng chế độ HUD Translucent Glass (Bán trong suốt 96% trên Windows) nếu được bật
+        self._hud_translucent_enabled = bool(self.settings.get("hud_translucent", True))
+        try:
+            self.root.attributes("-alpha", 0.96 if self._hud_translucent_enabled else 1.0)
+        except Exception:
+            pass
 
         def _mk_panel(parent, padx=12, pady=10, bg=C_PANEL, border=C_BORDER):
             return tk.Frame(parent, bg=bg, highlightthickness=1, highlightbackground=border, padx=padx, pady=pady)
@@ -2530,9 +2538,46 @@ class AOETrackerApp:
         )
         self.my_profile_btn, _profile_underline = _mk_tab("👤 Tài khoản", self.open_my_profile_window)
 
-        # Cụm phải Header: Quỹ Sao, Hạng VIP, Menu Quản trị & Đăng xuất
+        # Cụm phải Header: HUD Glass Toggle, Quỹ Sao, Hạng VIP, Menu Quản trị & Đăng xuất
         right_hdr = tk.Frame(hdr_outer, bg=C_PANEL)
         right_hdr.pack(side="right", anchor="e")
+
+        def _toggle_hud_glass():
+            self._hud_translucent_enabled = not getattr(self, "_hud_translucent_enabled", True)
+            self.settings["hud_translucent"] = self._hud_translucent_enabled
+            try:
+                self._save_local_settings()
+            except Exception:
+                pass
+            try:
+                self.root.attributes("-alpha", 0.96 if self._hud_translucent_enabled else 1.0)
+            except Exception:
+                pass
+            if hasattr(self, "hud_glass_btn"):
+                self.hud_glass_btn.config(
+                    text="✨ HUD Kính mờ: BẬT" if self._hud_translucent_enabled else "🔳 HUD Kính mờ: TẮT",
+                    fg="#38bdf8" if self._hud_translucent_enabled else "#94a3b8",
+                    bg="#0c1d33" if self._hud_translucent_enabled else "#141f33",
+                    highlightbackground="#38bdf8" if self._hud_translucent_enabled else C_BORDER,
+                )
+
+        self.hud_glass_btn = tk.Button(
+            right_hdr,
+            text="✨ HUD Kính mờ: BẬT" if self._hud_translucent_enabled else "🔳 HUD Kính mờ: TẮT",
+            command=_toggle_hud_glass,
+            font=("Segoe UI", 8, "bold"),
+            fg="#38bdf8" if self._hud_translucent_enabled else "#94a3b8",
+            bg="#0c1d33" if self._hud_translucent_enabled else "#141f33",
+            activebackground="#162b47",
+            activeforeground="#f8fafc",
+            relief="flat",
+            padx=8,
+            pady=3,
+            highlightthickness=1,
+            highlightbackground="#38bdf8" if self._hud_translucent_enabled else C_BORDER,
+            cursor="hand2",
+        )
+        self.hud_glass_btn.pack(side="left", padx=(0, 6))
 
         self.my_stars_badge_lbl = tk.Label(
             right_hdr,
@@ -2921,14 +2966,35 @@ class AOETrackerApp:
             b_mf.grid(row=0, column=f_idx, sticky="ew", padx=2)
             self._match_filter_btns[m_code] = b_mf
 
-        # Danh sách Card các trận đấu (Cuộn dọc bằng Dark Scrollbar khi nhiều trận / màn hình thấp 1366x768)
+        # Danh sách Bảng Trận Đấu HUD Sci-Fi (Cuộn dọc bằng Dark Scrollbar khi nhiều trận / màn hình thấp 1366x768)
         lobby_list_outer = tk.Frame(
             live_lobby_card,
-            bg=C_ELEV,
+            bg="#0b111e",
             highlightthickness=1,
             highlightbackground=C_BORDER,
         )
         lobby_list_outer.pack(fill="both", expand=True)
+
+        # Thanh tiêu đề cột dạng Bảng (HUD Sci-Fi Table Header)
+        lobby_tbl_hdr = tk.Frame(lobby_list_outer, bg="#080d18", padx=8, pady=3)
+        lobby_tbl_hdr.pack(fill="x", side="top")
+        tk.Label(
+            lobby_tbl_hdr,
+            text="TRẠNG THÁI • SẢNH MÁY & ĐỘI HÌNH",
+            font=("Segoe UI", 7, "bold"),
+            fg="#38bdf8",
+            bg="#080d18",
+            anchor="w",
+        ).pack(side="left")
+        tk.Label(
+            lobby_tbl_hdr,
+            text="TỈ SỐ • THAO TÁC",
+            font=("Segoe UI", 7, "bold"),
+            fg="#facc15",
+            bg="#080d18",
+            anchor="e",
+        ).pack(side="right")
+        tk.Frame(lobby_list_outer, bg="#1e2d47", height=1).pack(fill="x", side="top")
 
         lobby_list_scroll = self._make_dark_scrollbar(lobby_list_outer, "vertical")
         lobby_list_scroll.pack(side="right", fill="y")
@@ -5608,6 +5674,8 @@ class AOETrackerApp:
         tree.column("note", width=210, anchor="w")
         tree_scroll = self._make_dark_scrollbar(list_card, "vertical", command=tree.yview)
         tree.configure(yscrollcommand=tree_scroll.set)
+        tree.tag_configure("evenrow", background="#0f1726", foreground="#e2e8f0")
+        tree.tag_configure("oddrow", background="#141f33", foreground="#f1f5f9")
         tree_scroll.pack(side="right", fill="y")
         tree.pack(fill="both", expand=True)
 
@@ -5710,10 +5778,12 @@ class AOETrackerApp:
                 masked_pwd = "*" * max(6, len(raw_pwd_str))
                 bal_s = p.get("starsBalance") or 0
                 rcv_s = p.get("starsReceived") or 0
+                row_tag = "evenrow" if (shown % 2 == 0) else "oddrow"
                 tree.insert(
                     "",
                     "end",
                     iid=pname,
+                    tags=(row_tag,),
                     values=(
                         pname,
                         masked_pwd,
@@ -6323,7 +6393,7 @@ class AOETrackerApp:
                         empty_lbl.pack(anchor="w", fill="x", pady=4)
                         self._auto_wrap_label(empty_lbl, pad=6)
                     else:
-                        for lm in filtered_matches[:30]:
+                        for row_idx, lm in enumerate(filtered_matches[:30]):
                             m_id = str(lm.get("id", ""))
                             s_name = lm.get("streamerName") or "XO"
                             m_mode = lm.get("mode") or "4v4"
@@ -6340,17 +6410,18 @@ class AOETrackerApp:
                                 b_names += "..."
 
                             is_watching = (sel_id == m_id) if sel_id else (s_name.lower() == lobby_target.lower() and m_status == "LIVE")
-                            row_bg = "#1c2436" if is_watching else "#151b28"
+                            stripe_bg = "#0f1726" if (row_idx % 2 == 0) else "#131e31"
+                            row_bg = "#15263f" if is_watching else stripe_bg
 
                             row_f = self.tk.Frame(
                                 self.live_matches_list_frame,
                                 bg=row_bg,
                                 highlightthickness=1,
-                                highlightbackground="#f59e0b" if is_watching else "#262f40",
+                                highlightbackground="#38bdf8" if is_watching else "#1e2d47",
                                 padx=8,
                                 pady=5,
                             )
-                            row_f.pack(fill="x", pady=2)
+                            row_f.pack(fill="x", pady=1)
 
                             # Dòng 1: Badge LIVE / XONG + Tên máy [Chế độ] (Trái) | Số Sao (Phải)
                             top_line = self.tk.Frame(row_f, bg=row_bg)

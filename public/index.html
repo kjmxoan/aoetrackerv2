@@ -15,10 +15,14 @@
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #080c14;
+      background-color: #050811;
       background-image:
-        radial-gradient(circle at 15% 0%, rgba(236, 161, 51, 0.07) 0%, transparent 40%),
-        radial-gradient(circle at 85% 5%, rgba(56, 189, 248, 0.07) 0%, transparent 40%);
+        radial-gradient(circle at 14% 6%, rgba(56, 189, 248, 0.12) 0%, transparent 38%),
+        radial-gradient(circle at 86% 8%, rgba(236, 161, 51, 0.11) 0%, transparent 38%),
+        radial-gradient(circle at 50% 92%, rgba(244, 63, 94, 0.07) 0%, transparent 45%),
+        linear-gradient(rgba(148, 163, 184, 0.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.028) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px, 28px 28px;
       color: #f8fafc;
       -webkit-tap-highlight-color: transparent;
     }
@@ -28,28 +32,36 @@
       letter-spacing: 0.02em;
     }
 
-    /* Imperial Wood-Gold & Tactical Obsidian Theme (UI/UX Pro Max v5.4) */
+    /* HUD / Gaming Sci-Fi Translucent Glassmorphism Theme (UI/UX Pro Max v5.5) */
     .premium-card {
-      background: linear-gradient(180deg, #131b28 0%, #0e1420 100%);
-      border: 1px solid #243247;
-      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      background: linear-gradient(165deg, rgba(16, 23, 38, 0.72) 0%, rgba(10, 14, 24, 0.78) 100%);
+      backdrop-filter: blur(18px) saturate(145%);
+      -webkit-backdrop-filter: blur(18px) saturate(145%);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: 0 10px 28px -6px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.08);
       transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     .premium-card-hover:hover {
-      border-color: rgba(236, 161, 51, 0.55);
-      box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.78), 0 0 18px rgba(236, 161, 51, 0.12);
+      border-color: rgba(56, 189, 248, 0.52);
+      box-shadow: 0 14px 32px -6px rgba(0, 0, 0, 0.82), 0 0 20px rgba(56, 189, 248, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.12);
     }
 
-    /* Team Đỏ & Team Xanh độ tương phản cao (WCAG AAA cho chữ trắng) */
+    /* Team Đỏ & Team Xanh kính mờ bán trong suốt độ tương phản cao (WCAG AAA cho chữ trắng) */
     .team-red-box {
-      background: linear-gradient(145deg, #211319 0%, #160d11 100%);
+      background: linear-gradient(145deg, rgba(38, 16, 24, 0.68) 0%, rgba(22, 10, 15, 0.76) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(244, 63, 94, 0.38);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
 
     .team-blue-box {
-      background: linear-gradient(145deg, #111c2d 0%, #0c1422 100%);
+      background: linear-gradient(145deg, rgba(15, 27, 46, 0.68) 0%, rgba(10, 18, 33, 0.76) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(56, 189, 248, 0.38);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
 
     /* Ẩn thanh cuộn ngang trên thanh tab điện thoại */
@@ -566,134 +578,287 @@
               </div>
             </div>
 
-            <!-- Thanh tìm kiếm & lọc danh sách toàn bộ kèo đấu (Khu vực C) -->
-            <div class="flex flex-wrap justify-between items-center premium-card px-3.5 sm:px-4 py-3 rounded-xl gap-2">
-              <div class="flex items-center gap-2 flex-1 min-w-[200px]">
-                <div class="relative flex-1 max-w-xs">
-                  <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <!-- Thanh tìm kiếm, lọc & chuyển đổi chế độ Bảng HUD (Table) / Thẻ (Card) -->
+            <div class="flex flex-wrap justify-between items-center premium-card px-3.5 sm:px-4 py-3 rounded-2xl gap-2">
+              <div class="flex items-center gap-2 flex-1 min-w-[200px] flex-wrap">
+                <div class="relative flex-1 min-w-[180px] max-w-xs">
+                  <i class="fa-solid fa-magnifying-glass text-sky-400 text-xs absolute left-3 top-1/2 -translate-y-1/2"></i>
                   <input type="text" v-model="matchSearchQuery"
                          placeholder="Tìm trận đấu, tên máy, tuyển thủ..."
-                         class="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl pl-8 pr-3 py-1.5 text-xs sm:text-sm text-slate-100 outline-none">
+                         class="w-full bg-slate-950/75 border border-slate-700/80 focus:border-sky-400 rounded-xl pl-8 pr-3 py-1.5 text-xs sm:text-sm text-slate-100 outline-none">
                 </div>
                 <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
                   <button @click="filterStatus = 'ALL'"
-                          :class="filterStatus === 'ALL' ? 'bg-amber-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                          :class="filterStatus === 'ALL' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900/80 text-slate-200 hover:bg-slate-800 border border-slate-700/80'"
                           class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
                     Tất cả ({{ matches.length }})
                   </button>
                   <button @click="filterStatus = 'LIVE'"
-                          :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                          :class="filterStatus === 'LIVE' ? 'bg-red-600 text-white font-extrabold shadow' : 'bg-slate-900/80 text-slate-200 hover:bg-slate-800 border border-slate-700/80'"
                           class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
                     🔴 Đang Live ({{ liveMatchesCount }})
                   </button>
                   <button @click="filterStatus = 'FINISHED'"
-                          :class="filterStatus === 'FINISHED' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'"
+                          :class="filterStatus === 'FINISHED' ? 'bg-amber-500 text-slate-950 font-extrabold shadow' : 'bg-slate-900/80 text-slate-200 hover:bg-slate-800 border border-slate-700/80'"
                           class="px-3 py-1.5 rounded-xl text-xs sm:text-sm transition shrink-0">
                     🏁 Đã kết thúc
                   </button>
                 </div>
               </div>
-              <button @click="fetchInitialData" class="text-xs sm:text-sm text-slate-200 hover:text-amber-300 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 shrink-0 transition">
-                <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i>
-                <span class="hidden sm:inline font-semibold">Làm mới</span>
-              </button>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <!-- Nút chuyển đổi hiển thị Dạng Bảng HUD (Table) / Dạng Thẻ (Card) -->
+                <div class="inline-flex bg-slate-950/80 border border-slate-700/80 rounded-xl p-0.5 text-xs">
+                  <button @click="matchViewMode = 'TABLE'"
+                          :class="matchViewMode === 'TABLE' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'text-slate-300 hover:text-white'"
+                          class="px-2.5 py-1 rounded-lg transition flex items-center gap-1"
+                          title="Hiển thị dạng danh sách Bảng HUD sắc nét">
+                    <i class="fa-solid fa-table-list"></i>
+                    <span>Bảng HUD</span>
+                  </button>
+                  <button @click="matchViewMode = 'CARD'"
+                          :class="matchViewMode === 'CARD' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'text-slate-300 hover:text-white'"
+                          class="px-2.5 py-1 rounded-lg transition flex items-center gap-1"
+                          title="Hiển thị dạng Thẻ lớn">
+                    <i class="fa-solid fa-grip"></i>
+                    <span>Thẻ</span>
+                  </button>
+                </div>
+
+                <button @click="fetchInitialData" class="text-xs sm:text-sm text-slate-200 hover:text-sky-300 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/80 shrink-0 transition">
+                  <i class="fa-solid fa-rotate-right" :class="{'fa-spin': isLoading}"></i>
+                  <span class="hidden sm:inline font-semibold">Làm mới</span>
+                </button>
+              </div>
             </div>
 
-            <div v-if="filteredMatches.length > 0" class="space-y-3 sm:space-y-4">
-              <div v-for="match in filteredMatches" :key="match.id" @click="selectMatch(match)"
-                   class="premium-card premium-card-hover p-3.5 sm:p-5 rounded-2xl cursor-pointer">
-                <!-- Dòng thông tin trên cùng của Card (Chuẩn khoảng cách nút gap-2 >= 8px) -->
-                <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
-                  <div class="flex items-center gap-2 flex-wrap min-w-0">
-                    <span class="font-extrabold px-2.5 py-1 rounded-lg text-[11px] sm:text-xs bg-slate-900 text-sky-300 border border-slate-700">
-                      {{ match.mode }}
-                    </span>
-                    <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-[11px] sm:text-xs px-2.5 py-1 rounded-lg font-extrabold">
-                      🔴 LIVE
-                    </span>
-                    <span v-else class="bg-slate-900 text-slate-300 border border-slate-700 text-[11px] sm:text-xs px-2.5 py-1 rounded-lg font-semibold">
-                      Đã kết thúc
-                    </span>
-                    <span v-if="match.streamerName" class="text-[11px] sm:text-xs bg-slate-900 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold truncate">
-                      🎮 Máy {{ match.streamerName }}
-                    </span>
-                    <span v-if="match.starsCount > 0" class="text-[11px] sm:text-xs bg-amber-500/15 text-amber-300 border border-amber-400/40 px-2.5 py-1 rounded-lg font-extrabold">
-                      ⭐ {{ match.starsCount }}
-                    </span>
-                  </div>
+            <!-- HIỂN THỊ DANH SÁCH KÈO ĐẤU (CHẾ ĐỘ MẶC ĐỊNH: BẢNG HUD SCI-FI SẮC NÉT + CHẾ ĐỘ THẺ) -->
+            <div v-if="filteredMatches.length > 0">
 
-                  <div class="flex items-center gap-2 shrink-0">
-                    <button @click.stop="enterMatchLobby(match)"
-                            class="text-[11px] sm:text-xs bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 font-bold px-2.5 py-1 rounded-lg transition"
-                            title="Vào Sảnh xem chi tiết & Chat Live">
-                      🏟️ Vào Sảnh
-                    </button>
-                    <button @click.stop="sendQuickStar(match, 22, 'ELEPHANT')"
-                            class="text-[11px] sm:text-xs bg-slate-900 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-bold px-2.5 py-1 rounded-lg transition"
-                            title="Thả Voi Điên 22 Sao cổ vũ">
-                      🐘 Thả Voi
-                    </button>
-                    <button @click.stop="copyOverlayLink(match.streamerName)"
-                            class="hidden sm:inline-flex items-center text-xs bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition">
-                      <i class="fa-solid fa-tv mr-1.5 text-sky-400"></i>Link OBS
-                    </button>
-                    <span class="hidden md:inline text-xs text-slate-300 font-medium">{{ match.formattedTime }}</span>
-                    <button v-if="isAdmin" @click.stop="deleteSingleMatch(match.id)"
-                            class="bg-red-950 hover:bg-red-600 text-red-200 hover:text-white border border-red-700/60 text-xs font-bold px-2.5 py-1 rounded-lg transition">
-                      <i class="fa-solid fa-trash-can"></i>
-                    </button>
-                  </div>
+              <!-- 1. CHẾ ĐỘ BẢNG DỮ LIỆU HUD SCI-FI (TABLE VIEW RÕ RÀNG, SẮC NÉT, BÁN TRONG SUỐT) -->
+              <div v-if="matchViewMode === 'TABLE'" class="hud-table-shell">
+                <div class="overflow-x-auto">
+                  <table class="hud-data-table text-left">
+                    <thead>
+                      <tr>
+                        <th>Trạng Thái</th>
+                        <th>Sảnh Máy</th>
+                        <th>Thể Thức</th>
+                        <th class="text-right text-rose-400">🔴 Team Đỏ (Chủ Nhà)</th>
+                        <th class="text-center">Tỉ Số HUD</th>
+                        <th class="text-left text-sky-400">🔵 Team Xanh (Đội Khách)</th>
+                        <th v-if="showCivStats" class="text-center hidden md:table-cell">Cung / Chém</th>
+                        <th class="text-right">Thao Tác Nhanh</th>
+                      </tr>
+                    </thead>
+                    <tbody class="text-xs sm:text-sm">
+                      <tr v-for="match in filteredMatches" :key="'tbl-' + match.id"
+                          @click="selectMatch(match)"
+                          :class="match.status === 'LIVE' ? 'is-live-row' : ''"
+                          class="cursor-pointer">
+                        <!-- Cột 1: Trạng thái & Thời gian -->
+                        <td class="whitespace-nowrap">
+                          <div class="flex flex-col items-start gap-1">
+                            <span v-if="match.status === 'LIVE'"
+                                  class="inline-flex items-center gap-1.5 bg-red-600/90 text-white text-[11px] px-2.5 py-0.5 rounded-md font-extrabold shadow-sm">
+                              <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>LIVE
+                            </span>
+                            <span v-else
+                                  class="inline-flex items-center gap-1 bg-slate-900/80 text-slate-300 border border-slate-700/80 text-[11px] px-2 py-0.5 rounded-md font-semibold">
+                              🏁 Đã kết thúc
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-aoe-mono">{{ match.formattedTime }}</span>
+                          </div>
+                        </td>
+
+                        <!-- Cột 2: Sảnh Máy & Sao -->
+                        <td class="whitespace-nowrap">
+                          <div class="font-display font-bold text-amber-300 text-xs sm:text-sm">
+                            🎮 Máy {{ match.streamerName || 'XO' }}
+                          </div>
+                          <div class="flex items-center gap-2 text-[11px] text-slate-300 mt-0.5 font-aoe-mono">
+                            <span class="text-amber-300 font-bold">⭐ {{ match.starsCount || 0 }}</span>
+                            <span>&bull;</span>
+                            <span>💬 {{ (match.chatMessages || []).length }}</span>
+                          </div>
+                        </td>
+
+                        <!-- Cột 3: Thể thức & Số trận -->
+                        <td class="whitespace-nowrap">
+                          <span class="hud-chip px-2.5 py-0.5 text-xs font-extrabold text-sky-300 inline-block">
+                            {{ match.mode }}
+                          </span>
+                          <div class="text-[11px] text-slate-400 mt-1 font-aoe-mono">
+                            {{ (match.games || []).length }} ván &bull; Chạm {{ (match.overlayConfig && match.overlayConfig.targetScore) || 100 }}
+                          </div>
+                        </td>
+
+                        <!-- Cột 4: Team Đỏ (Căn phải) -->
+                        <td class="text-right max-w-[180px] sm:max-w-[230px]">
+                          <div class="font-bold text-white text-xs sm:text-sm leading-snug break-words line-clamp-2">
+                            {{ (match.redTeam || []).join(', ') || 'Team Đỏ' }}
+                          </div>
+                        </td>
+
+                        <!-- Cột 5: Tỉ Số Trung Tâm HUD -->
+                        <td class="text-center whitespace-nowrap">
+                          <div class="hud-score-pill font-black text-base sm:text-xl">
+                            <span class="text-rose-400">{{ getMatchScore(match).red }}</span>
+                            <span class="text-slate-500 text-sm">:</span>
+                            <span class="text-sky-400">{{ getMatchScore(match).blue }}</span>
+                          </div>
+                          <!-- Hiển thị tỉ số C ngay dưới hộp tỉ số nếu bật Đánh C -->
+                          <div v-if="match.overlayConfig && match.overlayConfig.cModeEnabled"
+                               class="mt-1 flex items-center justify-center gap-1 flex-wrap text-[10px] font-aoe-mono">
+                            <span class="text-amber-300 font-bold">
+                              C: {{ getMatchCModeData(match).redCWins }}-{{ getMatchCModeData(match).blueCWins }}
+                            </span>
+                            <span v-for="s in getMatchCModeData(match).sets" :key="s.setNumber"
+                                  class="px-1.5 py-0.2 rounded bg-slate-950/90 border border-slate-800 text-slate-300">
+                              C{{ s.setNumber }}:<b class="text-rose-400">{{ s.red }}</b>-<b class="text-sky-400">{{ s.blue }}</b>
+                            </span>
+                          </div>
+                        </td>
+
+                        <!-- Cột 6: Team Xanh (Căn trái) -->
+                        <td class="text-left max-w-[180px] sm:max-w-[230px]">
+                          <div class="font-bold text-white text-xs sm:text-sm leading-snug break-words line-clamp-2">
+                            {{ (match.blueTeam || []).join(', ') || 'Team Xanh' }}
+                          </div>
+                        </td>
+
+                        <!-- Cột 7: Cung / Chém -->
+                        <td v-if="showCivStats" class="text-center whitespace-nowrap hidden md:table-cell font-aoe-mono text-xs">
+                          <span class="text-sky-300 font-bold">{{ getMatchCivStats(match).cung }} Cung</span>
+                          <span class="text-slate-500 mx-1">&bull;</span>
+                          <span class="text-slate-300 font-semibold">{{ getMatchCivStats(match).chem }} Chém</span>
+                        </td>
+
+                        <!-- Cột 8: Thao tác nhanh -->
+                        <td class="text-right whitespace-nowrap">
+                          <div class="inline-flex items-center justify-end gap-1.5">
+                            <button @click.stop="enterMatchLobby(match)"
+                                    class="text-xs bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-400/40 font-bold px-2.5 py-1 rounded-lg transition"
+                                    title="Vào Sảnh xem chi tiết & Chat Live">
+                              🏟️ Sảnh
+                            </button>
+                            <button @click.stop="sendQuickStar(match, 22, 'ELEPHANT')"
+                                    class="text-xs bg-slate-900/90 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-bold px-2 py-1 rounded-lg transition"
+                                    title="Thả Voi Điên 22 Sao cổ vũ">
+                              🐘 22⭐
+                            </button>
+                            <button @click.stop="copyOverlayLink(match.streamerName)"
+                                    class="hidden xl:inline-flex items-center text-xs bg-slate-900/90 hover:bg-slate-800 text-slate-200 px-2 py-1 rounded-lg border border-slate-700/80 transition"
+                                    title="Copy Link OBS Bảng Quân">
+                              <i class="fa-solid fa-tv text-sky-400"></i>
+                            </button>
+                            <button v-if="isAdmin" @click.stop="deleteSingleMatch(match.id)"
+                                    class="bg-red-950/80 hover:bg-red-600 text-red-200 hover:text-white border border-red-700/60 text-xs font-bold px-2 py-1 rounded-lg transition"
+                                    title="Xóa kèo đấu này">
+                              <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
+              </div>
 
-                <!-- Bố cục Livescore nằm ngang (Team Đỏ - Tỉ Số - Team Xanh trên cùng 1 hàng cho cả Điện thoại & PC) -->
-                <div class="grid grid-cols-11 gap-1.5 sm:gap-3 items-stretch mb-2.5">
-                  <div class="col-span-4 team-red-box p-2.5 sm:p-3.5 rounded-xl flex flex-col justify-center text-left sm:text-right min-w-0">
-                    <div class="text-[10px] sm:text-xs font-bold text-red-400 mb-0.5">🔴 Team Đỏ</div>
-                    <div class="text-xs sm:text-base font-bold text-white leading-snug break-words line-clamp-2">
-                      {{ (match.redTeam || []).join(', ') || 'Team Đỏ' }}
+              <!-- 2. CHẾ ĐỘ THẺ LỚN (CARD VIEW) KHI NGƯỜI DÙNG BẤM CHUYỂN QUA 'THẺ' -->
+              <div v-else class="space-y-3 sm:space-y-4">
+                <div v-for="match in filteredMatches" :key="match.id" @click="selectMatch(match)"
+                     class="premium-card premium-card-hover p-3.5 sm:p-5 rounded-2xl cursor-pointer">
+                  <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                    <div class="flex items-center gap-2 flex-wrap min-w-0">
+                      <span class="font-extrabold px-2.5 py-1 rounded-lg text-[11px] sm:text-xs bg-slate-900/90 text-sky-300 border border-slate-700">
+                        {{ match.mode }}
+                      </span>
+                      <span v-if="match.status === 'LIVE'" class="bg-red-600 text-white text-[11px] sm:text-xs px-2.5 py-1 rounded-lg font-extrabold">
+                        🔴 LIVE
+                      </span>
+                      <span v-else class="bg-slate-900/90 text-slate-300 border border-slate-700 text-[11px] sm:text-xs px-2.5 py-1 rounded-lg font-semibold">
+                        Đã kết thúc
+                      </span>
+                      <span v-if="match.streamerName" class="text-[11px] sm:text-xs bg-slate-900/90 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold truncate">
+                        🎮 Máy {{ match.streamerName }}
+                      </span>
+                      <span v-if="match.starsCount > 0" class="text-[11px] sm:text-xs bg-amber-500/15 text-amber-300 border border-amber-400/40 px-2.5 py-1 rounded-lg font-extrabold">
+                        ⭐ {{ match.starsCount }}
+                      </span>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button @click.stop="enterMatchLobby(match)"
+                              class="text-[11px] sm:text-xs bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 font-bold px-2.5 py-1 rounded-lg transition"
+                              title="Vào Sảnh xem chi tiết & Chat Live">
+                        🏟️ Vào Sảnh
+                      </button>
+                      <button @click.stop="sendQuickStar(match, 22, 'ELEPHANT')"
+                              class="text-[11px] sm:text-xs bg-slate-900 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-bold px-2.5 py-1 rounded-lg transition"
+                              title="Thả Voi Điên 22 Sao cổ vũ">
+                        🐘 Thả Voi
+                      </button>
+                      <button @click.stop="copyOverlayLink(match.streamerName)"
+                              class="hidden sm:inline-flex items-center text-xs bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+                        <i class="fa-solid fa-tv mr-1.5 text-sky-400"></i>Link OBS
+                      </button>
+                      <span class="hidden md:inline text-xs text-slate-300 font-medium">{{ match.formattedTime }}</span>
+                      <button v-if="isAdmin" @click.stop="deleteSingleMatch(match.id)"
+                              class="bg-red-950 hover:bg-red-600 text-red-200 hover:text-white border border-red-700/60 text-xs font-bold px-2.5 py-1 rounded-lg transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                      </button>
                     </div>
                   </div>
 
-                  <div class="col-span-3 bg-slate-950/90 border border-slate-800 rounded-xl py-2 px-1.5 sm:px-3 flex flex-col justify-center items-center text-center">
-                    <div class="text-[10px] sm:text-[11px] font-medium text-slate-400">
-                      Chạm {{ (match.overlayConfig && match.overlayConfig.targetScore) || 100 }}
+                  <div class="grid grid-cols-11 gap-1.5 sm:gap-3 items-stretch mb-2.5">
+                    <div class="col-span-4 team-red-box p-2.5 sm:p-3.5 rounded-xl flex flex-col justify-center text-left sm:text-right min-w-0">
+                      <div class="text-[10px] sm:text-xs font-bold text-red-400 mb-0.5">🔴 Team Đỏ</div>
+                      <div class="text-xs sm:text-base font-bold text-white leading-snug break-words line-clamp-2">
+                        {{ (match.redTeam || []).join(', ') || 'Team Đỏ' }}
+                      </div>
                     </div>
-                    <div class="font-display font-black text-xl sm:text-3xl leading-tight mt-0.5 whitespace-nowrap">
-                      <span class="text-red-400">{{ getMatchScore(match).red }}</span>
-                      <span class="text-slate-600 mx-0.5 sm:mx-1.5">-</span>
-                      <span class="text-sky-400">{{ getMatchScore(match).blue }}</span>
+
+                    <div class="col-span-3 bg-slate-950/85 border border-slate-800 rounded-xl py-2 px-1.5 sm:px-3 flex flex-col justify-center items-center text-center">
+                      <div class="text-[10px] sm:text-[11px] font-medium text-slate-400">
+                        Chạm {{ (match.overlayConfig && match.overlayConfig.targetScore) || 100 }}
+                      </div>
+                      <div class="font-display font-black text-xl sm:text-3xl leading-tight mt-0.5 whitespace-nowrap">
+                        <span class="text-red-400">{{ getMatchScore(match).red }}</span>
+                        <span class="text-slate-600 mx-0.5 sm:mx-1.5">-</span>
+                        <span class="text-sky-400">{{ getMatchScore(match).blue }}</span>
+                      </div>
+                    </div>
+
+                    <div class="col-span-4 team-blue-box p-2.5 sm:p-3.5 rounded-xl flex flex-col justify-center text-right sm:text-left min-w-0">
+                      <div class="text-[10px] sm:text-xs font-bold text-sky-400 mb-0.5">🔵 Team Xanh</div>
+                      <div class="text-xs sm:text-base font-bold text-white leading-snug break-words line-clamp-2">
+                        {{ (match.blueTeam || []).join(', ') || 'Team Xanh' }}
+                      </div>
                     </div>
                   </div>
 
-                  <div class="col-span-4 team-blue-box p-2.5 sm:p-3.5 rounded-xl flex flex-col justify-center text-right sm:text-left min-w-0">
-                    <div class="text-[10px] sm:text-xs font-bold text-sky-400 mb-0.5">🔵 Team Xanh</div>
-                    <div class="text-xs sm:text-base font-bold text-white leading-snug break-words line-clamp-2">
-                      {{ (match.blueTeam || []).join(', ') || 'Team Xanh' }}
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Hiển thị kết quả C nếu bật Đánh theo C -->
-                <div v-if="match.overlayConfig && match.overlayConfig.cModeEnabled"
-                     class="flex items-center justify-between bg-slate-900/90 border border-sky-500/30 rounded-xl px-3 py-1.5 mb-2.5 text-[11px] sm:text-xs flex-wrap gap-1.5">
-                  <span class="font-bold text-sky-300">
-                    🏆 Tỉ số C: <b class="text-white">{{ getMatchCModeData(match).redCWins }} - {{ getMatchCModeData(match).blueCWins }}</b>
-                  </span>
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    <span v-for="s in getMatchCModeData(match).sets" :key="s.setNumber"
-                          class="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 font-semibold">
-                      C{{ s.setNumber }}: <b class="text-red-400">{{ s.red }}</b>-<b class="text-sky-400">{{ s.blue }}</b>
+                  <div v-if="match.overlayConfig && match.overlayConfig.cModeEnabled"
+                       class="flex items-center justify-between bg-slate-900/90 border border-sky-500/30 rounded-xl px-3 py-1.5 mb-2.5 text-[11px] sm:text-xs flex-wrap gap-1.5">
+                    <span class="font-bold text-sky-300">
+                      🏆 Tỉ số C: <b class="text-white">{{ getMatchCModeData(match).redCWins }} - {{ getMatchCModeData(match).blueCWins }}</b>
                     </span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span v-for="s in getMatchCModeData(match).sets" :key="s.setNumber"
+                            class="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 font-semibold">
+                        C{{ s.setNumber }}: <b class="text-red-400">{{ s.red }}</b>-<b class="text-sky-400">{{ s.blue }}</b>
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div class="flex justify-between items-center text-[11px] sm:text-xs text-slate-400 border-t border-slate-800/80 pt-2">
-                  <div>Số trận: <b class="text-slate-200">{{ (match.games || []).length }}</b></div>
-                  <div v-if="showCivStats">
-                    <b class="text-sky-300">{{ getMatchCivStats(match).cung }} Cung</b> &bull;
-                    <b class="text-slate-300">{{ getMatchCivStats(match).chem }} Chém</b>
+                  <div class="flex justify-between items-center text-[11px] sm:text-xs text-slate-400 border-t border-slate-800/80 pt-2">
+                    <div>Số trận: <b class="text-slate-200">{{ (match.games || []).length }}</b></div>
+                    <div v-if="showCivStats">
+                      <b class="text-sky-300">{{ getMatchCivStats(match).cung }} Cung</b> &bull;
+                      <b class="text-slate-300">{{ getMatchCivStats(match).chem }} Chém</b>
+                    </div>
+                    <div>💬 <b class="text-slate-200">{{ (match.chatMessages || []).length }}</b></div>
                   </div>
-                  <div>💬 <b class="text-slate-200">{{ (match.chatMessages || []).length }}</b></div>
                 </div>
               </div>
             </div>
@@ -833,69 +998,181 @@
               </div>
             </div>
 
-            <!-- LỊCH SỬ TỪNG TRẬN ĐẤU (2 CỘT ĐỐI ĐẦU GỌN GÀNG, CHỮ TRẮNG RÕ NÉT) -->
+            <!-- LỊCH SỬ TỪNG TRẬN ĐẤU (MA TRẬN BẢNG HUD SCI-FI RÕ NÉT + TÙY CHỌN XEM THẺ) -->
             <div class="premium-card p-3.5 sm:p-5 rounded-2xl">
-              <h3 class="text-sm sm:text-base font-bold text-sky-400 mb-3 border-b border-slate-800 pb-2 uppercase">
-                Chi Tiết Từng Trận Đấu ({{ (selectedMatch.games || []).length }} trận)
-              </h3>
+              <div class="flex justify-between items-center border-b border-slate-800/80 pb-3 mb-3.5 flex-wrap gap-2">
+                <h3 class="text-sm sm:text-base font-bold text-sky-400 uppercase flex items-center gap-2">
+                  <i class="fa-solid fa-table-cells-large"></i>
+                  <span>Ma Trận Chi Tiết Từng Ván Đấu ({{ (selectedMatch.games || []).length }} ván)</span>
+                </h3>
 
-              <div v-if="selectedMatch.games && selectedMatch.games.length > 0" class="space-y-3">
-                <div v-for="(g, idx) in selectedMatch.games" :key="idx" class="bg-slate-950/80 p-3 sm:p-4 rounded-xl border border-slate-800">
-                  <div class="flex justify-between items-center border-b border-slate-800 pb-2.5 mb-2.5 flex-wrap gap-2">
-                    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <span class="font-bold text-xs sm:text-sm text-sky-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
-                        Trận #{{ idx + 1 }}
-                      </span>
-                      <button @click="setWinner(idx, 'RED')"
-                              :class="g.winner === 'RED' ? 'bg-red-600 text-white font-bold ring-1 ring-red-400' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
-                              class="px-2.5 py-1 rounded-lg text-xs transition">
-                        🔴 Đỏ Thắng
-                      </button>
-                      <button @click="setWinner(idx, 'BLUE')"
-                              :class="g.winner === 'BLUE' ? 'bg-sky-500 text-slate-950 font-bold ring-1 ring-sky-300' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
-                              class="px-2.5 py-1 rounded-lg text-xs transition">
-                        🔵 Xanh Thắng
-                      </button>
-                      <button @click="setWinner(idx, 'PENDING')"
-                              :class="(!g.winner || g.winner === 'PENDING') ? 'text-sky-300 font-medium bg-sky-950/60 border border-sky-800/50' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'"
-                              class="px-2 py-0.5 rounded-lg text-[11px] transition"
-                              title="Đặt lại trận này về trạng thái Đang đấu">
-                        ⏳ Đang đấu
-                      </button>
-                    </div>
+                <div class="inline-flex bg-slate-950/80 border border-slate-700/80 rounded-xl p-0.5 text-xs">
+                  <button @click="gameHistoryViewMode = 'TABLE'"
+                          :class="gameHistoryViewMode === 'TABLE' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'text-slate-300 hover:text-white'"
+                          class="px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-table-list"></i>
+                    <span>Bảng HUD</span>
+                  </button>
+                  <button @click="gameHistoryViewMode = 'CARD'"
+                          :class="gameHistoryViewMode === 'CARD' ? 'bg-sky-500 text-slate-950 font-extrabold shadow' : 'text-slate-300 hover:text-white'"
+                          class="px-2.5 py-1 rounded-lg transition flex items-center gap-1">
+                    <i class="fa-solid fa-grip"></i>
+                    <span>Thẻ</span>
+                  </button>
+                </div>
+              </div>
 
-                    <div class="flex items-center gap-2">
-                      <span v-if="showCivStats" class="text-[11px] sm:text-xs text-slate-400">
-                        <b class="text-sky-300">{{ getGameCivStats(g).cung }} Cung</b> - <b class="text-slate-200">{{ getGameCivStats(g).chem }} Chém</b>
-                      </span>
-                      <button v-if="canModify(selectedMatch)" @click="deleteGameFromMatch(idx)"
-                              class="text-[11px] bg-red-950/80 hover:bg-red-800 text-red-300 border border-red-800/60 px-2 py-0.5 rounded-lg">
-                        Xóa
-                      </button>
-                    </div>
+              <div v-if="selectedMatch.games && selectedMatch.games.length > 0">
+
+                <!-- 1. CHẾ ĐỘ BẢNG MA TRẬN QUÂN TỪNG VÁN (HUD SCI-FI TABLE - MẶC ĐỊNH) -->
+                <div v-if="gameHistoryViewMode === 'TABLE'" class="hud-table-shell">
+                  <div class="overflow-x-auto">
+                    <table class="hud-data-table text-left">
+                      <thead>
+                        <tr>
+                          <th>Ván</th>
+                          <th class="text-rose-400">🔴 Đội Hình &amp; Quân Team Đỏ</th>
+                          <th class="text-center">Kết Quả Ván (Chấm Điểm)</th>
+                          <th class="text-sky-400">🔵 Đội Hình &amp; Quân Team Xanh</th>
+                          <th class="text-right">Thống Kê / Xóa</th>
+                        </tr>
+                      </thead>
+                      <tbody class="text-xs sm:text-sm">
+                        <tr v-for="(g, idx) in selectedMatch.games" :key="'gtbl-' + idx"
+                            :class="(!g.winner || g.winner === 'PENDING') ? 'is-live-row' : ''">
+                          <!-- Cột 1: Số thứ tự ván -->
+                          <td class="whitespace-nowrap font-aoe-mono font-extrabold text-sky-300">
+                            #{{ idx + 1 }}
+                          </td>
+
+                          <!-- Cột 2: Đội hình & Quân Team Đỏ -->
+                          <td>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gtr-' + pi"
+                                   class="flex items-center justify-between gap-1.5 bg-rose-950/45 border border-rose-500/25 rounded-lg px-2 py-1">
+                                <span class="font-semibold text-white truncate text-xs">
+                                  {{ (g.redPlayers && g.redPlayers[pi]) || selectedMatch.redTeam[pi] || ('P' + (pi + 1)) }}
+                                </span>
+                                <span :class="getCivTypeClass(g.redCivs[pi])" class="px-1.5 py-0.5 rounded text-[11px] font-bold shrink-0">
+                                  {{ g.redCivs[pi] || '---' }}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <!-- Cột 3: Chấm Kết Quả Ván -->
+                          <td class="text-center whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1 bg-slate-950/85 border border-slate-800 p-1 rounded-xl">
+                              <button @click="setWinner(idx, 'RED')"
+                                      :class="g.winner === 'RED' ? 'bg-red-600 text-white font-extrabold ring-1 ring-red-400 shadow' : 'text-slate-300 hover:bg-slate-800'"
+                                      class="px-2 py-1 rounded-lg text-[11px] transition">
+                                🔴 Đỏ
+                              </button>
+                              <button @click="setWinner(idx, 'BLUE')"
+                                      :class="g.winner === 'BLUE' ? 'bg-sky-500 text-slate-950 font-extrabold ring-1 ring-sky-300 shadow' : 'text-slate-300 hover:bg-slate-800'"
+                                      class="px-2 py-1 rounded-lg text-[11px] transition">
+                                🔵 Xanh
+                              </button>
+                              <button @click="setWinner(idx, 'PENDING')"
+                                      :class="(!g.winner || g.winner === 'PENDING') ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40 font-bold' : 'text-slate-400 hover:text-slate-200'"
+                                      class="px-2 py-1 rounded-lg text-[11px] transition"
+                                      title="Đặt lại trận này về trạng thái Đang đấu">
+                                ⏳
+                              </button>
+                            </div>
+                          </td>
+
+                          <!-- Cột 4: Đội hình & Quân Team Xanh -->
+                          <td>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gtb-' + pi"
+                                   class="flex items-center justify-between gap-1.5 bg-sky-950/45 border border-sky-500/25 rounded-lg px-2 py-1">
+                                <span class="font-semibold text-white truncate text-xs">
+                                  {{ (g.bluePlayers && g.bluePlayers[pi]) || selectedMatch.blueTeam[pi] || ('P' + (pi + 1)) }}
+                                </span>
+                                <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-1.5 py-0.5 rounded text-[11px] font-bold shrink-0">
+                                  {{ g.blueCivs[pi] || '---' }}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <!-- Cột 5: Thống kê Cung/Chém & Xóa -->
+                          <td class="text-right whitespace-nowrap">
+                            <div class="flex items-center justify-end gap-2">
+                              <span v-if="showCivStats" class="text-[11px] text-slate-300 font-aoe-mono">
+                                <b class="text-sky-300">{{ getGameCivStats(g).cung }}C</b>/<b class="text-slate-200">{{ getGameCivStats(g).chem }}Ch</b>
+                              </span>
+                              <button v-if="canModify(selectedMatch)" @click="deleteGameFromMatch(idx)"
+                                      class="text-[11px] bg-red-950/80 hover:bg-red-700 text-red-300 border border-red-800/60 px-2 py-0.5 rounded-lg transition">
+                                Xóa
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
+                </div>
 
-                  <!-- Luôn xếp 2 đội song song (grid-cols-2) để dễ so sánh quân trên điện thoại -->
-                  <div class="grid grid-cols-2 gap-2 sm:gap-4">
-                    <div class="team-red-box p-2 sm:p-3 rounded-xl space-y-1.5">
-                      <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gr-'+pi" class="flex items-center justify-between gap-1 text-xs sm:text-sm">
-                        <span class="font-semibold text-white truncate">
-                          {{ (g.redPlayers && g.redPlayers[pi]) || selectedMatch.redTeam[pi] || ('P' + (pi + 1)) }}
+                <!-- 2. CHẾ ĐỘ THẺ (CARD VIEW) KHI NGƯỜI DÙNG CHỌN XEM THẺ -->
+                <div v-else class="space-y-3">
+                  <div v-for="(g, idx) in selectedMatch.games" :key="idx" class="bg-slate-950/75 p-3 sm:p-4 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-2.5 mb-2.5 flex-wrap gap-2">
+                      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                        <span class="font-bold text-xs sm:text-sm text-sky-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
+                          Trận #{{ idx + 1 }}
                         </span>
-                        <span :class="getCivTypeClass(g.redCivs[pi])" class="px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold shrink-0 text-center">
-                          {{ g.redCivs[pi] || '---' }}
+                        <button @click="setWinner(idx, 'RED')"
+                                :class="g.winner === 'RED' ? 'bg-red-600 text-white font-bold ring-1 ring-red-400' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
+                                class="px-2.5 py-1 rounded-lg text-xs transition">
+                          🔴 Đỏ Thắng
+                        </button>
+                        <button @click="setWinner(idx, 'BLUE')"
+                                :class="g.winner === 'BLUE' ? 'bg-sky-500 text-slate-950 font-bold ring-1 ring-sky-300' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'"
+                                class="px-2.5 py-1 rounded-lg text-xs transition">
+                          🔵 Xanh Thắng
+                        </button>
+                        <button @click="setWinner(idx, 'PENDING')"
+                                :class="(!g.winner || g.winner === 'PENDING') ? 'text-sky-300 font-medium bg-sky-950/60 border border-sky-800/50' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'"
+                                class="px-2 py-0.5 rounded-lg text-[11px] transition"
+                                title="Đặt lại trận này về trạng thái Đang đấu">
+                          ⏳ Đang đấu
+                        </button>
+                      </div>
+
+                      <div class="flex items-center gap-2">
+                        <span v-if="showCivStats" class="text-[11px] sm:text-xs text-slate-400">
+                          <b class="text-sky-300">{{ getGameCivStats(g).cung }} Cung</b> - <b class="text-slate-200">{{ getGameCivStats(g).chem }} Chém</b>
                         </span>
+                        <button v-if="canModify(selectedMatch)" @click="deleteGameFromMatch(idx)"
+                                class="text-[11px] bg-red-950/80 hover:bg-red-800 text-red-300 border border-red-800/60 px-2 py-0.5 rounded-lg">
+                          Xóa
+                        </button>
                       </div>
                     </div>
 
-                    <div class="team-blue-box p-2 sm:p-3 rounded-xl space-y-1.5">
-                      <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gb-'+pi" class="flex items-center justify-between gap-1 text-xs sm:text-sm">
-                        <span class="font-semibold text-white truncate">
-                          {{ (g.bluePlayers && g.bluePlayers[pi]) || selectedMatch.blueTeam[pi] || ('P' + (pi + 1)) }}
-                        </span>
-                        <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold shrink-0 text-center">
-                          {{ g.blueCivs[pi] || '---' }}
-                        </span>
+                    <div class="grid grid-cols-2 gap-2 sm:gap-4">
+                      <div class="team-red-box p-2 sm:p-3 rounded-xl space-y-1.5">
+                        <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gr-'+pi" class="flex items-center justify-between gap-1 text-xs sm:text-sm">
+                          <span class="font-semibold text-white truncate">
+                            {{ (g.redPlayers && g.redPlayers[pi]) || selectedMatch.redTeam[pi] || ('P' + (pi + 1)) }}
+                          </span>
+                          <span :class="getCivTypeClass(g.redCivs[pi])" class="px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold shrink-0 text-center">
+                            {{ g.redCivs[pi] || '---' }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="team-blue-box p-2 sm:p-3 rounded-xl space-y-1.5">
+                        <div v-for="(p, pi) in getGameRowLoop(selectedMatch, g)" :key="'gb-'+pi" class="flex items-center justify-between gap-1 text-xs sm:text-sm">
+                          <span class="font-semibold text-white truncate">
+                            {{ (g.bluePlayers && g.bluePlayers[pi]) || selectedMatch.blueTeam[pi] || ('P' + (pi + 1)) }}
+                          </span>
+                          <span :class="getCivTypeClass(g.blueCivs[pi])" class="px-2 py-0.5 rounded text-[11px] sm:text-xs font-bold shrink-0 text-center">
+                            {{ g.blueCivs[pi] || '---' }}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -973,52 +1250,52 @@
                 <h3 class="font-display text-sm sm:text-base font-black text-amber-300 uppercase mb-3">
                   👑 BẢNG SO SÁNH QUYỀN LỢI 4 HẠNG TÀI KHOẢN VIP XO
                 </h3>
-                <div class="overflow-x-auto border border-slate-800 rounded-xl">
-                  <table class="w-full text-left text-xs border-collapse">
+                <div class="hud-table-shell overflow-x-auto">
+                  <table class="hud-data-table text-xs">
                     <thead>
-                      <tr class="bg-slate-900 text-slate-200 border-b border-slate-800">
-                        <th class="py-2.5 px-3">Tính năng / Quyền lợi</th>
-                        <th class="py-2.5 px-3 text-center text-amber-500">🥉 Đồng (Trial/Cơ bản)</th>
-                        <th class="py-2.5 px-3 text-center text-slate-200">🥈 Bạc (Silver)</th>
-                        <th class="py-2.5 px-3 text-center text-amber-300">🥇 Vàng (Gold)</th>
-                        <th class="py-2.5 px-3 text-center text-sky-300">💎 Kim Cương (Diamond)</th>
+                      <tr>
+                        <th>Tính năng / Quyền lợi</th>
+                        <th class="text-center text-amber-500">🥉 Đồng (Trial/Cơ bản)</th>
+                        <th class="text-center text-slate-200">🥈 Bạc (Silver)</th>
+                        <th class="text-center text-amber-300">🥇 Vàng (Gold)</th>
+                        <th class="text-center text-sky-300">💎 Kim Cương (Diamond)</th>
                       </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-800/80 bg-slate-950/80 text-slate-200">
+                    <tbody class="text-slate-200">
                       <tr>
-                        <td class="py-2.5 px-3 font-semibold">Quét bảng quân Diplomacy (F2) &amp; OBS cơ bản</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Có (7 ngày Trial)</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Có</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Có</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Có</td>
+                        <td class="font-semibold">Quét bảng quân Diplomacy (F2) &amp; OBS cơ bản</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Có (7 ngày Trial)</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Có</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Có</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Có</td>
                       </tr>
                       <tr>
-                        <td class="py-2.5 px-3 font-semibold">Chơi 5 Mini Games (Web &amp; App Windows) + Lưu BXH</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Có</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Có</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Có</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Có</td>
+                        <td class="font-semibold">Chơi 5 Mini Games (Web &amp; App Windows) + Lưu BXH</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Có</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Có</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Có</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Có</td>
                       </tr>
                       <tr>
-                        <td class="py-2.5 px-3 font-semibold">Tùy chỉnh chạm số chiến thắng (Target Score)</td>
-                        <td class="py-2.5 px-3 text-center text-slate-500">—</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Mở khóa</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Mở khóa</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Mở khóa</td>
+                        <td class="font-semibold">Tùy chỉnh chạm số chiến thắng (Target Score)</td>
+                        <td class="text-center text-slate-500">—</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Mở khóa</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Mở khóa</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Mở khóa</td>
                       </tr>
                       <tr>
-                        <td class="py-2.5 px-3 font-semibold">Chữ chạy Marquee tùy chỉnh &amp; Ẩn/Hiện góc ngày giờ OBS</td>
-                        <td class="py-2.5 px-3 text-center text-slate-500">—</td>
-                        <td class="py-2.5 px-3 text-center text-slate-500">—</td>
-                        <td class="py-2.5 px-3 text-center text-amber-300 font-bold">✓ Mở khóa</td>
-                        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">✓ Mở khóa</td>
+                        <td class="font-semibold">Chữ chạy Marquee tùy chỉnh &amp; Ẩn/Hiện góc ngày giờ OBS</td>
+                        <td class="text-center text-slate-500">—</td>
+                        <td class="text-center text-slate-500">—</td>
+                        <td class="text-center text-amber-300 font-bold">✓ Mở khóa</td>
+                        <td class="text-center text-emerald-400 font-bold">✓ Mở khóa</td>
                       </tr>
                       <tr>
-                        <td class="py-2.5 px-3 font-semibold">Chế độ Đánh Theo C (C1–C5) &amp; Vinh danh Pháo hoa F8 Pro</td>
-                        <td class="py-2.5 px-3 text-center text-slate-500">—</td>
-                        <td class="py-2.5 px-3 text-center text-slate-500">—</td>
-                        <td class="py-2.5 px-3 text-center text-slate-500">—</td>
-                        <td class="py-2.5 px-3 text-center text-sky-300 font-extrabold">💎 Độc Quyền</td>
+                        <td class="font-semibold">Chế độ Đánh Theo C (C1–C5) &amp; Vinh danh Pháo hoa F8 Pro</td>
+                        <td class="text-center text-slate-500">—</td>
+                        <td class="text-center text-slate-500">—</td>
+                        <td class="text-center text-slate-500">—</td>
+                        <td class="text-center text-sky-300 font-extrabold">💎 Độc Quyền</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2045,31 +2322,31 @@
             </div>
           </div>
 
-          <!-- 4. Bảng Danh Sách User -->
-          <div class="flex-1 overflow-y-auto border border-slate-800 rounded-xl bg-slate-950/90">
-            <table class="w-full text-left border-collapse text-xs">
+          <!-- 4. Bảng Danh Sách User (HUD Sci-Fi Translucent Table) -->
+          <div class="flex-1 overflow-y-auto hud-table-shell">
+            <table class="hud-data-table text-xs">
               <thead>
-                <tr class="bg-slate-900 text-slate-300 border-b border-slate-800 uppercase sticky top-0 z-10">
-                  <th class="py-2.5 px-3">Player & Ghi chú</th>
-                  <th class="py-2.5 px-3">Mật khẩu</th>
-                  <th class="py-2.5 px-3">Hạng VIP</th>
-                  <th class="py-2.5 px-3 text-center">Trạng thái</th>
-                  <th class="py-2.5 px-3">Ngày Tạo / Hết Hạn</th>
-                  <th class="py-2.5 px-3">Số Dư Sao</th>
-                  <th class="py-2.5 px-3 text-right">Chỉnh Sửa / Gia Hạn / Thao Tác</th>
+                <tr>
+                  <th>Player &amp; Ghi chú</th>
+                  <th>Mật khẩu</th>
+                  <th>Hạng VIP</th>
+                  <th class="text-center">Trạng thái</th>
+                  <th>Ngày Tạo / Hết Hạn</th>
+                  <th>Số Dư Sao</th>
+                  <th class="text-right">Chỉnh Sửa / Gia Hạn / Thao Tác</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-800/70">
+              <tbody>
                 <tr v-for="p in filteredAdminPlayers" :key="p.name"
-                    :class="adminEditForm.originalName === p.name ? 'bg-sky-950/40' : 'hover:bg-slate-900/60'">
-                  <td class="py-2.5 px-3">
+                    :class="adminEditForm.originalName === p.name ? 'bg-sky-950/40' : ''">
+                  <td>
                     <div class="font-bold text-white text-sm flex items-center gap-1.5">
                       <span>{{ p.name }}</span>
                       <span v-if="p.isLive" class="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded">LIVE</span>
                     </div>
                     <div class="text-[11px] text-slate-400">{{ p.note || 'Chưa có ghi chú' }}</div>
                   </td>
-                  <td class="py-2.5 px-3">
+                  <td>
                     <div class="flex items-center gap-1.5">
                       <span class="font-mono text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{{ '*'.repeat(Math.max(6, String(p.password || '').length)) }}</span>
                       <button @click="resetUserPasswordQuick(p.name)"
@@ -2079,7 +2356,7 @@
                       </button>
                     </div>
                   </td>
-                  <td class="py-2.5 px-3">
+                  <td>
                     <select :value="p.tier || 'BRONZE'" @change="changePlayerTier(p, $event.target.value)"
                             class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 border border-slate-700 text-slate-100">
                       <option value="DIAMOND">💎 Kim Cương</option>
@@ -2088,25 +2365,25 @@
                       <option value="BRONZE">🥉 Đồng</option>
                     </select>
                   </td>
-                  <td class="py-2.5 px-3 text-center">
+                  <td class="text-center">
                     <button @click="togglePlayerActive(p)"
                             :class="getPlayerStatusBadge(p).class"
                             class="px-2.5 py-1 rounded-full text-[11px] font-bold">
                       {{ getPlayerStatusBadge(p).label }}
                     </button>
                   </td>
-                  <td class="py-2.5 px-3">
+                  <td>
                     <div class="text-[11px] text-slate-400">Tạo: <span class="font-mono text-slate-200">{{ formatDateVN(p.createdAt) }}</span></div>
                     <div class="font-mono font-bold" :class="isPlayerExpired(p) ? 'text-red-400' : 'text-emerald-300'">
                       Hạn: {{ p.expiresAt ? formatDateVN(p.expiresAt) : '♾️ Vĩnh viễn' }}
                     </div>
                     <div class="text-[10px] text-amber-300">{{ getRemainingDaysText(p) }}</div>
                   </td>
-                  <td class="py-2.5 px-3">
+                  <td>
                     <div class="font-bold text-amber-400">💰 {{ p.starsBalance || 0 }} ⭐</div>
                     <div class="text-[10px] text-sky-300">🎁 Live: {{ p.starsReceived || 0 }} ⭐</div>
                   </td>
-                  <td class="py-2.5 px-3 text-right">
+                  <td class="text-right">
                     <div class="flex items-center justify-end gap-1 flex-wrap">
                       <button @click="openAdminEditUser(p)"
                               class="bg-sky-500 hover:bg-sky-400 text-slate-950 px-2.5 py-1 rounded text-xs font-bold shadow">
@@ -2161,17 +2438,17 @@
       data() {
         const localCivStats = localStorage.getItem('aoe_showCivStats');
         return {
-          appVersion: 'v5.4.0 Wood-Gold Esports Edition (By XO)',
+          appVersion: 'v5.5.0 HUD Sci-Fi Glass Edition (By XO)',
           appRelease: {
-            latestVersion: '5.4.0',
+            latestVersion: '5.5.0',
             downloadUrl: '/download-tool',
-            releaseNotes: 'Modern Esports Dashboard (4 Khu vực chuẩn Pro), Hoàn tác tỉ số, Ghim Chat & Lọc Spam.',
+            releaseNotes: 'HUD / Gaming Sci-Fi Glassmorphism Dashboard (Bán trong suốt, viền mảnh, tối ưu hiển thị Bảng Table sắc nét).',
             forceUpdate: false
           },
           releaseConfigForm: {
-            latestVersion: '5.4.0',
+            latestVersion: '5.5.0',
             downloadUrl: '/download-tool',
-            releaseNotes: 'Modern Esports Dashboard (4 Khu vực chuẩn Pro), Hoàn tác tỉ số, Ghim Chat & Lọc Spam.',
+            releaseNotes: 'HUD / Gaming Sci-Fi Glassmorphism Dashboard (Bán trong suốt, viền mảnh, tối ưu hiển thị Bảng Table sắc nét).',
             forceUpdate: false
           },
           historyCleanupForm: {
@@ -2185,6 +2462,8 @@
           currentTab: 'matches',
           mobileSection: 'matches',
           showMobileMenu: false,
+          matchViewMode: 'TABLE',
+          gameHistoryViewMode: 'TABLE',
           filterStatus: 'ALL',
           matchSearchQuery: '',
           chatFilterTab: 'ALL',

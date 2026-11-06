@@ -31,9 +31,9 @@ const DEFAULT_OVERLAY_CONFIG = {
 };
 
 const DEFAULT_APP_RELEASE = {
-  latestVersion: '5.4.0',
+  latestVersion: '5.5.0',
   downloadUrl: '/download-tool',
-  releaseNotes: 'Nâng cấp giao diện v5.4.0 Modern Esports Dashboard – Dark Premium – Gold Accent (4 Khu vực A/B/C/D, Scoreboard Khiên Đỏ/Xanh, Hoàn tác tỉ số, Ghim & Lọc Chat Live).',
+  releaseNotes: 'Nâng cấp giao diện v5.5.0 HUD / Gaming Sci-Fi Translucent Glass Edition (Nền xám đen kính mờ Glassmorphism, bo góc 14px, viền mảnh tinh tế, hiển thị dạng Bảng Table sắc nét với bộ chuyển đổi Bảng/Thẻ, nút HUD Kính mờ trên App Windows).',
   forceUpdate: false,
   updatedAt: Date.now()
 };
