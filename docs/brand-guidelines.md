@@ -34,7 +34,7 @@ Tài liệu này quy định chuẩn **Brand Identity (Bộ nhận diện thươ
 | `FOOD_200` | 🍖 | **Bơm 200 Thực** | `5 ⭐` | Cứu nguy xin dân thời kỳ Đời 1 - Đời 2 |
 | `WOOD_500` | 🪵 | **Bơm 500 Gỗ** | `10 ⭐` | Đóng thêm nhà BA / BL / BM thần tốc |
 | `ELEPHANT` | 🐘 | **Tặng Con Voi** | `22 ⭐` | Dắt voi húc về nhà chính — con số `22` huyền thoại |
-| `FOOD_1000` | 🥩 | **Bơm 1000 Thực** | `35 ⭐` | Bơm thực kích Đời 3 / Đời 4 thần tốc |
+| `FOOD_1000` | 🥩 | **Bơm 1000 Thực** | `15 ⭐` | Bơm thực kích Đời 3 / Đời 4 thần tốc |
 | `HORSE_ARCHER` | 🏹 | **Đạo Quân Song Mã** | `50 ⭐` | Càn quét bản đồ với đại quân C Tên / Đạp Đôi |
 | `PRIEST_LIGHTNING` | ⚡🧙‍♂️ | **Phù Thủy Sét** | `100 ⭐` | *Hú Wololo!* — Cấp bậc vinh danh Hoàng Gia cao nhất |
 

@@ -9,6 +9,8 @@ import itertools
 import threading
 import subprocess
 import tempfile
+import random
+from datetime import datetime, timezone
 from pathlib import Path
 
 import cv2
@@ -2330,6 +2332,24 @@ class AOETrackerApp:
         self.login_btn.pack(fill="x", pady=(6, 2))
         self._bind_hover(self.login_btn, "#f59e0b", "#d97706", "#0b0e14", "#0b0e14")
 
+        self.register_btn = tk.Button(
+            login_inner_box,
+            text="✨ Tạo Tài Khoản XO Mới (Dùng thử 7 ngày + Chơi 5 Mini Games)",
+            command=self.open_register_account_dialog,
+            font=("Segoe UI", 8, "bold"),
+            bg="#1a2130",
+            fg="#fbbf24",
+            activebackground="#243047",
+            activeforeground="#ffffff",
+            relief="flat",
+            highlightthickness=1,
+            highlightbackground="#384659",
+            pady=5,
+            cursor="hand2",
+        )
+        self.register_btn.pack(fill="x", pady=(4, 0))
+        self._bind_hover(self.register_btn, "#1a2130", "#243047", "#fbbf24", "#ffffff")
+
         self.login_status_lbl = tk.Label(
             login_card,
             text="Nhập tài khoản Player (hoặc Admin XO) để bắt đầu sử dụng Tool.",
@@ -2498,12 +2518,15 @@ class AOETrackerApp:
             underline.pack(fill="x", side="bottom")
             return btn, underline
 
-        # Tab 1: Bảng điều khiển (có gạch chân vàng khi active) | Tab 2: Cài đặt VIP | Tab 3: Tài khoản
+        # Tab 1: Bảng điều khiển | Tab 2: Cài đặt VIP | Tab 3: Giải Trí Chờ Kèo (5 Game) | Tab 4: Tài khoản
         self.tab_battle_btn, self.tab_battle_underline = _mk_tab(
             "⊞ Bảng điều khiển", lambda: self.switch_main_tab("BATTLE"), active=True
         )
         self.tab_settings_btn, self.tab_settings_underline = _mk_tab(
             "⚙️ Cài đặt VIP", lambda: self.switch_main_tab("SETTINGS")
+        )
+        self.tab_minigames_btn, self.tab_minigames_underline = _mk_tab(
+            "🎮 Giải Trí Chờ Kèo", lambda: self.switch_main_tab("MINIGAMES")
         )
         self.my_profile_btn, _profile_underline = _mk_tab("👤 Tài khoản", self.open_my_profile_window)
 
@@ -2614,12 +2637,12 @@ class AOETrackerApp:
                 if narrow and not self._hdr_clock_hidden:
                     self.date_corner_lbl.pack_forget()
                     self._hdr_clock_hidden = True
-                    for t_btn in (self.tab_battle_btn, self.tab_settings_btn, self.my_profile_btn):
+                    for t_btn in (self.tab_battle_btn, self.tab_settings_btn, self.tab_minigames_btn, self.my_profile_btn):
                         t_btn.configure(padx=6)
                 elif not narrow and self._hdr_clock_hidden:
                     self.date_corner_lbl.pack(side="left")
                     self._hdr_clock_hidden = False
-                    for t_btn in (self.tab_battle_btn, self.tab_settings_btn, self.my_profile_btn):
+                    for t_btn in (self.tab_battle_btn, self.tab_settings_btn, self.tab_minigames_btn, self.my_profile_btn):
                         t_btn.configure(padx=11)
             except Exception:
                 pass
@@ -2705,6 +2728,7 @@ class AOETrackerApp:
 
         self.battle_tab_frame = tk.Frame(self.tab_container, bg=C_APP)
         self.settings_tab_frame = tk.Frame(self.tab_container, bg=C_APP)
+        self.minigames_tab_frame = tk.Frame(self.tab_container, bg=C_APP)
 
         # ======================================================================
         # BỐ CỤC 3 CỘT MODULAR GRID (23% TIỆN ÍCH & SẢNH | 47% ĐIỀU KHIỂN TRẬN ĐẤU & LOG | 30% SẢNH CHAT LIVE)
@@ -4062,6 +4086,9 @@ class AOETrackerApp:
         )
         self.apply_vip_btn.pack(side="right")
 
+        # Khởi tạo Sảnh Giải Trí Chờ Kèo (5 Mini Games chạy trực tiếp trên App Windows)
+        self.minigames_hub = TkMinigamesHub(self, self.minigames_tab_frame)
+
         # Mặc định hiển thị Tab Bảng Điều Khiển bên trong Main Frame, nhưng mở Tool sẽ vào Màn hình Đăng nhập trước
         self.battle_tab_frame.pack(fill="both", expand=True)
         self.login_screen_frame.pack(fill="both", expand=True)
@@ -4081,24 +4108,36 @@ class AOETrackerApp:
 
     def switch_main_tab(self, tab_name: str):
         self.active_tab = tab_name
+        for frm in (self.battle_tab_frame, self.settings_tab_frame, self.minigames_tab_frame):
+            frm.pack_forget()
+        for btn, und in (
+            (self.tab_battle_btn, getattr(self, "tab_battle_underline", None)),
+            (self.tab_settings_btn, getattr(self, "tab_settings_underline", None)),
+            (getattr(self, "tab_minigames_btn", None), getattr(self, "tab_minigames_underline", None)),
+        ):
+            if btn:
+                btn.configure(fg="#94a3b8")
+            if und:
+                und.configure(bg="#121721")
+
         if tab_name == "SETTINGS":
-            self.battle_tab_frame.pack_forget()
             self.settings_tab_frame.pack(fill="both", expand=True)
             self.tab_settings_btn.configure(fg="#fbbf24")
-            self.tab_battle_btn.configure(fg="#94a3b8")
             if hasattr(self, "tab_settings_underline"):
                 self.tab_settings_underline.configure(bg="#f59e0b")
-            if hasattr(self, "tab_battle_underline"):
-                self.tab_battle_underline.configure(bg="#121721")
+        elif tab_name == "MINIGAMES":
+            self.minigames_tab_frame.pack(fill="both", expand=True)
+            if hasattr(self, "tab_minigames_btn"):
+                self.tab_minigames_btn.configure(fg="#fbbf24")
+            if hasattr(self, "tab_minigames_underline"):
+                self.tab_minigames_underline.configure(bg="#f59e0b")
+            if hasattr(self, "minigames_hub"):
+                self.minigames_hub.on_tab_shown()
         else:
-            self.settings_tab_frame.pack_forget()
             self.battle_tab_frame.pack(fill="both", expand=True)
             self.tab_battle_btn.configure(fg="#fbbf24")
-            self.tab_settings_btn.configure(fg="#94a3b8")
             if hasattr(self, "tab_battle_underline"):
                 self.tab_battle_underline.configure(bg="#f59e0b")
-            if hasattr(self, "tab_settings_underline"):
-                self.tab_settings_underline.configure(bg="#121721")
         self._force_repaint_widget(self.main_app_frame)
 
     def toggle_log_drawer(self):
@@ -6284,7 +6323,7 @@ class AOETrackerApp:
                         empty_lbl.pack(anchor="w", fill="x", pady=4)
                         self._auto_wrap_label(empty_lbl, pad=6)
                     else:
-                        for lm in filtered_matches[:4]:
+                        for lm in filtered_matches[:30]:
                             m_id = str(lm.get("id", ""))
                             s_name = lm.get("streamerName") or "XO"
                             m_mode = lm.get("mode") or "4v4"
@@ -8149,6 +8188,1381 @@ class AOETrackerApp:
             except Exception:
                 pass
             time.sleep(0.35)
+
+    def open_register_account_dialog(self):
+        tk = self.tk
+        win = tk.Toplevel(self.root)
+        win.title("✨ Đăng Ký Tài Khoản XO Mới (Dùng Thử 7 Ngày + Chơi 5 Mini Games)")
+        win.geometry("430x340")
+        win.configure(bg="#0b0e14")
+        win.resizable(False, False)
+        win.transient(self.root)
+        win.grab_set()
+
+        card = tk.Frame(win, bg="#121721", highlightthickness=1, highlightbackground="#f59e0b", padx=20, pady=16)
+        card.pack(fill="both", expand=True, padx=14, pady=14)
+
+        tk.Label(
+            card,
+            text="✨ TẠO TÀI KHOẢN XO MỚI",
+            font=("Segoe UI", 12, "bold"),
+            fg="#fbbf24",
+            bg="#121721",
+        ).pack(anchor="w")
+        tk.Label(
+            card,
+            text="Tài khoản dùng chung trên Tool PC, Sảnh Kèo Web & 5 Mini Games.\nTặng ngay 7 ngày dùng thử Gói Đồng (BRONZE).",
+            font=("Segoe UI", 8, "bold"),
+            fg="#94a3b8",
+            bg="#121721",
+            justify="left",
+        ).pack(anchor="w", pady=(2, 10))
+
+        name_v = tk.StringVar()
+        pw_v = tk.StringVar()
+        cpw_v = tk.StringVar()
+
+        for lbl_txt, var, is_pw in (
+            ("Tên Tài Khoản (2-20 ký tự):", name_v, False),
+            ("Mật khẩu (tối thiểu 6 ký tự):", pw_v, True),
+            ("Nhập lại mật khẩu:", cpw_v, True),
+        ):
+            tk.Label(card, text=lbl_txt, font=("Segoe UI", 8, "bold"), fg="#cbd5e1", bg="#121721").pack(anchor="w", pady=(4, 1))
+            tk.Entry(
+                card,
+                textvariable=var,
+                show="•" if is_pw else "",
+                font=("Segoe UI", 10, "bold"),
+                bg="#1a2130",
+                fg="#ffffff",
+                insertbackground="#f59e0b",
+                relief="flat",
+                highlightthickness=1,
+                highlightbackground="#384659",
+            ).pack(fill="x", ipady=3)
+
+        status_l = tk.Label(card, text="", font=("Segoe UI", 8, "bold"), fg="#fbbf24", bg="#121721")
+        status_l.pack(anchor="w", pady=(6, 4))
+
+        def _do_reg():
+            uname = name_v.get().strip()
+            pw = pw_v.get().strip()
+            cpw = cpw_v.get().strip()
+            if not uname or not pw:
+                status_l.configure(text="⚠️ Vui lòng nhập đầy đủ Tên tài khoản và Mật khẩu!", fg="#f87171")
+                return
+            if pw != cpw:
+                status_l.configure(text="⚠️ Mật khẩu xác nhận không khớp!", fg="#f87171")
+                return
+            status_l.configure(text="⏳ Đang đăng ký tài khoản lên máy chủ...", fg="#fbbf24")
+
+            def _worker():
+                try:
+                    res = requests.post(
+                        self.get_api_endpoint(),
+                        json={
+                            "action": "registerPlayer",
+                            "playerName": uname,
+                            "password": pw,
+                            "confirmPassword": cpw,
+                        },
+                        timeout=10,
+                    )
+                    d = res.json()
+                    if d.get("status") == "success":
+                        def _ok():
+                            self.player_name_var.set(d.get("playerName") or uname)
+                            self.player_pass_var.set(pw)
+                            win.destroy()
+                            self.login_and_start()
+                        self.root.after(0, _ok)
+                    else:
+                        self.root.after(0, lambda: status_l.configure(text=f"❌ {d.get('message', 'Đăng ký thất bại')}", fg="#f87171"))
+                except Exception as ex:
+                    self.root.after(0, lambda: status_l.configure(text=f"❌ Lỗi kết nối: {ex}", fg="#f87171"))
+
+            threading.Thread(target=_worker, daemon=True).start()
+
+        tk.Button(
+            card,
+            text="🚀 Đăng Ký & Đăng Nhập Ngay",
+            command=_do_reg,
+            font=("Segoe UI", 10, "bold"),
+            bg="#f59e0b",
+            fg="#0b0e14",
+            relief="flat",
+            pady=6,
+            cursor="hand2",
+        ).pack(fill="x", pady=(4, 0))
+
+
+class TkMinigamesHub:
+    """
+    Sảnh 5 Mini Games chạy trực tiếp trên App Windows (Tkinter Canvas Native):
+    1. Cờ Caro (caro) | 2. Sudoku (sudoku) | 3. Cờ Vua (chess) | 4. Rắn Săn Mồi (snake) | 5. 2048 (2048)
+    Hoạt động độc lập trong tab '🎮 Giải Trí Chờ Kèo', giữ nguyên 100% luồng quét F2 Diplomacy & phím tắt F5/F6/F7/F8.
+    """
+
+    GAMES = [
+        ("caro", "⭕ Cờ Caro"),
+        ("sudoku", "▦ Sudoku"),
+        ("chess", "♟️ Cờ Vua"),
+        ("snake", "🐍 Rắn Săn Mồi"),
+        ("2048", "🔢 2048"),
+    ]
+
+    def __init__(self, app, parent_frame):
+        self.app = app
+        self.tk = app.tk
+        self.parent = parent_frame
+        self.active_game = "caro"
+        self.leaderboards = {k: [] for k, _ in self.GAMES}
+        self._snake_job = None
+        self._sudoku_job = None
+
+        # Game states
+        self._init_caro_state()
+        self._init_sudoku_state()
+        self._init_chess_state()
+        self._init_snake_state()
+        self._init_2048_state()
+
+        self._build_layout()
+
+    def _build_layout(self):
+        tk = self.tk
+        C_APP, C_PANEL, C_ELEV, C_BORDER = "#0b0e14", "#121721", "#1a2130", "#262f40"
+        C_GOLD = "#f59e0b"
+
+        outer = tk.Frame(self.parent, bg=C_APP, padx=12, pady=8)
+        outer.pack(fill="both", expand=True)
+
+        # Top Selector Bar
+        top_bar = tk.Frame(outer, bg=C_PANEL, highlightthickness=1, highlightbackground=C_BORDER, padx=12, pady=8)
+        top_bar.pack(fill="x", pady=(0, 8))
+
+        title_col = tk.Frame(top_bar, bg=C_PANEL)
+        title_col.pack(side="left")
+        tk.Label(
+            title_col,
+            text="🎮 SẢNH GIẢI TRÍ CHỜ KÈO XO (5 MINI GAMES TRÊN WINDOWS APP)",
+            font=("Segoe UI", 10, "bold"),
+            fg="#fbbf24",
+            bg=C_PANEL,
+        ).pack(anchor="w")
+        tk.Label(
+            title_col,
+            text="Phím tắt F2 (Quét Diplomacy) & F5/F6/F7/F8 (Cập nhật tỉ số AOE) vẫn hoạt động ngầm 100% khi bạn đang chơi!",
+            font=("Segoe UI", 8, "bold"),
+            fg="#94a3b8",
+            bg=C_PANEL,
+        ).pack(anchor="w")
+
+        btn_back_aoe = tk.Button(
+            top_bar,
+            text="🏟️ Về Bảng Điều Khiển AOE",
+            command=lambda: self.app.switch_main_tab("BATTLE"),
+            font=("Segoe UI", 9, "bold"),
+            bg="#0284c7",
+            fg="#ffffff",
+            relief="flat",
+            padx=12,
+            pady=4,
+            cursor="hand2",
+        )
+        btn_back_aoe.pack(side="right", padx=(8, 0))
+
+        tabs_row = tk.Frame(top_bar, bg=C_PANEL)
+        tabs_row.pack(side="right")
+        self.game_tab_btns = {}
+        for g_key, g_label in self.GAMES:
+            b = tk.Button(
+                tabs_row,
+                text=g_label,
+                command=lambda k=g_key: self.select_game(k),
+                font=("Segoe UI", 9, "bold"),
+                bg=C_GOLD if g_key == self.active_game else C_ELEV,
+                fg="#0b0e14" if g_key == self.active_game else "#e2e8f0",
+                relief="flat",
+                padx=10,
+                pady=4,
+                cursor="hand2",
+            )
+            b.pack(side="left", padx=3)
+            self.game_tab_btns[g_key] = b
+
+        # Main Split: Game Stage (Left 72%) | Leaderboard & Info (Right 28%)
+        body = tk.Frame(outer, bg=C_APP)
+        body.pack(fill="both", expand=True)
+        body.columnconfigure(0, weight=72)
+        body.columnconfigure(1, weight=28)
+        body.rowconfigure(0, weight=1)
+
+        self.stage_panel = tk.Frame(body, bg=C_PANEL, highlightthickness=1, highlightbackground=C_BORDER, padx=12, pady=10)
+        self.stage_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+
+        self.side_panel = tk.Frame(body, bg=C_PANEL, highlightthickness=1, highlightbackground=C_BORDER, padx=12, pady=10)
+        self.side_panel.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+
+        lb_hdr = tk.Frame(self.side_panel, bg=C_PANEL)
+        lb_hdr.pack(fill="x", pady=(0, 6))
+        self.lb_title_lbl = tk.Label(
+            lb_hdr,
+            text="🏆 BẢNG XẾP HẠNG CỜ CARO",
+            font=("Segoe UI", 10, "bold"),
+            fg="#fbbf24",
+            bg=C_PANEL,
+        )
+        self.lb_title_lbl.pack(side="left")
+        tk.Button(
+            lb_hdr,
+            text="🔄 Làm mới",
+            command=lambda: self.fetch_leaderboard(self.active_game),
+            font=("Segoe UI", 8, "bold"),
+            bg=C_ELEV,
+            fg="#38bdf8",
+            relief="flat",
+            padx=8,
+            pady=2,
+            cursor="hand2",
+        ).pack(side="right")
+
+        self.lb_list_frame = tk.Frame(self.side_panel, bg=C_ELEV, highlightthickness=1, highlightbackground=C_BORDER, padx=8, pady=8)
+        self.lb_list_frame.pack(fill="both", expand=True)
+
+        tip_box = tk.Frame(self.side_panel, bg="#172033", highlightthickness=1, highlightbackground="#2e3f5c", padx=10, pady=8)
+        tip_box.pack(fill="x", pady=(8, 0))
+        tk.Label(
+            tip_box,
+            text="💡 HƯỚNG DẪN NHANH:\n• Điểm kỷ lục tự động đồng bộ lên BXH chung giữa App Windows và Website XO.\n• Sudoku: Bấm chọn ô rồi gõ phím số 1..9 trên bàn phím (hoặc nút trên màn hình).\n• Rắn săn mồi & 2048: Điều khiển bằng phím W/A/S/D hoặc các nút ▲ ▼ ◀ ▶.",
+            font=("Segoe UI", 8, "bold"),
+            fg="#cbd5e1",
+            bg="#172033",
+            justify="left",
+            wraplength=280,
+        ).pack(anchor="w")
+
+        # Bind keyboard events for Sudoku / Snake / 2048 when in MINIGAMES tab
+        self.app.root.bind("<KeyPress>", self._on_root_keypress, add="+")
+
+    def on_tab_shown(self):
+        self.select_game(self.active_game)
+
+    def select_game(self, game_key: str):
+        if self._snake_job:
+            try:
+                self.app.root.after_cancel(self._snake_job)
+            except Exception:
+                pass
+            self._snake_job = None
+        self.active_game = game_key
+        for k, b in self.game_tab_btns.items():
+            if k == game_key:
+                b.configure(bg="#f59e0b", fg="#0b0e14")
+            else:
+                b.configure(bg="#1a2130", fg="#e2e8f0")
+
+        for child in self.stage_panel.winfo_children():
+            child.destroy()
+
+        if game_key == "caro":
+            self._build_caro_stage()
+        elif game_key == "sudoku":
+            self._build_sudoku_stage()
+        elif game_key == "chess":
+            self._build_chess_stage()
+        elif game_key == "snake":
+            self._build_snake_stage()
+        elif game_key == "2048":
+            self._build_2048_stage()
+
+        self.render_leaderboard()
+        self.fetch_leaderboard(game_key)
+
+    def fetch_leaderboard(self, game_key: str):
+        def _t():
+            try:
+                res = requests.post(
+                    self.app.get_api_endpoint(),
+                    json={"action": "getMinigameLeaderboard", "game": game_key},
+                    timeout=8,
+                )
+                d = res.json()
+                if d.get("status") == "success":
+                    if isinstance(d.get("leaderboard"), list):
+                        self.leaderboards[game_key] = d["leaderboard"]
+                    elif isinstance(d.get("leaderboards"), dict):
+                        self.leaderboards.update(d["leaderboards"])
+                    self.app.root.after(0, self.render_leaderboard)
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def submit_score(self, game_key: str, score: int, extra: str = ""):
+        pname = self.app.player_name_var.get().strip() or "Khách"
+        tier = getattr(self.app, "current_player_tier", "BRONZE") or "BRONZE"
+
+        def _t():
+            try:
+                res = requests.post(
+                    self.app.get_api_endpoint(),
+                    json={
+                        "action": "saveMinigameScore",
+                        "game": game_key,
+                        "playerName": pname,
+                        "tier": tier,
+                        "score": int(score),
+                        "extra": extra,
+                    },
+                    timeout=8,
+                )
+                d = res.json()
+                if d.get("status") == "success" and isinstance(d.get("leaderboard"), list):
+                    self.leaderboards[game_key] = d["leaderboard"]
+                    self.app.root.after(0, self.render_leaderboard)
+            except Exception:
+                pass
+
+        threading.Thread(target=_t, daemon=True).start()
+
+    def render_leaderboard(self):
+        tk = self.tk
+        g_dict = dict(self.GAMES)
+        self.lb_title_lbl.configure(text=f"🏆 BXH {g_dict.get(self.active_game, '').upper()}")
+        for child in self.lb_list_frame.winfo_children():
+            child.destroy()
+        rows = self.leaderboards.get(self.active_game) or []
+        if not rows:
+            tk.Label(
+                self.lb_list_frame,
+                text="Chưa có kỷ lục nào trên BXH.\nHãy chiến thắng để ghi danh đầu tiên!",
+                font=("Segoe UI", 9, "bold"),
+                fg="#94a3b8",
+                bg="#1a2130",
+                justify="center",
+            ).pack(pady=24)
+            return
+        for idx, r in enumerate(rows[:10]):
+            row_f = tk.Frame(self.lb_list_frame, bg="#121721", highlightthickness=1, highlightbackground="#262f40", padx=8, pady=5)
+            row_f.pack(fill="x", pady=2)
+            medal = "🥇" if idx == 0 else ("🥈" if idx == 1 else ("🥉" if idx == 2 else f"#{idx + 1}"))
+            tk.Label(row_f, text=medal, font=("Segoe UI", 9, "bold"), fg="#fbbf24", bg="#121721", width=3, anchor="w").pack(side="left")
+            tk.Label(row_f, text=str(r.get("playerName", "Player")), font=("Segoe UI", 9, "bold"), fg="#ffffff", bg="#121721").pack(side="left", padx=(2, 6))
+            extra_txt = f" ({r.get('extra')})" if r.get("extra") else ""
+            tk.Label(
+                row_f,
+                text=f"{r.get('score', 0)} đ{extra_txt}",
+                font=("Consolas", 9, "bold"),
+                fg="#34d399",
+                bg="#121721",
+            ).pack(side="right")
+
+    def _on_root_keypress(self, ev):
+        if getattr(self.app, "active_tab", "") != "MINIGAMES" or not getattr(self.app, "is_logged_in", False):
+            return
+        w_cls = ev.widget.winfo_class() if ev.widget else ""
+        if w_cls in ("Entry", "Text", "TCombobox"):
+            return
+        ks = (ev.keysym or "").lower()
+        if self.active_game == "sudoku":
+            if ks in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
+                self._sudoku_input(int(ks))
+            elif ks in ("0", "backspace", "delete"):
+                self._sudoku_input(0)
+            elif ks == "n":
+                self.sudoku_notes_mode = not self.sudoku_notes_mode
+                self._draw_sudoku()
+        elif self.active_game == "snake":
+            if ks in ("w", "up"):
+                self._snake_set_dir(0, -1)
+            elif ks in ("s", "down"):
+                self._snake_set_dir(0, 1)
+            elif ks in ("a", "left"):
+                self._snake_set_dir(-1, 0)
+            elif ks in ("d", "right"):
+                self._snake_set_dir(1, 0)
+        elif self.active_game == "2048":
+            if ks in ("w", "up"):
+                self._2048_move("UP")
+            elif ks in ("s", "down"):
+                self._2048_move("DOWN")
+            elif ks in ("a", "left"):
+                self._2048_move("LEFT")
+            elif ks in ("d", "right"):
+                self._2048_move("RIGHT")
+
+    # ==========================================================================
+    # 1. CỜ CARO (20x20, AI 5 Levels / 2P / Obstacles)
+    # ==========================================================================
+    def _init_caro_state(self):
+        self.caro_N = 20
+        self.caro_mode = "ai"
+        self.caro_level = 3
+        self.caro_obstacles = False
+        self._reset_caro_board()
+
+    def _reset_caro_board(self):
+        self.caro_board = [["" for _ in range(self.caro_N)] for _ in range(self.caro_N)]
+        self.caro_moves = []
+        self.caro_winner = None
+        self.caro_win_line = None
+        if self.caro_obstacles:
+            placed = 0
+            while placed < 12:
+                rx, ry = random.randint(2, self.caro_N - 3), random.randint(2, self.caro_N - 3)
+                if (rx, ry) != (10, 10) and not self.caro_board[ry][rx]:
+                    self.caro_board[ry][rx] = "#"
+                    placed += 1
+
+    def _build_caro_stage(self):
+        tk = self.tk
+        ctrl = tk.Frame(self.stage_panel, bg="#121721")
+        ctrl.pack(fill="x", pady=(0, 6))
+
+        tk.Label(ctrl, text="Chế độ:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121721").pack(side="left")
+        mode_btn = tk.Button(
+            ctrl,
+            text="🤖 Đấu Máy AI" if self.caro_mode == "ai" else "👥 2 Người Chơi",
+            command=self._toggle_caro_mode,
+            font=("Segoe UI", 9, "bold"),
+            bg="#1a2130",
+            fg="#fbbf24",
+            relief="flat",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+        )
+        mode_btn.pack(side="left", padx=6)
+
+        tk.Label(ctrl, text="Cấp AI:", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#121721").pack(side="left", padx=(6, 2))
+        for lv in range(1, 6):
+            tk.Button(
+                ctrl,
+                text=f"Cấp {lv}",
+                command=lambda l=lv: self._set_caro_level(l),
+                font=("Segoe UI", 8, "bold"),
+                bg="#f59e0b" if self.caro_level == lv else "#1a2130",
+                fg="#0b0e14" if self.caro_level == lv else "#cbd5e1",
+                relief="flat",
+                padx=6,
+                pady=2,
+                cursor="hand2",
+            ).pack(side="left", padx=2)
+
+        obs_btn = tk.Button(
+            ctrl,
+            text=f"🪨 Đá cản: {'BẬT' if self.caro_obstacles else 'TẮT'}",
+            command=self._toggle_caro_obs,
+            font=("Segoe UI", 8, "bold"),
+            bg="#1a2130",
+            fg="#38bdf8",
+            relief="flat",
+            padx=8,
+            pady=3,
+            cursor="hand2",
+        )
+        obs_btn.pack(side="left", padx=6)
+
+        tk.Button(
+            ctrl,
+            text="🔄 Ván Mới",
+            command=lambda: (self._reset_caro_board(), self._draw_caro()),
+            font=("Segoe UI", 9, "bold"),
+            bg="#f59e0b",
+            fg="#0b0e14",
+            relief="flat",
+            padx=12,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right")
+        tk.Button(
+            ctrl,
+            text="↩️ Đi Lại",
+            command=self._caro_undo,
+            font=("Segoe UI", 9, "bold"),
+            bg="#1a2130",
+            fg="#e2e8f0",
+            relief="flat",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right", padx=6)
+
+        self.caro_status_lbl = tk.Label(
+            self.stage_panel,
+            text="Lượt đi: X (Bạn)",
+            font=("Segoe UI", 10, "bold"),
+            fg="#fbbf24",
+            bg="#1a2130",
+            pady=4,
+        )
+        self.caro_status_lbl.pack(fill="x", pady=(0, 6))
+
+        self.caro_canvas = tk.Canvas(self.stage_panel, width=440, height=440, bg="#0b0e14", highlightthickness=1, highlightbackground="#f59e0b")
+        self.caro_canvas.pack(anchor="center")
+        self.caro_canvas.bind("<Button-1>", self._on_caro_click)
+        self._draw_caro()
+
+    def _toggle_caro_mode(self):
+        self.caro_mode = "2p" if self.caro_mode == "ai" else "ai"
+        self._reset_caro_board()
+        self.select_game("caro")
+
+    def _set_caro_level(self, lv: int):
+        self.caro_level = lv
+        self._reset_caro_board()
+        self.select_game("caro")
+
+    def _toggle_caro_obs(self):
+        self.caro_obstacles = not self.caro_obstacles
+        self._reset_caro_board()
+        self.select_game("caro")
+
+    def _caro_undo(self):
+        if self.caro_winner or not self.caro_moves:
+            return
+        steps = 2 if (self.caro_mode == "ai" and len(self.caro_moves) >= 2) else 1
+        for _ in range(steps):
+            mx, my, _ = self.caro_moves.pop()
+            self.caro_board[my][mx] = ""
+        self._draw_caro()
+
+    def _caro_check_win(self, x: int, y: int, role: str):
+        opp = "O" if role == "X" else "X"
+        N = self.caro_N
+        for dx, dy in ((1, 0), (0, 1), (1, 1), (1, -1)):
+            cnt = 1
+            ax, ay, ex, ey = x, y, x, y
+            i, j = x + dx, y + dy
+            while 0 <= i < N and 0 <= j < N and self.caro_board[j][i] == role:
+                cnt += 1
+                ex, ey = i, j
+                i += dx
+                j += dy
+            b1 = not (0 <= i < N and 0 <= j < N) or self.caro_board[j][i] in (opp, "#")
+            i, j = x - dx, y - dy
+            while 0 <= i < N and 0 <= j < N and self.caro_board[j][i] == role:
+                cnt += 1
+                ax, ay = i, j
+                i -= dx
+                j -= dy
+            b2 = not (0 <= i < N and 0 <= j < N) or self.caro_board[j][i] in (opp, "#")
+            if cnt >= 6 or (cnt == 5 and not (b1 and b2)):
+                return (ax, ay, ex, ey)
+        return None
+
+    def _caro_score_dir(self, x: int, y: int, dx: int, dy: int, role: str):
+        N = self.caro_N
+        cnt = 1
+        open_ends = 0
+        i, j = x + dx, y + dy
+        while 0 <= i < N and 0 <= j < N and self.caro_board[j][i] == role:
+            cnt += 1
+            i += dx
+            j += dy
+        if 0 <= i < N and 0 <= j < N and self.caro_board[j][i] == "":
+            open_ends += 1
+        i, j = x - dx, y - dy
+        while 0 <= i < N and 0 <= j < N and self.caro_board[j][i] == role:
+            cnt += 1
+            i -= dx
+            j -= dy
+        if 0 <= i < N and 0 <= j < N and self.caro_board[j][i] == "":
+            open_ends += 1
+        if cnt >= 5 and open_ends >= 1:
+            return 100000
+        if cnt == 4 and open_ends == 2:
+            return 16000
+        if cnt == 4 and open_ends == 1:
+            return 3600
+        if cnt == 3 and open_ends == 2:
+            return 1800
+        if cnt == 2 and open_ends == 2:
+            return 200
+        return cnt * 15 * open_ends
+
+    def _on_caro_click(self, ev):
+        if self.caro_winner:
+            return
+        cell = 440 / self.caro_N
+        x, y = int(ev.x // cell), int(ev.y // cell)
+        if not (0 <= x < self.caro_N and 0 <= y < self.caro_N) or self.caro_board[y][x] != "":
+            return
+        role = "X" if len(self.caro_moves) % 2 == 0 else "O"
+        self.caro_board[y][x] = role
+        self.caro_moves.append((x, y, role))
+        wl = self._caro_check_win(x, y, role)
+        if wl:
+            self.caro_winner = role
+            self.caro_win_line = wl
+            if self.caro_mode == "ai" and role == "X":
+                pts = self.caro_level * 150 + max(20, 200 - len(self.caro_moves) * 2)
+                self.submit_score("caro", pts, f"Thắng AI Cấp {self.caro_level}")
+            self._draw_caro()
+            return
+        if self.caro_mode == "ai" and not self.caro_winner:
+            self._caro_ai_move()
+        self._draw_caro()
+
+    def _caro_ai_move(self):
+        N = self.caro_N
+        best_s = -1
+        cands = []
+        def_w = [0.75, 0.9, 1.05, 1.2, 1.35][self.caro_level - 1]
+        for y in range(N):
+            for x in range(N):
+                if self.caro_board[y][x] != "":
+                    continue
+                near = False
+                for dy in range(-2, 3):
+                    for dx in range(-2, 3):
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < N and 0 <= ny < N and self.caro_board[ny][nx] in ("X", "O"):
+                            near = True
+                            break
+                    if near:
+                        break
+                if not near and self.caro_moves:
+                    continue
+                atk, df = 0, 0
+                self.caro_board[y][x] = "O"
+                if self._caro_check_win(x, y, "O"):
+                    atk += 500000
+                for dx, dy in ((1, 0), (0, 1), (1, 1), (1, -1)):
+                    atk += self._caro_score_dir(x, y, dx, dy, "O")
+                self.caro_board[y][x] = "X"
+                if self._caro_check_win(x, y, "X"):
+                    df += 400000
+                for dx, dy in ((1, 0), (0, 1), (1, 1), (1, -1)):
+                    df += self._caro_score_dir(x, y, dx, dy, "X")
+                self.caro_board[y][x] = ""
+                center_b = 14 - (abs(x - 10) + abs(y - 10)) * 0.5
+                noise = random.uniform(0, 90 if self.caro_level <= 2 else 15)
+                tot = atk + df * def_w + center_b + noise
+                if tot > best_s:
+                    best_s = tot
+                    cands = [(x, y)]
+                elif abs(tot - best_s) < 5:
+                    cands.append((x, y))
+        px, py = random.choice(cands) if cands else (10, 10)
+        self.caro_board[py][px] = "O"
+        self.caro_moves.append((px, py, "O"))
+        wl = self._caro_check_win(px, py, "O")
+        if wl:
+            self.caro_winner = "O"
+            self.caro_win_line = wl
+
+    def _draw_caro(self):
+        if not hasattr(self, "caro_canvas") or not self.caro_canvas.winfo_exists():
+            return
+        c = self.caro_canvas
+        c.delete("all")
+        W = 440
+        cell = W / self.caro_N
+        for i in range(self.caro_N + 1):
+            p = i * cell
+            c.create_line(p, 0, p, W, fill="#1e293b")
+            c.create_line(0, p, W, p, fill="#1e293b")
+        if self.caro_moves:
+            lx, ly, _ = self.caro_moves[-1]
+            c.create_rectangle(lx * cell + 1, ly * cell + 1, (lx + 1) * cell - 1, (ly + 1) * cell - 1, fill="#3b2a10", outline="")
+        for y in range(self.caro_N):
+            for x in range(self.caro_N):
+                v = self.caro_board[y][x]
+                cx, cy = (x + 0.5) * cell, (y + 0.5) * cell
+                r = cell * 0.32
+                if v == "#":
+                    c.create_rectangle(x * cell + 3, y * cell + 3, (x + 1) * cell - 3, (y + 1) * cell - 3, fill="#334155", outline="#64748b")
+                elif v == "X":
+                    c.create_line(cx - r, cy - r, cx + r, cy + r, fill="#f59e0b", width=2.5)
+                    c.create_line(cx + r, cy - r, cx - r, cy + r, fill="#f59e0b", width=2.5)
+                elif v == "O":
+                    c.create_oval(cx - r, cy - r, cx + r, cy + r, outline="#38bdf8", width=2.5)
+        if self.caro_win_line:
+            ax, ay, ex, ey = self.caro_win_line
+            c.create_line((ax + 0.5) * cell, (ay + 0.5) * cell, (ex + 0.5) * cell, (ey + 0.5) * cell, fill="#10b981", width=4)
+        if self.caro_winner:
+            msg = f"🏆 CHIẾN THẮNG: {'BẠN (X)' if (self.caro_mode == 'ai' and self.caro_winner == 'X') else ('MÁY AI (O)' if self.caro_mode == 'ai' else self.caro_winner)}!"
+            self.caro_status_lbl.configure(text=msg, fg="#34d399")
+        else:
+            turn = "X" if len(self.caro_moves) % 2 == 0 else "O"
+            self.caro_status_lbl.configure(text=f"Lượt đi: {turn}  •  Nước #{len(self.caro_moves) + 1}", fg="#fbbf24")
+
+    # ==========================================================================
+    # 2. SUDOKU (9x9, 4 Difficulties, Pencil Notes, Hint, Timer)
+    # ==========================================================================
+    def _init_sudoku_state(self):
+        self.sudoku_diff = "easy"
+        self.sudoku_notes_mode = False
+        self._new_sudoku_game("easy")
+
+    def _new_sudoku_game(self, diff=None):
+        if diff:
+            self.sudoku_diff = diff
+        base = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        nums = base[:]
+        random.shuffle(nums)
+        rb = [b * 3 + r for b in random.sample([0, 1, 2], 3) for r in random.sample([0, 1, 2], 3)]
+        cb = [b * 3 + c for b in random.sample([0, 1, 2], 3) for c in random.sample([0, 1, 2], 3)]
+        sol = []
+        for r in range(9):
+            for c in range(9):
+                rr, cc = rb[r], cb[c]
+                sol.append(nums[(rr * 3 + rr // 3 + cc) % 9])
+        holes = {"easy": 34, "medium": 43, "hard": 50, "evil": 56}.get(self.sudoku_diff, 36)
+        brd = sol[:]
+        for idx in random.sample(range(81), holes):
+            brd[idx] = 0
+        self.sudoku_sol = sol
+        self.sudoku_board = brd
+        self.sudoku_givens = [v != 0 for v in brd]
+        self.sudoku_notes = [set() for _ in range(81)]
+        self.sudoku_sel = 0
+        self.sudoku_mistakes = 0
+        self.sudoku_hints = 0
+        self.sudoku_start_ts = time.time()
+        self.sudoku_complete = False
+
+    def _build_sudoku_stage(self):
+        tk = self.tk
+        ctrl = tk.Frame(self.stage_panel, bg="#121721")
+        ctrl.pack(fill="x", pady=(0, 6))
+        for d_code, d_lbl in (("easy", "🌱 Dễ"), ("medium", "🌿 Vừa"), ("hard", "🔥 Khó"), ("evil", "👹 Ác mộng")):
+            tk.Button(
+                ctrl,
+                text=d_lbl,
+                command=lambda c=d_code: (self._new_sudoku_game(c), self.select_game("sudoku")),
+                font=("Segoe UI", 8, "bold"),
+                bg="#f59e0b" if self.sudoku_diff == d_code else "#1a2130",
+                fg="#0b0e14" if self.sudoku_diff == d_code else "#cbd5e1",
+                relief="flat",
+                padx=8,
+                pady=3,
+                cursor="hand2",
+            ).pack(side="left", padx=2)
+
+        tk.Button(
+            ctrl,
+            text="💡 Gợi ý",
+            command=self._sudoku_hint,
+            font=("Segoe UI", 8, "bold"),
+            bg="#1a2130",
+            fg="#38bdf8",
+            relief="flat",
+            padx=8,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right", padx=3)
+        tk.Button(
+            ctrl,
+            text="✏️ Nháp (Phím N)",
+            command=self._toggle_sudoku_note,
+            font=("Segoe UI", 8, "bold"),
+            bg="#1a2130",
+            fg="#fbbf24",
+            relief="flat",
+            padx=8,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right", padx=3)
+
+        self.sudoku_info_lbl = tk.Label(self.stage_panel, text="", font=("Segoe UI", 9, "bold"), fg="#cbd5e1", bg="#1a2130", pady=4)
+        self.sudoku_info_lbl.pack(fill="x", pady=(0, 6))
+
+        self.sudoku_canvas = tk.Canvas(self.stage_panel, width=396, height=396, bg="#0b0e14", highlightthickness=2, highlightbackground="#f59e0b")
+        self.sudoku_canvas.pack(anchor="center")
+        self.sudoku_canvas.bind("<Button-1>", self._on_sudoku_click)
+
+        num_bar = tk.Frame(self.stage_panel, bg="#121721")
+        num_bar.pack(pady=(6, 0))
+        for n in range(1, 10):
+            tk.Button(
+                num_bar,
+                text=str(n),
+                command=lambda v=n: self._sudoku_input(v),
+                font=("Segoe UI", 10, "bold"),
+                bg="#1a2130",
+                fg="#fbbf24",
+                width=3,
+                relief="flat",
+                cursor="hand2",
+            ).pack(side="left", padx=2)
+        tk.Button(
+            num_bar,
+            text="⌫ Xóa",
+            command=lambda: self._sudoku_input(0),
+            font=("Segoe UI", 9, "bold"),
+            bg="#1a2130",
+            fg="#f87171",
+            padx=8,
+            relief="flat",
+            cursor="hand2",
+        ).pack(side="left", padx=4)
+        self._draw_sudoku()
+
+    def _toggle_sudoku_note(self):
+        self.sudoku_notes_mode = not self.sudoku_notes_mode
+        self._draw_sudoku()
+
+    def _on_sudoku_click(self, ev):
+        cell = 396 / 9
+        c, r = int(ev.x // cell), int(ev.y // cell)
+        if 0 <= r < 9 and 0 <= c < 9:
+            self.sudoku_sel = r * 9 + c
+            self._draw_sudoku()
+
+    def _sudoku_hint(self):
+        if self.sudoku_complete:
+            return
+        empties = [i for i in range(81) if self.sudoku_board[i] != self.sudoku_sol[i]]
+        if not empties:
+            return
+        idx = self.sudoku_sel if self.sudoku_sel in empties else random.choice(empties)
+        self.sudoku_sel = idx
+        self.sudoku_hints += 1
+        self.sudoku_notes_mode = False
+        self._sudoku_input(self.sudoku_sol[idx])
+
+    def _sudoku_input(self, val: int):
+        if self.sudoku_complete or self.sudoku_sel < 0 or self.sudoku_givens[self.sudoku_sel]:
+            return
+        idx = self.sudoku_sel
+        if val == 0:
+            self.sudoku_board[idx] = 0
+            self.sudoku_notes[idx].clear()
+            self._draw_sudoku()
+            return
+        if self.sudoku_notes_mode:
+            if val in self.sudoku_notes[idx]:
+                self.sudoku_notes[idx].remove(val)
+            else:
+                self.sudoku_notes[idx].add(val)
+            self._draw_sudoku()
+            return
+        self.sudoku_board[idx] = val
+        self.sudoku_notes[idx].clear()
+        if val != self.sudoku_sol[idx]:
+            self.sudoku_mistakes += 1
+        elif self.sudoku_board == self.sudoku_sol:
+            self.sudoku_complete = True
+            elapsed = max(1, int(time.time() - self.sudoku_start_ts))
+            score = max(100, 1200 - elapsed - self.sudoku_mistakes * 30 - self.sudoku_hints * 60)
+            self.submit_score("sudoku", score, f"{self.sudoku_diff.upper()} • {elapsed}s")
+        self._draw_sudoku()
+
+    def _draw_sudoku(self):
+        if not hasattr(self, "sudoku_canvas") or not self.sudoku_canvas.winfo_exists():
+            return
+        cv = self.sudoku_canvas
+        cv.delete("all")
+        W = 396
+        cell = W / 9
+        sr, sc = (self.sudoku_sel // 9, self.sudoku_sel % 9) if self.sudoku_sel >= 0 else (-1, -1)
+        sval = self.sudoku_board[self.sudoku_sel] if self.sudoku_sel >= 0 else 0
+
+        for i in range(81):
+            r, c = i // 9, i % 9
+            v = self.sudoku_board[i]
+            x0, y0, x1, y1 = c * cell, r * cell, (c + 1) * cell, (r + 1) * cell
+            bg = "#0b0e14"
+            if i == self.sudoku_sel:
+                bg = "#422c08"
+            elif v > 0 and not self.sudoku_givens[i] and v != self.sudoku_sol[i]:
+                bg = "#45121b"
+            elif sval > 0 and v == sval:
+                bg = "#112840"
+            elif r == sr or c == sc or (r // 3 == sr // 3 and c // 3 == sc // 3):
+                bg = "#141b27"
+            cv.create_rectangle(x0, y0, x1, y1, fill=bg, outline="#1e293b")
+            if v > 0:
+                color = "#f8fafc" if self.sudoku_givens[i] else ("#f87171" if v != self.sudoku_sol[i] else "#38bdf8")
+                cv.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=str(v), fill=color, font=("Segoe UI", 14, "bold"))
+            elif self.sudoku_notes[i]:
+                notes_str = "".join(str(n) if n in self.sudoku_notes[i] else "·" for n in range(1, 10))
+                cv.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=notes_str[:5] + "\n" + notes_str[5:], fill="#fbbf24", font=("Consolas", 8))
+
+        for k in (3, 6):
+            p = k * cell
+            cv.create_line(p, 0, p, W, fill="#f59e0b", width=2)
+            cv.create_line(0, p, W, p, fill="#f59e0b", width=2)
+
+        filled = sum(1 for i in range(81) if self.sudoku_board[i] == self.sudoku_sol[i])
+        status = "🏆 HOÀN THÀNH SUDOKU!" if self.sudoku_complete else f"Đã điền: {filled}/81  •  Lỗi: {self.sudoku_mistakes}  •  Nháp: {'BẬT' if self.sudoku_notes_mode else 'TẮT'}"
+        self.sudoku_info_lbl.configure(text=status, fg="#34d399" if self.sudoku_complete else "#fbbf24")
+
+    # ==========================================================================
+    # 3. CỜ VUA (8x8 Chess vs AI / 2P)
+    # ==========================================================================
+    def _init_chess_state(self):
+        self.chess_mode = "ai"
+        self.chess_flipped = False
+        self._reset_chess_board()
+
+    def _reset_chess_board(self):
+        back = ["R", "N", "B", "Q", "K", "B", "N", "R"]
+        self.chess_board = [
+            ["b" + p for p in back],
+            ["bP"] * 8,
+            [""] * 8,
+            [""] * 8,
+            [""] * 8,
+            [""] * 8,
+            ["wP"] * 8,
+            ["w" + p for p in back],
+        ]
+        self.chess_turn = "w"
+        self.chess_sel = None
+        self.chess_winner = None
+        self.chess_history = []
+
+    def _build_chess_stage(self):
+        tk = self.tk
+        ctrl = tk.Frame(self.stage_panel, bg="#121721")
+        ctrl.pack(fill="x", pady=(0, 6))
+        tk.Button(
+            ctrl,
+            text="🤖 Đấu Máy AI" if self.chess_mode == "ai" else "👥 2 Người Chơi",
+            command=self._toggle_chess_mode,
+            font=("Segoe UI", 9, "bold"),
+            bg="#1a2130",
+            fg="#fbbf24",
+            relief="flat",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="left")
+        tk.Button(
+            ctrl,
+            text="🔃 Xoay Bàn",
+            command=lambda: (setattr(self, "chess_flipped", not self.chess_flipped), self._draw_chess()),
+            font=("Segoe UI", 9, "bold"),
+            bg="#1a2130",
+            fg="#38bdf8",
+            relief="flat",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="left", padx=6)
+        tk.Button(
+            ctrl,
+            text="🔄 Ván Mới",
+            command=lambda: (self._reset_chess_board(), self._draw_chess()),
+            font=("Segoe UI", 9, "bold"),
+            bg="#f59e0b",
+            fg="#0b0e14",
+            relief="flat",
+            padx=12,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right")
+
+        self.chess_status_lbl = tk.Label(self.stage_panel, text="⚪ Lượt Trắng đi", font=("Segoe UI", 10, "bold"), fg="#fbbf24", bg="#1a2130", pady=4)
+        self.chess_status_lbl.pack(fill="x", pady=(0, 6))
+
+        self.chess_canvas = tk.Canvas(self.stage_panel, width=416, height=416, bg="#0b0e14", highlightthickness=2, highlightbackground="#f59e0b")
+        self.chess_canvas.pack(anchor="center")
+        self.chess_canvas.bind("<Button-1>", self._on_chess_click)
+        self._draw_chess()
+
+    def _toggle_chess_mode(self):
+        self.chess_mode = "2p" if self.chess_mode == "ai" else "ai"
+        self._reset_chess_board()
+        self.select_game("chess")
+
+    def _chess_moves_for(self, brd, r: int, c: int):
+        p = brd[r][c]
+        if not p:
+            return []
+        side, kind = p[0], p[1]
+        opp = "b" if side == "w" else "w"
+        res = []
+        if kind == "P":
+            d = -1 if side == "w" else 1
+            sr = 6 if side == "w" else 1
+            if 0 <= r + d < 8 and not brd[r + d][c]:
+                res.append((r + d, c))
+                if r == sr and not brd[r + 2 * d][c]:
+                    res.append((r + 2 * d, c))
+            for dc in (-1, 1):
+                if 0 <= r + d < 8 and 0 <= c + dc < 8 and brd[r + d][c + dc].startswith(opp):
+                    res.append((r + d, c + dc))
+        elif kind == "N":
+            for dr, dc in ((-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < 8 and 0 <= nc < 8 and not brd[nr][nc].startswith(side):
+                    res.append((nr, nc))
+        elif kind == "K":
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    if dr or dc:
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < 8 and 0 <= nc < 8 and not brd[nr][nc].startswith(side):
+                            res.append((nr, nc))
+        else:
+            dirs = []
+            if kind in ("R", "Q"):
+                dirs.extend([(-1, 0), (1, 0), (0, -1), (0, 1)])
+            if kind in ("B", "Q"):
+                dirs.extend([(-1, -1), (-1, 1), (1, -1), (1, 1)])
+            for dr, dc in dirs:
+                nr, nc = r + dr, c + dc
+                while 0 <= nr < 8 and 0 <= nc < 8:
+                    t = brd[nr][nc]
+                    if not t:
+                        res.append((nr, nc))
+                    else:
+                        if t.startswith(opp):
+                            res.append((nr, nc))
+                        break
+                    nr += dr
+                    nc += dc
+        return res
+
+    def _on_chess_click(self, ev):
+        if self.chess_winner:
+            return
+        cell = 416 / 8
+        gx, gy = int(ev.x // cell), int(ev.y // cell)
+        r = (7 - gy) if self.chess_flipped else gy
+        c = (7 - gx) if self.chess_flipped else gx
+        if not (0 <= r < 8 and 0 <= c < 8):
+            return
+        if self.chess_sel:
+            sr, sc = self.chess_sel
+            legal = self._chess_moves_for(self.chess_board, sr, sc)
+            if (r, c) in legal:
+                self._exec_chess_move(sr, sc, r, c)
+                return
+        p = self.chess_board[r][c]
+        if p and p.startswith(self.chess_turn):
+            self.chess_sel = (r, c)
+        else:
+            self.chess_sel = None
+        self._draw_chess()
+
+    def _exec_chess_move(self, fr, fc, tr, tc):
+        p = self.chess_board[fr][fc]
+        target = self.chess_board[tr][tc]
+        self.chess_board[fr][fc] = ""
+        if p == "wP" and tr == 0:
+            p = "wQ"
+        elif p == "bP" and tr == 7:
+            p = "bQ"
+        self.chess_board[tr][tc] = p
+        self.chess_sel = None
+        if target.endswith("K"):
+            self.chess_winner = self.chess_turn
+            if self.chess_winner == "w":
+                self.submit_score("chess", 500, "Chiến thắng Cờ Vua")
+            self._draw_chess()
+            return
+        self.chess_turn = "b" if self.chess_turn == "w" else "w"
+        self._draw_chess()
+        if self.chess_mode == "ai" and self.chess_turn == "b" and not self.chess_winner:
+            self.app.root.after(220, self._chess_ai_move)
+
+    def _chess_ai_move(self):
+        vals = {"P": 100, "N": 320, "B": 330, "R": 500, "Q": 900, "K": 20000}
+        moves = []
+        for r in range(8):
+            for c in range(8):
+                if self.chess_board[r][c].startswith("b"):
+                    for tr, tc in self._chess_moves_for(self.chess_board, r, c):
+                        t = self.chess_board[tr][tc]
+                        gain = vals.get(t[1], 0) if t else 0
+                        center = (3.5 - abs(3.5 - tr)) * 5 + (3.5 - abs(3.5 - tc)) * 5
+                        moves.append((gain + center + random.uniform(0, 12), r, c, tr, tc))
+        if not moves:
+            self.chess_winner = "w"
+            self._draw_chess()
+            return
+        moves.sort(reverse=True)
+        _, fr, fc, tr, tc = moves[0]
+        self._exec_chess_move(fr, fc, tr, tc)
+
+    def _draw_chess(self):
+        if not hasattr(self, "chess_canvas") or not self.chess_canvas.winfo_exists():
+            return
+        cv = self.chess_canvas
+        cv.delete("all")
+        cell = 416 / 8
+        uni = {
+            "wK": "♔", "wQ": "♕", "wR": "♖", "wB": "♗", "wN": "♘", "wP": "♙",
+            "bK": "♚", "bQ": "♛", "bR": "♜", "bB": "♝", "bN": "♞", "bP": "♟",
+        }
+        legal = self._chess_moves_for(self.chess_board, *self.chess_sel) if self.chess_sel else []
+        for r in range(8):
+            for c in range(8):
+                dr = (7 - r) if self.chess_flipped else r
+                dc = (7 - c) if self.chess_flipped else c
+                x0, y0 = dc * cell, dr * cell
+                is_light = (r + c) % 2 == 0
+                bg = "#334155" if is_light else "#0f172a"
+                if self.chess_sel == (r, c):
+                    bg = "#b45309"
+                cv.create_rectangle(x0, y0, x0 + cell, y0 + cell, fill=bg, outline="#1e293b")
+                p = self.chess_board[r][c]
+                if p:
+                    col = "#fef3c7" if p.startswith("w") else "#38bdf8"
+                    cv.create_text(x0 + cell / 2, y0 + cell / 2, text=uni.get(p, ""), fill=col, font=("Segoe UI Symbol", 24, "bold"))
+                if (r, c) in legal:
+                    cv.create_oval(x0 + cell * 0.38, y0 + cell * 0.38, x0 + cell * 0.62, y0 + cell * 0.62, fill="#f59e0b", outline="")
+        if self.chess_winner:
+            self.chess_status_lbl.configure(text=f"🏆 {'TRẮNG' if self.chess_winner == 'w' else 'ĐEN'} CHIẾN THẮNG!", fg="#34d399")
+        else:
+            self.chess_status_lbl.configure(text="⚪ Lượt Trắng đi" if self.chess_turn == "w" else "⚫ Lượt Đen đi", fg="#fbbf24")
+
+    # ==========================================================================
+    # 4. RẮN SĂN MỒI (20x20 Arcade Canvas)
+    # ==========================================================================
+    def _init_snake_state(self):
+        self.snake_N = 20
+        self.snake_best = 0
+        self._reset_snake()
+
+    def _reset_snake(self):
+        self.snake_body = [(8, 10), (7, 10), (6, 10)]
+        self.snake_dir = (1, 0)
+        self.snake_next_dir = (1, 0)
+        self.snake_score = 0
+        self.snake_over = False
+        self._spawn_snake_food()
+
+    def _spawn_snake_food(self):
+        free = [(x, y) for x in range(self.snake_N) for y in range(self.snake_N) if (x, y) not in self.snake_body]
+        self.snake_food = random.choice(free) if free else (10, 10)
+
+    def _build_snake_stage(self):
+        tk = self.tk
+        ctrl = tk.Frame(self.stage_panel, bg="#121721")
+        ctrl.pack(fill="x", pady=(0, 6))
+        self.snake_score_lbl = tk.Label(ctrl, text=f"Điểm: {self.snake_score}  •  Kỷ lục: {self.snake_best}", font=("Segoe UI", 10, "bold"), fg="#fbbf24", bg="#121721")
+        self.snake_score_lbl.pack(side="left")
+        tk.Button(
+            ctrl,
+            text="▶️ Chơi Ngay / Chơi Lại",
+            command=self._start_snake_loop,
+            font=("Segoe UI", 9, "bold"),
+            bg="#f59e0b",
+            fg="#0b0e14",
+            relief="flat",
+            padx=12,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right")
+
+        self.snake_canvas = tk.Canvas(self.stage_panel, width=400, height=400, bg="#0b0e14", highlightthickness=2, highlightbackground="#f59e0b")
+        self.snake_canvas.pack(anchor="center")
+
+        dpad = tk.Frame(self.stage_panel, bg="#121721")
+        dpad.pack(pady=(6, 0))
+        for txt, dx, dy in (("◀ Trái (A)", -1, 0), ("▲ Lên (W)", 0, -1), ("▼ Xuống (S)", 0, 1), ("▶ Phải (D)", 1, 0)):
+            tk.Button(
+                dpad,
+                text=txt,
+                command=lambda x=dx, y=dy: self._snake_set_dir(x, y),
+                font=("Segoe UI", 8, "bold"),
+                bg="#1a2130",
+                fg="#e2e8f0",
+                relief="flat",
+                padx=8,
+                pady=3,
+                cursor="hand2",
+            ).pack(side="left", padx=3)
+        self._start_snake_loop()
+
+    def _snake_set_dir(self, dx: int, dy: int):
+        if (dx, dy) != (-self.snake_dir[0], -self.snake_dir[1]):
+            self.snake_next_dir = (dx, dy)
+
+    def _start_snake_loop(self):
+        if self._snake_job:
+            try:
+                self.app.root.after_cancel(self._snake_job)
+            except Exception:
+                pass
+        self._reset_snake()
+        self._tick_snake()
+
+    def _tick_snake(self):
+        if self.active_game != "snake" or not hasattr(self, "snake_canvas") or not self.snake_canvas.winfo_exists():
+            return
+        self.snake_dir = self.snake_next_dir
+        hx, hy = self.snake_body[0]
+        nx, ny = hx + self.snake_dir[0], hy + self.snake_dir[1]
+        if not (0 <= nx < self.snake_N and 0 <= ny < self.snake_N) or (nx, ny) in self.snake_body:
+            self.snake_over = True
+            if self.snake_score > self.snake_best:
+                self.snake_best = self.snake_score
+            if self.snake_score >= 30:
+                self.submit_score("snake", self.snake_score, f"Dài {len(self.snake_body)} đốt")
+            self._draw_snake()
+            return
+        self.snake_body.insert(0, (nx, ny))
+        if (nx, ny) == self.snake_food:
+            self.snake_score += 10
+            if self.snake_score > self.snake_best:
+                self.snake_best = self.snake_score
+            self._spawn_snake_food()
+        else:
+            self.snake_body.pop()
+        self._draw_snake()
+        self._snake_job = self.app.root.after(120, self._tick_snake)
+
+    def _draw_snake(self):
+        if not hasattr(self, "snake_canvas") or not self.snake_canvas.winfo_exists():
+            return
+        cv = self.snake_canvas
+        cv.delete("all")
+        cell = 400 / self.snake_N
+        fx, fy = self.snake_food
+        cv.create_oval(fx * cell + 3, fy * cell + 3, (fx + 1) * cell - 3, (fy + 1) * cell - 3, fill="#ef4444", outline="")
+        for idx, (x, y) in enumerate(self.snake_body):
+            cv.create_rectangle(x * cell + 2, y * cell + 2, (x + 1) * cell - 2, (y + 1) * cell - 2, fill="#f59e0b" if idx == 0 else "#d97706", outline="")
+        if self.snake_over:
+            cv.create_rectangle(40, 160, 360, 240, fill="#121721", outline="#f59e0b", width=2)
+            cv.create_text(200, 200, text=f"💀 KẾT THÚC: {self.snake_score} ĐIỂM\nBấm 'Chơi Lại' để tiếp tục", fill="#fbbf24", font=("Segoe UI", 11, "bold"), justify="center")
+        self.snake_score_lbl.configure(text=f"Điểm: {self.snake_score}  •  Kỷ lục: {self.snake_best}")
+
+    # ==========================================================================
+    # 5. 2048 (4x4 Grid, Undo, Score Sync)
+    # ==========================================================================
+    def _init_2048_state(self):
+        self.g2048_best = 0
+        self._reset_2048()
+
+    def _reset_2048(self):
+        self.g2048_grid = [0] * 16
+        self.g2048_score = 0
+        self.g2048_history = []
+        self._2048_spawn()
+        self._2048_spawn()
+
+    def _2048_spawn(self):
+        empties = [i for i, v in enumerate(self.g2048_grid) if v == 0]
+        if empties:
+            self.g2048_grid[random.choice(empties)] = 2 if random.random() < 0.9 else 4
+
+    def _build_2048_stage(self):
+        tk = self.tk
+        ctrl = tk.Frame(self.stage_panel, bg="#121721")
+        ctrl.pack(fill="x", pady=(0, 6))
+        self.g2048_lbl = tk.Label(ctrl, text="", font=("Segoe UI", 10, "bold"), fg="#fbbf24", bg="#121721")
+        self.g2048_lbl.pack(side="left")
+        tk.Button(
+            ctrl,
+            text="🔄 Ván Mới",
+            command=lambda: (self._reset_2048(), self._draw_2048()),
+            font=("Segoe UI", 9, "bold"),
+            bg="#f59e0b",
+            fg="#0b0e14",
+            relief="flat",
+            padx=12,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right")
+        tk.Button(
+            ctrl,
+            text="↩️ Hoàn Tác",
+            command=self._2048_undo,
+            font=("Segoe UI", 9, "bold"),
+            bg="#1a2130",
+            fg="#e2e8f0",
+            relief="flat",
+            padx=10,
+            pady=3,
+            cursor="hand2",
+        ).pack(side="right", padx=6)
+
+        self.g2048_canvas = tk.Canvas(self.stage_panel, width=380, height=380, bg="#0b0e14", highlightthickness=2, highlightbackground="#f59e0b")
+        self.g2048_canvas.pack(anchor="center")
+
+        dpad = tk.Frame(self.stage_panel, bg="#121721")
+        dpad.pack(pady=(6, 0))
+        for txt, d in (("◀ Trái (A)", "LEFT"), ("▲ Lên (W)", "UP"), ("▼ Xuống (S)", "DOWN"), ("▶ Phải (D)", "RIGHT")):
+            tk.Button(
+                dpad,
+                text=txt,
+                command=lambda mv=d: self._2048_move(mv),
+                font=("Segoe UI", 8, "bold"),
+                bg="#1a2130",
+                fg="#e2e8f0",
+                relief="flat",
+                padx=8,
+                pady=3,
+                cursor="hand2",
+            ).pack(side="left", padx=3)
+        self._draw_2048()
+
+    def _2048_undo(self):
+        if self.g2048_history:
+            self.g2048_grid, self.g2048_score = self.g2048_history.pop()
+            self._draw_2048()
+
+    def _2048_move(self, direction: str):
+        prev = self.g2048_grid[:]
+        prev_s = self.g2048_score
+        gained_total = 0
+
+        for i in range(4):
+            if direction == "LEFT":
+                idxs = [i * 4 + c for c in range(4)]
+            elif direction == "RIGHT":
+                idxs = [i * 4 + c for c in (3, 2, 1, 0)]
+            elif direction == "UP":
+                idxs = [r * 4 + i for r in range(4)]
+            else:
+                idxs = [r * 4 + i for r in (3, 2, 1, 0)]
+            vals = [self.g2048_grid[k] for k in idxs if self.g2048_grid[k] != 0]
+            out = []
+            k = 0
+            while k < len(vals):
+                if k + 1 < len(vals) and vals[k] == vals[k + 1]:
+                    m = vals[k] * 2
+                    out.append(m)
+                    gained_total += m
+                    k += 2
+                else:
+                    out.append(vals[k])
+                    k += 1
+            while len(out) < 4:
+                out.append(0)
+            for pos, grid_idx in enumerate(idxs):
+                self.g2048_grid[grid_idx] = out[pos]
+
+        if self.g2048_grid != prev:
+            self.g2048_history.append((prev, prev_s))
+            if len(self.g2048_history) > 5:
+                self.g2048_history.pop(0)
+            self.g2048_score += gained_total
+            if self.g2048_score > self.g2048_best:
+                self.g2048_best = self.g2048_score
+            self._2048_spawn()
+            if self.g2048_score >= 500:
+                self.submit_score("2048", self.g2048_score, f"Ô {max(self.g2048_grid)}")
+            self._draw_2048()
+
+    def _draw_2048(self):
+        if not hasattr(self, "g2048_canvas") or not self.g2048_canvas.winfo_exists():
+            return
+        cv = self.g2048_canvas
+        cv.delete("all")
+        cell = 380 / 4
+        colors = {
+            0: "#121721", 2: "#1e293b", 4: "#334155", 8: "#b45309",
+            16: "#d97706", 32: "#ea580c", 64: "#dc2626", 128: "#f59e0b",
+            256: "#fbbf24", 512: "#facc15", 1024: "#38bdf8", 2048: "#10b981",
+        }
+        for i, v in enumerate(self.g2048_grid):
+            r, c = i // 4, i % 4
+            x0, y0 = c * cell + 6, r * cell + 6
+            x1, y1 = (c + 1) * cell - 6, (r + 1) * cell - 6
+            cv.create_rectangle(x0, y0, x1, y1, fill=colors.get(v, "#7c3aed"), outline="#262f40", width=2)
+            if v:
+                fg = "#0b0e14" if v in (128, 256, 512, 1024, 2048) else "#ffffff"
+                cv.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=str(v), fill=fg, font=("Segoe UI", 18, "bold"))
+        self.g2048_lbl.configure(text=f"Điểm: {self.g2048_score}  •  Kỷ lục: {self.g2048_best}  •  Ô lớn nhất: {max(self.g2048_grid)}")
 
 
 def run_cli_self_test(image_paths, streamer_name="XO"):

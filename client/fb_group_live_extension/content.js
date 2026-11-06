@@ -1,6 +1,6 @@
 /* AOE BY XO - Tiện ích tự động bắt Comment Facebook Group Live đẩy lên OBS */
 (() => {
-  const DEFAULT_SERVER = 'https://aoe-tracker-production.up.railway.app';
+  const DEFAULT_SERVER = 'https://aoe-tracker.onrender.com';
   let cfg = {
     enabled: false,
     server: localStorage.getItem('aoe_fb_server') || DEFAULT_SERVER,
@@ -83,8 +83,10 @@
           action: 'pushFacebookComment',
           streamerName: cfg.streamer,
           password: cfg.password,
+          authorName: author,
           fbAuthor: author,
           text: bodyText,
+          commentId: key,
           fbCommentId: key
         })
       }).catch(() => {});

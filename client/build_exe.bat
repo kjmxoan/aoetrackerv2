@@ -10,7 +10,9 @@ if not exist ".venv\Scripts\python.exe" (
 if not exist ".venv\Scripts\pyinstaller.exe" (
     .venv\Scripts\pip.exe install -r requirements.txt
 )
-.venv\Scripts\pyinstaller.exe --noconsole --onefile --name "bangquanaoe" bangquanaoe.py
+.venv\Scripts\pyinstaller.exe --noconfirm bangquanaoe.spec
+copy /Y "dist\bangquanaoe.exe" "dist\TOOL_BANG_QUAN_AOE_BY_XO.exe" >nul
+copy /Y "dist\bangquanaoe.exe" "..\TOOL_BANG_QUAN_AOE_BY_XO.exe" >nul
 echo.
 echo [HOAN TAT] File chay doc lap da duoc tao tai: dist\bangquanaoe.exe
 pause

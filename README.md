@@ -1,6 +1,6 @@
-# ⚔️🛡️ TOOL BẢNG QUÂN AOE BY XO (`v5.3`) — HỆ THỐNG AUTO DIPLOMACY, SẢNH LIVE, OBS OVERLAY & CẦU NỐI FACEBOOK GROUP LIVE
+# ⚔️🛡️ TOOL BẢNG QUÂN AOE BY XO (`v5.4.0`) — HỆ THỐNG AUTO DIPLOMACY, SẢNH LIVE, OBS OVERLAY, CẦU NỐI FB LIVE & 5 MINI GAMES TRÊN CẢ WEB + APP WINDOWS
 
-Hệ thống tự động trích xuất **Bảng Quân, Màu Quân & Phe Đồng Minh / Đối Thủ** trực tiếp khi người chơi ấn **Diplomacy (`F2`)** trong game **Age of Empires (AOE 1 / Rise of Rome)**, đồng bộ thời gian thực lên **Web Quản Lý Kèo**, **OBS Bảng Quân Overlay**, **OBS Khung Chat Trong Suốt** và tích hợp **Cầu Nối Tự Động Đẩy Comment Luồng Live Trong Group Facebook Lên OBS**.
+Hệ thống tự động trích xuất **Bảng Quân, Màu Quân & Phe Đồng Minh / Đối Thủ** trực tiếp khi người chơi ấn **Diplomacy (`F2`)** trong game **Age of Empires (AOE 1 / Rise of Rome)**, đồng bộ thời gian thực lên **Web Quản Lý Kèo**, **OBS Bảng Quân Overlay**, **OBS Khung Chat Trong Suốt**, tích hợp **Cầu Nối Tự Động Đẩy Comment Luồng Live Trong Group Facebook Lên OBS** và **Sảnh 5 Mini Games Trí Tuệ (`Cờ Caro, Sudoku, Cờ Vua, Rắn Săn Mồi, 2048`) chạy trực tiếp trên cả Website lẫn App Windows (`bangquanaoe.exe`)**.
 
 ---
 
@@ -29,7 +29,8 @@ aoe-tracker/
 │   │   └── run-admin.png            # Hướng dẫn chạy Tool bằng quyền Administrator (Chuột phải & Compatibility)
 │   ├── logo.svg                     # Logo Vector chính thức của thương hiệu AOE BY XO (Khiên Obsidian, Song Kiếm Vàng, Vương Miện "XO")
 │   ├── brand-tokens.css             # Hệ thống Design Tokens 3 tầng (Primitive -> Semantic -> Component) & Animation Vinh Danh
-│   ├── index.html                   # Trang chủ Web: Sảnh Các Trận Đấu Đang Live, Hộp Chat & Vật Phẩm AOE, Thống kê, Admin & Hướng dẫn có ảnh
+│   ├── minigames-hub.js             # Engine 5 Mini Games chuẩn hóa (Cờ Caro, Sudoku, Cờ Vua, Rắn Săn Mồi, 2048) trên Website XO
+│   ├── index.html                   # Trang chủ Web: Sảnh Kèo Đấu Live, Khung Chat & Vật Phẩm AOE, Phần Mềm & VIP, 5 Mini Games, Thống kê & Admin
 │   ├── overlay.html                 # Link OBS 1: Bảng Quân, Màu Cờ, Tỉ Số, Chữ Chạy, Bảng Phụ C & Bảng Vinh Danh Hoàng Gia
 │   └── chat-overlay.html            # Link OBS 2: Khung Chat & Bảng Vinh Danh Vật Phẩm AOE nền trong suốt (kèm Khung Chat Ảo 380x450)
 ├── docs/
@@ -421,3 +422,22 @@ Copy-Item "$src\TOOL_BANG_QUAN_AOE_BY_XO.exe" "$dst\TOOL_BANG_QUAN_AOE_BY_XO.exe
             - **Cửa sổ `Tài khoản của tôi`**: Giữ nguyên 4 thẻ KPI, cụm Đổi mật khẩu & 2 khung lịch sử; đồng bộ màu, viền và Dark Scrollbar.
             - **Sửa lỗi runtime**: Các `lambda` báo lỗi mạng trong cửa sổ Admin/Tài khoản (`NameError: cannot access free variable 'e'`) nay giữ giá trị lỗi đúng cách (`lambda e=e: ...`).
             - **Hướng dẫn chỉnh sửa giao diện về sau**: Toàn bộ token màu nằm đầu khối `_build_ui` (`C_APP`, `C_PANEL`, `C_ELEV`, `C_BORDER`, `C_GOLD`...); dùng các helper `_mk_panel`, `_mk_btn`, `_make_dark_scrollbar`, `_make_ellipsis_label`, `_auto_wrap_label`, `_attach_tooltip` để thêm thành phần mới đồng bộ phong cách.
+          - **Thiết Kế Lại Nhận Diện XO Ecosystem (`v5.4.0`), Vá Toàn Bộ Lỗ Hổng Bảo Mật (`WEB-01..07`, `ACC-01..06`, `MG-01..08`) & Tích Hợp Sảnh 5 Mini Games Trên Cả Website Lẫn App Windows (`client/bangquanaoe.py`)**:
+            - **Sảnh Giải Trí Chờ Kèo (5 Mini Games Trí Tuệ) trên cả Web ([`public/minigames-hub.js`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/minigames-hub.js) + [`public/index.html`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/index.html)) và App Windows ([`TkMinigamesHub` trong `client/bangquanaoe.py`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/client/bangquanaoe.py))**:
+              1. **`⭕ Cờ Caro (`caro`)`**: Bàn cờ 20×20 chuẩn Esports, Đấu Máy AI 5 cấp độ (`Tập Sự` $\rightarrow$ `Đại Kiện Tướng`) hoặc 2 Người, tùy chọn `🪨 Chướng ngại vật`, Đi lại (`Undo`).
+              2. **`▦ Sudoku (`sudoku`)`**: Bàn 9×9 với 4 độ khó (`Dễ`, `Trung bình`, `Khó`, `Ác mộng`) + `Thử thách hằng ngày`, chế độ `✏️ Ghi chú nháp (Pencil Marks)`, `💡 Gợi ý` và bấm giờ tự động.
+              3. **`♟️ Cờ Vua (`chess`)`**: Bàn 8×8 chuẩn quốc tế (Nhập thành, Bắt tốt qua đường, Phong cấp, Kiểm tra Chiếu / Chiếu hết), Đấu AI Minimax hoặc 2 Người, Xoay bàn, Biên bản nước đi.
+              4. **`🐍 Rắn Săn Mồi (`snake`)`**: Đấu trường 20×20 60FPS, 3 chủ đề màu sắc (`XO Hoàng Kim`, `Neon Cyber`, `Rừng Đế Chế`), hỗ trợ phím `WASD`/Mũi tên và cụm nút điều hướng trên màn hình.
+              5. **`🔢 2048 (`2048`)`**: Lưới 4×4 gộp ô lũy thừa 2 với `↩️ Hoàn tác (Undo 5 bước)` và tự động lưu kỷ lục.
+              - **Đồng bộ Bảng Xếp Hạng chung (`/api`: `getMinigameLeaderboard` & `saveMinigameScore`)**: Tự động dùng tài khoản XO đang đăng nhập (kèm huy hiệu Hạng VIP `🥉/🥈/🥇/💎`) và hoạt động 100% không làm gián đoạn luồng quét `F2 Diplomacy` hay phím tắt `F5/F6/F7/F8` trên App Windows.
+            - **Tự Đăng Ký Tài Khoản XO Mới (`registerPlayer` — Tặng 7 Ngày Dùng Thử Gói Đồng)**: Người chơi có thể tự tạo tài khoản mới ngay trên Modal Đăng nhập của Website hoặc nút `✨ Tạo Tài Khoản XO Mới` trên màn hình khởi động App Windows.
+            - **Trang Giới Thiệu Phần Mềm & Bảng So Sánh 4 Hạng VIP (`🛡️ Phần Mềm & VIP`)**: Trình bày trực quan 4 tính năng cốt lõi của `TOOL BẢNG QUÂN AOE BY XO` và bảng ma trận quyền lợi giữa `🥉 Đồng`, `🥈 Bạc`, `🥇 Vàng`, `💎 Kim Cương`.
+            - **Vá toàn diện các lỗ hổng bảo mật & lỗi kỹ thuật từ `PROJECT_AUDIT.md`**:
+              - `WEB-01`: Xóa bỏ nhánh `if (data.isAdmin) return true;` trong `isAdminAuthorized` ([`server/index.js`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/server/index.js)), bắt buộc xác thực mật khẩu Admin thực sự.
+              - `WEB-02`: Che mật khẩu (`password: '******'`) trong `enrichPlayersWithLiveStatus` để `GET /api?action=getInitialData` không bao giờ lộ mật khẩu người chơi.
+              - `WEB-03`: Xóa mật khẩu Admin hardcoded trong [`public/index.html`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/public/index.html).
+              - `WEB-04` & `ACC-03`: Đồng bộ trường `authorName`/`fbAuthor`, `commentId`/`fbCommentId` và URL máy chủ mặc định `https://aoe-tracker.onrender.com` cho Cầu nối Facebook Group Live.
+              - `WEB-05`: Hỗ trợ ghim bất kỳ bình luận nào trong Sảnh Chat Live bằng nút `📌` trên từng dòng chat và thêm thanh **Quick Cheer Bar** (`🔥 Hay quá!`, `🐘 22 Voi điên!`, `⚡ Wololo!`, `🏹 Chủ lực khỏe!`, `👏 GG Tuyệt vời!`).
+              - `WEB-06`: Bắt buộc quyền Admin cho action `saveSettings`.
+              - `ACC-01` & `ACC-02`: Bổ sung `from datetime import datetime, timezone` để hiển thị chính xác giờ địa phương của tin nhắn chat và nâng giới hạn danh sách kèo đấu trên App PC từ `4` lên `30` kèo.
+              - `ACC-06`: Chuẩn hóa [`client/build_exe.bat`](file:///C:/Users/APC/.gemini/antigravity/scratch/aoe-tracker/client/build_exe.bat) chạy PyInstaller với `bangquanaoe.spec` và tự động sao chép sang `TOOL_BANG_QUAN_AOE_BY_XO.exe`.
