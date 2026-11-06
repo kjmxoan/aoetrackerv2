@@ -8871,9 +8871,10 @@ class TkMinigamesHub:
         for r in rooms[:8]:
             card = tk.Frame(self.caro_lobby_list_frame, bg="#1a2130", highlightthickness=1, highlightbackground="#2e3f5c", padx=12, pady=8)
             card.pack(fill="x", pady=4)
-            rid = r.get("roomId", "")
-            px = r.get("playerX") or {}
-            po = r.get("playerO") or {}
+            rid = r.get("code") or r.get("roomId") or ""
+            players_obj = r.get("players") or {}
+            px = r.get("playerX") or players_obj.get("X") or {}
+            po = r.get("playerO") or players_obj.get("O") or {}
             st = r.get("status", "WAITING")
             sc = r.get("scores") or {"X": 0, "O": 0}
             obs_txt = " • 🪨 Đá cản" if r.get("obstacles") else ""
@@ -8951,8 +8952,11 @@ class TkMinigamesHub:
         was_none = self.caro_online_room is None
         self.caro_online_room = room
         pname = (self.app.player_name_var.get().strip() or "Khách").lower()
-        px_name = ((room.get("playerX") or {}).get("name") or "").lower()
-        po_name = ((room.get("playerO") or {}).get("name") or "").lower()
+        players_obj = room.get("players") or {}
+        px_obj = room.get("playerX") or players_obj.get("X") or {}
+        po_obj = room.get("playerO") or players_obj.get("O") or {}
+        px_name = (px_obj.get("name") or "").lower()
+        po_name = (po_obj.get("name") or "").lower()
         if px_name and px_name == pname:
             self.caro_online_seat = "X"
         elif po_name and po_name == pname:
@@ -8960,14 +8964,28 @@ class TkMinigamesHub:
         else:
             self.caro_online_seat = "V"
 
-        if isinstance(room.get("board"), list) and len(room["board"]) == self.caro_N:
-            self.caro_board = [[str(c or "") for c in row] for row in room["board"]]
         raw_moves = room.get("moves") or []
         self.caro_moves = [(int(m.get("x", 0)), int(m.get("y", 0)), str(m.get("role", "X"))) for m in raw_moves]
+
+        if isinstance(room.get("board"), list) and len(room["board"]) == self.caro_N:
+            self.caro_board = [[str(c or "") for c in row] for row in room["board"]]
+        else:
+            self.caro_board = [["" for _ in range(self.caro_N)] for _ in range(self.caro_N)]
+            for rk in room.get("rocks") or []:
+                if isinstance(rk, (list, tuple)) and len(rk) >= 2:
+                    rx, ry = int(rk[0]), int(rk[1])
+                    if 0 <= rx < self.caro_N and 0 <= ry < self.caro_N:
+                        self.caro_board[ry][rx] = "#"
+            for mx, my, mrole in self.caro_moves:
+                if 0 <= mx < self.caro_N and 0 <= my < self.caro_N:
+                    self.caro_board[my][mx] = mrole
+
         self.caro_winner = room.get("winner")
         wl = room.get("winLine")
         if isinstance(wl, dict):
             self.caro_win_line = (int(wl.get("ax", 0)), int(wl.get("ay", 0)), int(wl.get("ex", 0)), int(wl.get("ey", 0)))
+        elif isinstance(wl, (list, tuple)) and len(wl) == 2 and isinstance(wl[0], (list, tuple)) and isinstance(wl[1], (list, tuple)):
+            self.caro_win_line = (int(wl[0][0]), int(wl[0][1]), int(wl[1][0]), int(wl[1][1]))
         else:
             self.caro_win_line = None
 
@@ -8995,8 +9013,10 @@ class TkMinigamesHub:
                 d = res.json()
                 if d.get("status") == "success" and d.get("room"):
                     self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], True))
-            except Exception:
-                pass
+                elif d.get("message"):
+                    self.app.root.after(0, lambda msg=d.get("message"): self.app.log(f"⚠️ [Caro Online] {msg}"))
+            except Exception as e:
+                self.app.root.after(0, lambda err=str(e): self.app.log(f"⚠️ [Caro Online] Lỗi tạo bàn: {err}"))
 
         threading.Thread(target=_t, daemon=True).start()
 
@@ -9011,34 +9031,36 @@ class TkMinigamesHub:
             try:
                 res = requests.post(
                     self.app.get_api_endpoint(),
-                    json={"action": "caroJoinRoom", "roomId": code, "playerName": pname, "tier": tier},
+                    json={"action": "caroJoinRoom", "code": code, "roomId": code, "playerName": pname, "tier": tier},
                     timeout=8,
                 )
                 d = res.json()
                 if d.get("status") == "success" and d.get("room"):
                     self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], True))
-            except Exception:
-                pass
+                elif d.get("message"):
+                    self.app.root.after(0, lambda msg=d.get("message"): self.app.log(f"⚠️ [Caro Online] {msg}"))
+            except Exception as e:
+                self.app.root.after(0, lambda err=str(e): self.app.log(f"⚠️ [Caro Online] Lỗi vào bàn #{code}: {err}"))
 
         threading.Thread(target=_t, daemon=True).start()
 
     def _caro_poll_room_once(self):
         if not self.caro_online_room:
             return
-        rid = self.caro_online_room.get("roomId", "")
+        rid = self.caro_online_room.get("code") or self.caro_online_room.get("roomId") or ""
         pname = self.app.player_name_var.get().strip() or "Khách"
 
         def _t():
             try:
                 res = requests.post(
                     self.app.get_api_endpoint(),
-                    json={"action": "caroGetRoom", "roomId": rid, "playerName": pname},
+                    json={"action": "caroGetRoom", "code": rid, "roomId": rid, "playerName": pname},
                     timeout=6,
                 )
                 d = res.json()
                 if d.get("status") == "success" and d.get("room"):
                     self.app.root.after(0, lambda: self._caro_apply_online_room(d["room"], False))
-                elif res.status_code == 404:
+                elif res.status_code == 404 or d.get("status") == "error":
                     def _closed():
                         self.caro_online_room = None
                         self.caro_online_seat = None
@@ -9052,14 +9074,14 @@ class TkMinigamesHub:
     def _caro_online_rematch(self):
         if not self.caro_online_room:
             return
-        rid = self.caro_online_room.get("roomId", "")
+        rid = self.caro_online_room.get("code") or self.caro_online_room.get("roomId") or ""
         pname = self.app.player_name_var.get().strip() or "Khách"
 
         def _t():
             try:
                 res = requests.post(
                     self.app.get_api_endpoint(),
-                    json={"action": "caroResetGame", "roomId": rid, "playerName": pname},
+                    json={"action": "caroResetGame", "code": rid, "roomId": rid, "playerName": pname},
                     timeout=8,
                 )
                 d = res.json()
@@ -9073,14 +9095,14 @@ class TkMinigamesHub:
     def _caro_online_resign(self):
         if not self.caro_online_room:
             return
-        rid = self.caro_online_room.get("roomId", "")
+        rid = self.caro_online_room.get("code") or self.caro_online_room.get("roomId") or ""
         pname = self.app.player_name_var.get().strip() or "Khách"
 
         def _t():
             try:
                 res = requests.post(
                     self.app.get_api_endpoint(),
-                    json={"action": "caroResign", "roomId": rid, "playerName": pname},
+                    json={"action": "caroResign", "code": rid, "roomId": rid, "playerName": pname},
                     timeout=8,
                 )
                 d = res.json()
@@ -9094,7 +9116,7 @@ class TkMinigamesHub:
     def _caro_online_leave(self):
         if not self.caro_online_room:
             return
-        rid = self.caro_online_room.get("roomId", "")
+        rid = self.caro_online_room.get("code") or self.caro_online_room.get("roomId") or ""
         pname = self.app.player_name_var.get().strip() or "Khách"
         self.caro_online_room = None
         self.caro_online_seat = None
@@ -9105,7 +9127,7 @@ class TkMinigamesHub:
             try:
                 requests.post(
                     self.app.get_api_endpoint(),
-                    json={"action": "caroLeaveRoom", "roomId": rid, "playerName": pname},
+                    json={"action": "caroLeaveRoom", "code": rid, "roomId": rid, "playerName": pname},
                     timeout=6,
                 )
             except Exception:
@@ -9205,11 +9227,18 @@ class TkMinigamesHub:
 
         if self.caro_mode == "online":
             rm = self.caro_online_room
-            if not rm or rm.get("status") != "PLAYING":
+            if not rm:
                 return
-            if self.caro_online_seat not in ("X", "O") or rm.get("turn") != self.caro_online_seat:
+            players_obj = rm.get("players") or {}
+            px_obj = rm.get("playerX") or players_obj.get("X")
+            po_obj = rm.get("playerO") or players_obj.get("O")
+            status = rm.get("status") or ("WAITING" if (not px_obj or not po_obj) else ("FINISHED" if rm.get("winner") else "PLAYING"))
+            if status != "PLAYING":
                 return
-            rid = rm.get("roomId", "")
+            turn = rm.get("turn") or ("X" if len(self.caro_moves) % 2 == 0 else "O")
+            if self.caro_online_seat not in ("X", "O") or turn != self.caro_online_seat:
+                return
+            rid = rm.get("code") or rm.get("roomId") or ""
             pname = self.app.player_name_var.get().strip() or "Khách"
             # Optimistic draw
             self.caro_board[y][x] = self.caro_online_seat
@@ -9220,7 +9249,7 @@ class TkMinigamesHub:
                 try:
                     res = requests.post(
                         self.app.get_api_endpoint(),
-                        json={"action": "caroMove", "roomId": rid, "playerName": pname, "x": x, "y": y},
+                        json={"action": "caroMove", "code": rid, "roomId": rid, "playerName": pname, "x": x, "y": y},
                         timeout=8,
                     )
                     d = res.json()
@@ -9330,11 +9359,15 @@ class TkMinigamesHub:
 
         if self.caro_mode == "online" and self.caro_online_room:
             rm = self.caro_online_room
-            rid = rm.get("roomId", "")
-            px = (rm.get("playerX") or {}).get("name", "---")
-            po = (rm.get("playerO") or {}).get("name", "Đang chờ...")
+            rid = rm.get("code") or rm.get("roomId") or ""
+            players_obj = rm.get("players") or {}
+            px_obj = rm.get("playerX") or players_obj.get("X") or {}
+            po_obj = rm.get("playerO") or players_obj.get("O") or {}
+            px = px_obj.get("name", "---") if px_obj else "---"
+            po = po_obj.get("name", "Đang chờ...") if po_obj else "Đang chờ..."
             sc = rm.get("scores") or {"X": 0, "O": 0}
-            if rm.get("status") == "WAITING":
+            status = rm.get("status") or ("WAITING" if (not px_obj or not po_obj) else ("FINISHED" if rm.get("winner") else "PLAYING"))
+            if status == "WAITING":
                 self.caro_status_lbl.configure(
                     text=f"Bàn #{rid}  •  ❌ {px} vs ⭕ Đang chờ đối thủ vào bàn...",
                     fg="#fbbf24",
@@ -9346,7 +9379,7 @@ class TkMinigamesHub:
                     fg="#34d399",
                 )
             else:
-                turn = rm.get("turn", "X")
+                turn = rm.get("turn") or ("X" if len(self.caro_moves) % 2 == 0 else "O")
                 my_turn = turn == self.caro_online_seat
                 turn_txt = f"⚡ ĐẾN LƯỢT BẠN ({self.caro_online_seat})" if my_turn else f"⏳ Đợi lượt {turn}"
                 self.caro_status_lbl.configure(

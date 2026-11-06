@@ -2595,10 +2595,39 @@ app.post('/api', async (req, res) => {
         return 'V';
       };
 
+      const buildRoomBoard2D = (room) => {
+        const N = room.N || 20;
+        const b = Array.from({ length: N }, () => Array(N).fill(''));
+        for (const [rx, ry] of (room.rocks || [])) {
+          if (ry >= 0 && ry < N && rx >= 0 && rx < N) b[ry][rx] = '#';
+        }
+        for (const m of (room.moves || [])) {
+          if (m.y >= 0 && m.y < N && m.x >= 0 && m.x < N) b[m.y][m.x] = m.role;
+        }
+        return b;
+      };
+
+      const enrichRoomPayload = (room) => {
+        const status = (!room.players.X || !room.players.O) ? 'WAITING' : (room.winner ? 'FINISHED' : 'PLAYING');
+        const turn = (room.moves || []).length % 2 === 0 ? 'X' : 'O';
+        return {
+          ...room,
+          code: room.code,
+          roomId: room.code,
+          playerX: room.players.X ? { name: room.players.X.name, tier: room.players.X.tier } : null,
+          playerO: room.players.O ? { name: room.players.O.name, tier: room.players.O.tier } : null,
+          status,
+          turn,
+          board: buildRoomBoard2D(room)
+        };
+      };
+
       const summarizeRoom = (room) => ({
         code: room.code,
+        roomId: room.code,
         title: room.title,
         obstacles: Boolean(room.obstacles),
+        players: room.players,
         playerX: room.players.X ? { name: room.players.X.name, tier: room.players.X.tier } : null,
         playerO: room.players.O ? { name: room.players.O.name, tier: room.players.O.tier } : null,
         movesCount: (room.moves || []).length,
@@ -2636,6 +2665,7 @@ app.post('/api', async (req, res) => {
         const obstacles = Boolean(data.obstacles);
         const newRoom = {
           code,
+          roomId: code,
           title: String(data.title || `Bàn của ${pName}`).trim().slice(0, 40),
           N: 20,
           obstacles,
@@ -2662,14 +2692,14 @@ app.post('/api', async (req, res) => {
           updatedAt: now
         };
         roomsMap.set(code, newRoom);
-        broadcastRealtimeEvent({ type: 'CARO_LOBBY_UPDATED', roomCode: code });
-        return res.json({ status: 'success', role: 'X', room: newRoom });
+        broadcastUpdate('CARO_LOBBY_UPDATED', { roomCode: code });
+        return res.json({ status: 'success', role: 'X', room: enrichRoomPayload(newRoom) });
       }
 
-      const code = String(data.code || '').trim().toUpperCase();
+      const code = String(data.code || data.roomId || '').replace(/^#/, '').trim().toUpperCase();
       const room = roomsMap.get(code);
       if (!room) {
-        return res.json({ status: 'error', message: `Không tìm thấy bàn cờ #${code} (hoặc bàn đã đóng)!` });
+        return res.status(404).json({ status: 'error', message: `Không tìm thấy bàn cờ #${code} (hoặc bàn đã đóng)!` });
       }
 
       if (action === 'caroJoinRoom') {
@@ -2698,8 +2728,8 @@ app.post('/api', async (req, res) => {
           room.players[role].lastSeen = now;
           room.players[role].tier = pTier;
         }
-        broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
-        return res.json({ status: 'success', role, room });
+        broadcastUpdate('CARO_ROOM_UPDATED', { roomCode: code });
+        return res.json({ status: 'success', role, room: enrichRoomPayload(room) });
       }
 
       if (action === 'caroGetRoom') {
@@ -2707,7 +2737,7 @@ app.post('/api', async (req, res) => {
         if (role === 'X' || role === 'O') {
           room.players[role].lastSeen = now;
         }
-        return res.json({ status: 'success', role, room });
+        return res.json({ status: 'success', role, room: enrichRoomPayload(room) });
       }
 
       if (action === 'caroMove') {
@@ -2775,8 +2805,8 @@ app.post('/api', async (req, res) => {
           room.winner = 'DRAW';
           room.winReason = 'Hòa cờ (Hết ô trống)!';
         }
-        broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
-        return res.json({ status: 'success', role, room });
+        broadcastUpdate('CARO_ROOM_UPDATED', { roomCode: code });
+        return res.json({ status: 'success', role, room: enrichRoomPayload(room) });
       }
 
       if (action === 'caroResetGame') {
@@ -2807,8 +2837,8 @@ app.post('/api', async (req, res) => {
           timeText: formatVietnamTime(now).slice(0, 5)
         });
         const newRole = getRoleForPlayer(room, pName);
-        broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
-        return res.json({ status: 'success', role: newRole, room });
+        broadcastUpdate('CARO_ROOM_UPDATED', { roomCode: code });
+        return res.json({ status: 'success', role: newRole, room: enrichRoomPayload(room) });
       }
 
       if (action === 'caroResign') {
@@ -2826,9 +2856,9 @@ app.post('/api', async (req, res) => {
             text: `🏳️ ${pName} đã nhận thua. Chiến thắng thuộc về ${room.players[opp].name}!`,
             timeText: formatVietnamTime(now).slice(0, 5)
           });
-          broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
+          broadcastUpdate('CARO_ROOM_UPDATED', { roomCode: code });
         }
-        return res.json({ status: 'success', role, room });
+        return res.json({ status: 'success', role, room: enrichRoomPayload(room) });
       }
 
       if (action === 'caroLeaveRoom') {
@@ -2859,7 +2889,7 @@ app.post('/api', async (req, res) => {
             room.winner = null;
             room.winLine = null;
           }
-          broadcastRealtimeEvent({ type: 'CARO_LOBBY_UPDATED', roomCode: code });
+          broadcastUpdate('CARO_LOBBY_UPDATED', { roomCode: code });
         }
         return res.json({ status: 'success' });
       }
@@ -2877,9 +2907,9 @@ app.post('/api', async (req, res) => {
           });
           if (room.chat.length > 35) room.chat = room.chat.slice(-35);
           room.updatedAt = now;
-          broadcastRealtimeEvent({ type: 'CARO_ROOM_UPDATED', roomCode: code });
+          broadcastUpdate('CARO_ROOM_UPDATED', { roomCode: code });
         }
-        return res.json({ status: 'success', room });
+        return res.json({ status: 'success', room: enrichRoomPayload(room) });
       }
     }
 
